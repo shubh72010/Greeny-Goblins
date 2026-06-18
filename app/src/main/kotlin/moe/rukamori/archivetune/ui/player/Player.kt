@@ -205,7 +205,9 @@ import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
+import moe.rukamori.archivetune.constants.ModularPlayerEnabledKey
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
+import moe.rukamori.archivetune.ui.player.modular.ModularExpandedPlayer
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.resize
@@ -814,6 +816,32 @@ fun BottomSheetPlayer(
             )
         },
     ) {
+        val modularPlayerEnabled by rememberPreference(ModularPlayerEnabledKey, defaultValue = false)
+        if (modularPlayerEnabled) {
+            ModularExpandedPlayer(
+                playerConnection = playerConnection,
+                isPlaying = isPlaying,
+                position = position,
+                duration = duration,
+                isSeeking = isUserSeeking,
+                onSeek = { sliderPosition = it; isUserSeeking = true },
+                onSeekEnd = {
+                    sliderPosition?.let {
+                        playerConnection.player.seekTo(it)
+                        position = it
+                    }
+                    isUserSeeking = false
+                },
+                sliderPosition = sliderPosition,
+                modifier = Modifier.fillMaxSize(),
+                onEditModeChanged = { editing -> state.isLocked = editing },
+                onQueueClick = { queueSheetState.expandSoft() },
+                onLyricsClick = { isLyricsScreenVisible = true },
+                onSleepTimerClick = { showSleepTimerDialog = true },
+            )
+            return@BottomSheet
+        }
+
         val onSliderValueChange: (Long) -> Unit = {
             isUserSeeking = true
             sliderPosition = it

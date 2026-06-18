@@ -33,6 +33,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -139,6 +140,8 @@ class BottomSheetState(
     private val animationsDisabled: Boolean,
     val collapsedBound: Dp,
 ) : DraggableState by draggableState {
+    var isLocked by mutableStateOf(false)
+
     val dismissedBound: Dp
         get() = animatable.lowerBound!!
 
@@ -210,6 +213,7 @@ class BottomSheetState(
         velocity: Float,
         onDismiss: (() -> Unit)?,
     ) {
+        if (isLocked) return
         if (velocity > 250) {
             expand()
         } else if (velocity < -250) {
@@ -251,6 +255,7 @@ class BottomSheetState(
                     available: Offset,
                     source: NestedScrollSource,
                 ): Offset {
+                    if (isLocked) return Offset.Zero
                     if (isExpanded && available.y < 0) {
                         isTopReached = false
                     }
@@ -268,6 +273,7 @@ class BottomSheetState(
                     available: Offset,
                     source: NestedScrollSource,
                 ): Offset {
+                    if (isLocked) return Offset.Zero
                     if (!isTopReached) {
                         isTopReached = consumed.y == 0f && available.y > 0
                     }
@@ -280,8 +286,9 @@ class BottomSheetState(
                     }
                 }
 
-                override suspend fun onPreFling(available: Velocity): Velocity =
-                    if (isTopReached) {
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    if (isLocked) return Velocity.Zero
+                    return if (isTopReached) {
                         val velocity = -available.y
                         performFling(velocity, null)
 
@@ -289,6 +296,7 @@ class BottomSheetState(
                     } else {
                         Velocity.Zero
                     }
+                }
 
                 override suspend fun onPostFling(
                     consumed: Velocity,

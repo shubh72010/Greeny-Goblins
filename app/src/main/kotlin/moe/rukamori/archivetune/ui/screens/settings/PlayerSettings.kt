@@ -45,6 +45,7 @@ import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
+import moe.rukamori.archivetune.constants.ModularPlayerEnabledKey
 
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
@@ -88,6 +89,10 @@ fun PlayerSettings(
     val (playerStreamClient, onPlayerStreamClientChange) = rememberEnumPreference(
         PlayerStreamClientKey,
         defaultValue = PlayerStreamClient.ANDROID_VR
+    )
+    val (modularPlayerEnabled, onModularPlayerEnabledChange) = rememberPreference(
+        ModularPlayerEnabledKey,
+        defaultValue = false
     )
     val (lowDataMode, onLowDataModeChange) = rememberPreference(
         LowDataModeKey,
@@ -522,6 +527,29 @@ fun PlayerSettings(
                     onClick = { showExternalDownloaderPackageDialog = true },
                     isEnabled = externalDownloaderEnabled
                 )
+            }
+        }
+
+        PreferenceGroup(title = stringResource(R.string.modular_player_layout)) {
+            item {
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.modular_player_layout)) },
+                    description = "Replace the player screen with a modular 4:9 grid layout where you can place components freely",
+                    icon = { Icon(painterResource(R.drawable.grid_view), null) },
+                    checked = modularPlayerEnabled,
+                    onCheckedChange = onModularPlayerEnabledChange,
+                )
+            }
+
+            if (modularPlayerEnabled) {
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.modular_layout_editor)) },
+                        description = stringResource(R.string.modular_drag_to_move),
+                        icon = { Icon(painterResource(R.drawable.edit), null) },
+                        onClick = { navController.navigate("modular_layout_editor") },
+                    )
+                }
             }
         }
     }

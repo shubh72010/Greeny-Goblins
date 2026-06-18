@@ -197,6 +197,7 @@ import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
 import moe.rukamori.archivetune.constants.PauseSearchHistoryKey
 import moe.rukamori.archivetune.constants.PureBlackKey
+import moe.rukamori.archivetune.constants.ModularPlayerEnabledKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
@@ -914,6 +915,10 @@ class MainActivity : ComponentActivity() {
                         key = PlayerDesignStyleKey,
                         defaultValue = PlayerDesignStyle.V4,
                     )
+                    val modularPlayerEnabled by rememberPreference(
+                        key = ModularPlayerEnabledKey,
+                        defaultValue = false,
+                    )
 
                     val aodModeEnabled by remember(playerConnection) {
                         playerConnection?.aodModeEnabled ?: MutableStateFlow(false)
@@ -970,7 +975,8 @@ class MainActivity : ComponentActivity() {
 
                     val shouldHideStatusBars =
                         isYearInMusicScreen ||
-                            (playerBottomSheetState.isExpanded && playerDesignStyle == PlayerDesignStyle.V7)
+                            (playerBottomSheetState.isExpanded && playerDesignStyle == PlayerDesignStyle.V7) ||
+                            (playerBottomSheetState.isExpanded && modularPlayerEnabled)
 
                     LaunchedEffect(shouldHideStatusBars, aodModeEnabled) {
                         if (aodModeEnabled) return@LaunchedEffect

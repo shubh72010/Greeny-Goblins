@@ -89,6 +89,7 @@ import moe.rukamori.archivetune.ui.screens.settings.LyricsSettings
 import moe.rukamori.archivetune.ui.screens.settings.MusicTogetherScreen
 import moe.rukamori.archivetune.ui.screens.settings.PalettePickerScreen
 import moe.rukamori.archivetune.ui.screens.settings.PlayerSettings
+import moe.rukamori.archivetune.ui.player.modular.PlayerLayoutEditor
 import moe.rukamori.archivetune.ui.screens.settings.PoTokenScreen
 import moe.rukamori.archivetune.ui.screens.settings.PrivacySettings
 import moe.rukamori.archivetune.ui.screens.settings.InternetSettings
@@ -401,6 +402,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/player") {
         PlayerSettings(navController, scrollBehavior)
+    }
+    composable("modular_layout_editor") {
+        PlayerLayoutEditor(navController)
     }
     composable("settings/storage") {
         StorageSettings(navController, scrollBehavior)
