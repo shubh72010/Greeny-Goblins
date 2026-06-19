@@ -36,8 +36,8 @@
     <string name="most_played_albums">En çok çalınan albümler</string>
     <!-- Search -->
     <string name="search">Ara</string>
-    <string name="search_yt_music">YouTube Müzik\'te ara…</string>
-    <string name="search_library">Kütüphanede ara…</string>
+    <string name="search_yt_music">YouTube Müzik\'te ara</string>
+    <string name="search_library">Kütüphanede ara</string>
     <string name="filter_library">Kütüphane</string>
     <string name="filter_liked">Beğendim</string>
     <string name="filter_downloaded">İndirildi</string>

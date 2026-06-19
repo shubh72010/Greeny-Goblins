@@ -218,11 +218,21 @@ enum class AiApiValidationStatus {
 // Last.fm scrobbling
 val LastFMSessionKey = stringPreferencesKey("lastfmSession")
 val LastFMUsernameKey = stringPreferencesKey("lastfmUsername")
+val LastFMProviderKey = stringPreferencesKey("lastfmProvider")
+val LastFMCustomEndpointKey = stringPreferencesKey("lastfmCustomEndpoint")
+val LastFMApiKeyOverrideKey = stringPreferencesKey("lastfmApiKeyOverride")
+val LastFMSecretOverrideKey = stringPreferencesKey("lastfmSecretOverride")
 val EnableLastFMScrobblingKey = booleanPreferencesKey("lastfmScrobblingEnable")
 val LastFMUseNowPlaying = booleanPreferencesKey("lastfmUseNowPlaying")
 val ScrobbleDelayPercentKey = floatPreferencesKey("scrobbleDelayPercent")
 val ScrobbleMinSongDurationKey = intPreferencesKey("scrobbleMinSongDuration")
 val ScrobbleDelaySecondsKey = intPreferencesKey("scrobbleDelaySeconds")
+
+enum class LastFmProvider {
+    LASTFM,
+    LIBREFM,
+    CUSTOM,
+}
 
 val AudioQualityKey = stringPreferencesKey("audioQuality")
 
@@ -318,8 +328,6 @@ val DiscordActivityButton2EnabledKey = booleanPreferencesKey("discordActivityBut
 val DiscordShowWhenPausedKey = booleanPreferencesKey("discordShowWhenPaused")
 // Activity type for Discord presence (PLAYING, STREAMING, LISTENING, WATCHING, COMPETING)
 val DiscordActivityTypeKey = stringPreferencesKey("discordActivityType")
-val DiscordPresenceIntervalValueKey = intPreferencesKey("discordPresenceIntervalValue")
-val DiscordPresenceIntervalUnitKey = stringPreferencesKey("discordPresenceIntervalUnit") // "S", "M", "H"
 val DiscordPresenceStatusKey = stringPreferencesKey("discordPresenceStatus") // "ONLINE", "IDLE", "DND", "INVISIBLE"
 
 // Discord image selection keys

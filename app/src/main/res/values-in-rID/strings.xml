@@ -64,20 +64,6 @@
     <string name="library_artist_empty">Artis pustaka akan muncul di sini</string>
     <string name="library_album_empty">Album pustaka akan muncul di sini</string>
     <string name="library_playlist_empty">Playlist Anda akan muncul di sini</string>
-    <string name="build_your_mix_title">Buat Mix Anda</string>
-    <string name="build_your_mix_description">Bagaimana kami harus menyusun mix ini untuk Anda?</string>
-    <string name="build_your_mix_song_count">Berapa total lagu yang ingin Anda dapatkan?</string>
-    <string name="build_your_mix_listening_history">Riwayat Mendengarkan</string>
-    <string name="build_your_mix_average_listened">Rata-Rata Didengarkan</string>
-    <string name="build_your_mix_input_manually">Input Secara Manual</string>
-    <string name="build_your_mix_create">Buat mix</string>
-    <string name="build_your_mix_manual_basis">Dasar manual</string>
-    <string name="build_your_mix_manual_placeholder">Ketik nama artis atau judul lagu, seperti Alan Walker</string>
-    <string name="build_your_mix_loading_quote">Membuat mix Anda, ini akan memakan waktu...</string>
-    <string name="build_your_mix_empty_library">Tidak ada lagu di pustaka yang tersedia untuk membuat mix.</string>
-    <string name="build_your_mix_manual_required">Masukkan nama artis atau judul lagu terlebih dahulu.</string>
-    <string name="build_your_mix_no_manual_match">Tidak ada lagu di pustaka yang cocok dengan artis atau judul tersebut.</string>
-    <string name="build_your_mix_failed">Gagal membuat mix Anda</string>
     <!-- Artist screen -->
     <string name="from_your_library">Dari pustaka Anda</string>
     <!-- Album screen -->
@@ -948,4 +934,13 @@
     <string name="album_backdrop_desc">Tampilkan karya seni sebagai latar belakang buram di pemutar</string>
     <string name="backdrop_blur_amount">Jumlah buram latar belakang</string>
     <string name="backdrop_blur_amount_value">%1$d%%</string>
+    <string name="library_title">Pustaka Anda</string>
+    <string name="library_subtitle">Musik Anda, diatur untuk Anda</string>
+    <string name="library_playlists_subtitle">Semua playlist Anda, diatur untuk Anda</string>
+    <string name="library_songs_subtitle">Semua lagu Anda, diatur untuk Anda</string>
+    <string name="library_artists_subtitle">Semua artis Anda, di satu tempat</string>
+    <string name="library_albums_subtitle">Semua album Anda, tersusun rapi</string>
+    <string name="most_played_badge">PALING SERING DIPUTAR</string>
+    <string name="favorite_songs_title">Lagu Favorit</string>
+    <string name="play_all">Putar semua</string>
 </resources>

@@ -9,12 +9,15 @@
 
 package moe.rukamori.archivetune.ui.player
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.database.ContentObserver
+import android.media.AudioManager
 import android.os.SystemClock
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -72,11 +75,14 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -241,6 +247,79 @@ private const val V7SharpStageBottomScrimStartFraction = 0.40f
 private const val V7BackdropFloorBlackStartFraction = 0.88f
 private const val V8BackdropArtworkSizePx = 1_024
 
+@Stable
+internal class DeviceMusicVolumeController(
+    private val audioManager: AudioManager,
+) {
+    private var minVolume by mutableIntStateOf(readMinVolume())
+    private var maxVolume by mutableIntStateOf(readMaxVolume())
+    var volumeFraction by mutableFloatStateOf(readVolumeFraction())
+        private set
+
+    fun refresh() {
+        minVolume = readMinVolume()
+        maxVolume = readMaxVolume()
+        volumeFraction = readVolumeFraction()
+    }
+
+    @JvmName("setDeviceMusicVolumeFraction")
+    fun setVolumeFraction(fraction: Float) {
+        val safeFraction = fraction.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: volumeFraction
+        val volumeRange = (maxVolume - minVolume).coerceAtLeast(1)
+        val targetVolume = (minVolume + (safeFraction * volumeRange).roundToInt())
+            .coerceIn(minVolume, maxVolume)
+
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVolume, 0)
+        refresh()
+    }
+
+    private fun readVolumeFraction(): Float {
+        val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val volumeRange = (maxVolume - minVolume).coerceAtLeast(1)
+        return ((currentVolume - minVolume).toFloat() / volumeRange.toFloat()).coerceIn(0f, 1f)
+    }
+
+    private fun readMaxVolume(): Int {
+        val streamMinVolume = readMinVolume()
+        return audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+            .coerceAtLeast(streamMinVolume + 1)
+    }
+
+    private fun readMinVolume(): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            audioManager.getStreamMinVolume(AudioManager.STREAM_MUSIC)
+        } else {
+            0
+        }
+}
+
+@Composable
+internal fun rememberDeviceMusicVolumeController(): DeviceMusicVolumeController {
+    val context = LocalContext.current
+    val audioManager = remember(context) {
+        context.applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+    val controller = remember(audioManager) {
+        DeviceMusicVolumeController(audioManager)
+    }
+
+    DisposableEffect(context, controller) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                controller.refresh()
+            }
+        }
+        val contentResolver = context.applicationContext.contentResolver
+        contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, observer)
+        controller.refresh()
+        onDispose {
+            contentResolver.unregisterContentObserver(observer)
+        }
+    }
+
+    return controller
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BottomSheetPlayer(
@@ -250,7 +329,6 @@ fun BottomSheetPlayer(
     pureBlack: Boolean,
 ) {
     val context = LocalContext.current
-    val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     val menuState = LocalMenuState.current
 
     val bottomSheetPageState = LocalBottomSheetPageState.current
@@ -329,10 +407,10 @@ fun BottomSheetPlayer(
     val currentFormat by playerConnection.currentFormat.collectAsState(initial = null)
     val queueWindows by playerConnection.queueWindows.collectAsState()
     val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
-    val playerVolume = playerConnection.service.playerVolume.collectAsState()
-    val onPlayerVolumeChange = remember(playerConnection) {
+    val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
+    val onPlayerVolumeChange = remember(deviceMusicVolumeController) {
         { volume: Float ->
-            playerConnection.service.playerVolume.value = volume.coerceIn(0f, 1f)
+            deviceMusicVolumeController.setVolumeFraction(volume)
         }
     }
 
@@ -361,6 +439,9 @@ fun BottomSheetPlayer(
     }
     var duration by rememberSaveable(mediaMetadata?.id) {
         mutableLongStateOf(playerConnection.player.duration)
+    }
+    var lyricsSyncOffset by rememberSaveable(mediaMetadata?.id) {
+        mutableIntStateOf(0)
     }
     var sliderPosition by remember(mediaMetadata?.id) {
         mutableStateOf<Long?>(null)
@@ -673,14 +754,13 @@ fun BottomSheetPlayer(
 
     BackHandler(
         enabled =
-        isLyricsScreenVisible ||
-            (!queueSheetState.isCollapsed && !queueSheetState.isDismissed) ||
-            (!state.isCollapsed && !state.isDismissed)
+        queueSheetState.isExpandedOrExpanding ||
+            state.isExpandedOrExpanding
     ) {
         when {
-            isLyricsScreenVisible -> isLyricsScreenVisible = false
-            !queueSheetState.isCollapsed && !queueSheetState.isDismissed -> queueSheetState.collapseSoft()
-            !state.isCollapsed && !state.isDismissed -> state.collapseSoft()
+            isLyricsScreenVisible && state.isExpandedOrExpanding -> isLyricsScreenVisible = false
+            queueSheetState.isExpandedOrExpanding -> queueSheetState.collapseSoft()
+            state.isExpandedOrExpanding -> state.collapseSoft()
         }
     }
 
@@ -729,11 +809,15 @@ fun BottomSheetPlayer(
                     true
                 }
                 Key.DirectionUp -> {
-                    playerConnection.service.playerVolume.value = (playerConnection.service.playerVolume.value + 0.05f).coerceAtMost(1f)
+                    deviceMusicVolumeController.setVolumeFraction(
+                        (deviceMusicVolumeController.volumeFraction + 0.05f).coerceAtMost(1f)
+                    )
                     true
                 }
                 Key.DirectionDown -> {
-                    playerConnection.service.playerVolume.value = (playerConnection.service.playerVolume.value - 0.05f).coerceAtLeast(0f)
+                    deviceMusicVolumeController.setVolumeFraction(
+                        (deviceMusicVolumeController.volumeFraction - 0.05f).coerceAtLeast(0f)
+                    )
                     true
                 }
                 Key.Spacebar -> {
@@ -1022,7 +1106,6 @@ fun BottomSheetPlayer(
                 state = state,
                 menuState = menuState,
                 bottomSheetPageState = bottomSheetPageState,
-                clipboardManager = clipboardManager,
                 context = context,
                 onSliderValueChange = onSliderValueChange,
                 onSliderValueChangeFinished = onSliderValueChangeFinished,
@@ -1167,7 +1250,7 @@ fun BottomSheetPlayer(
                                     sliderPosition = sliderPosition,
                                     position = position,
                                     duration = duration,
-                                    volume = playerVolume.value,
+                                    volume = deviceMusicVolumeController.volumeFraction,
                                     currentFormat = currentFormat,
                                     playerConnection = playerConnection,
                                     navController = navController,
@@ -1206,7 +1289,7 @@ fun BottomSheetPlayer(
                                 sliderPosition = sliderPosition,
                                 position = position,
                                 duration = duration,
-                                volume = playerVolume.value,
+                                volume = deviceMusicVolumeController.volumeFraction,
                                 playerConnection = playerConnection,
                                 navController = navController,
                                 state = state,
@@ -1423,7 +1506,7 @@ fun BottomSheetPlayer(
                                     sliderPosition = sliderPosition,
                                     position = position,
                                     duration = duration,
-                                    volume = playerVolume.value,
+                                    volume = deviceMusicVolumeController.volumeFraction,
                                     currentFormat = currentFormat,
                                     playerConnection = playerConnection,
                                     navController = navController,
@@ -1461,7 +1544,7 @@ fun BottomSheetPlayer(
                                 sliderPosition = sliderPosition,
                                 position = position,
                                 duration = duration,
-                                volume = playerVolume.value,
+                                volume = deviceMusicVolumeController.volumeFraction,
                                 playerConnection = playerConnection,
                                 navController = navController,
                                 state = state,
@@ -1586,8 +1669,11 @@ fun BottomSheetPlayer(
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(
                 visible = isLyricsScreenVisible,
+                backHandlerEnabled = isLyricsScreenVisible && state.isExpandedOrExpanding,
                 mediaMetadata = metadata,
                 navController = navController,
+                lyricsSyncOffset = lyricsSyncOffset,
+                onLyricsSyncOffsetChange = { lyricsSyncOffset = it },
                 onDismiss = { isLyricsScreenVisible = false },
                 onQueueClick = {
                     isLyricsScreenVisible = false
@@ -1629,8 +1715,11 @@ fun BottomSheetPlayer(
 @Composable
 private fun MikoLyricsTransition(
     visible: Boolean,
+    backHandlerEnabled: Boolean,
     mediaMetadata: MediaMetadata,
     navController: NavController,
+    lyricsSyncOffset: Int,
+    onLyricsSyncOffsetChange: (Int) -> Unit,
     onDismiss: () -> Unit,
     onQueueClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1675,7 +1764,10 @@ private fun MikoLyricsTransition(
                     mediaMetadata = mediaMetadata,
                     onBackClick = onDismiss,
                     navController = navController,
+                    lyricsSyncOffset = lyricsSyncOffset,
+                    onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
                     onQueueClick = onQueueClick,
+                    backHandlerEnabled = backHandlerEnabled,
                 )
             }
         }
