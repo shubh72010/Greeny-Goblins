@@ -36,7 +36,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -63,7 +62,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AodThumbnailShape
+import moe.rukamori.archivetune.constants.ModularButtonShapeKey
 import moe.rukamori.archivetune.playback.PlayerConnection
+import moe.rukamori.archivetune.utils.rememberEnumPreference
 
 
 
@@ -83,6 +85,7 @@ fun ModularExpandedPlayer(
     onQueueClick: () -> Unit = {},
     onLyricsClick: () -> Unit = {},
     onSleepTimerClick: () -> Unit = {},
+    onMenuClick: () -> Unit = {},
 ) {
     ComponentInitializer.ensureInitialized()
 
@@ -103,6 +106,8 @@ fun ModularExpandedPlayer(
         }
     }
 
+    val (modularButtonShape) = rememberEnumPreference(ModularButtonShapeKey, defaultValue = AodThumbnailShape.CIRCLE)
+
     var isEditMode by remember { mutableStateOf(false) }
     LaunchedEffect(isEditMode) {
         onEditModeChanged?.invoke(isEditMode)
@@ -113,14 +118,12 @@ fun ModularExpandedPlayer(
     var dragInfo by remember { mutableStateOf<DragInfo?>(null) }
     var editingTextSizeScale by remember { mutableStateOf(1f) }
     var editingPlayButtonScale by remember { mutableStateOf(1f) }
-    var editingShowTimeOnSeekBar by remember { mutableStateOf(true) }
     val density = LocalDensity.current
 
     fun enterEditMode() {
         editingSlots = layout.slots.toMutableList()
         editingTextSizeScale = layout.textSizeScale
         editingPlayButtonScale = layout.playButtonScale
-        editingShowTimeOnSeekBar = layout.showTimeOnSeekBar
         selectedSlotIndex = -1
         showPalette = false
         isEditMode = true
@@ -138,7 +141,6 @@ fun ModularExpandedPlayer(
             slots = editingSlots,
             textSizeScale = editingTextSizeScale,
             playButtonScale = editingPlayButtonScale,
-            showTimeOnSeekBar = editingShowTimeOnSeekBar,
         )
         layout = finalLayout
         scope.launch {
@@ -211,7 +213,6 @@ fun ModularExpandedPlayer(
     val activeStyle = PlayerComponentStyle(
         textSizeScale = if (isEditMode) editingTextSizeScale else layout.textSizeScale,
         playButtonScale = if (isEditMode) editingPlayButtonScale else layout.playButtonScale,
-        showTimeOnSeekBar = if (isEditMode) editingShowTimeOnSeekBar else layout.showTimeOnSeekBar,
     )
 
     BackHandler(enabled = isEditMode) {
@@ -223,6 +224,7 @@ fun ModularExpandedPlayer(
             onQueueClick = onQueueClick,
             onLyricsClick = onLyricsClick,
             onSleepTimerClick = onSleepTimerClick,
+            onMenuClick = onMenuClick,
         )) {
             BoxWithConstraints(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -257,6 +259,7 @@ fun ModularExpandedPlayer(
                 onSeekEnd = onSeekEnd,
                 sliderPosition = sliderPosition,
                 cellSize = cellSize,
+                buttonShape = modularButtonShape,
                 isEditMode = isEditMode,
                 selectedSlotIndex = selectedSlotIndex,
                 onSlotSelected = { index -> selectedSlotIndex = index },
@@ -370,7 +373,6 @@ fun ModularExpandedPlayer(
                     editingSlots = newLayout.slots.toMutableList()
                     editingTextSizeScale = newLayout.textSizeScale
                     editingPlayButtonScale = newLayout.playButtonScale
-                    editingShowTimeOnSeekBar = newLayout.showTimeOnSeekBar
                     selectedSlotIndex = -1
                     showPalette = false
                 },
@@ -381,7 +383,6 @@ fun ModularExpandedPlayer(
                     editingSlots = classic.slots.toMutableList()
                     editingTextSizeScale = classic.textSizeScale
                     editingPlayButtonScale = classic.playButtonScale
-                    editingShowTimeOnSeekBar = classic.showTimeOnSeekBar
                     selectedSlotIndex = -1
                     showPalette = false
                 },
@@ -389,8 +390,6 @@ fun ModularExpandedPlayer(
                 onTextSizeScaleChange = { editingTextSizeScale = it },
                 playButtonScale = editingPlayButtonScale,
                 onPlayButtonScaleChange = { editingPlayButtonScale = it },
-                showTimeOnSeekBar = editingShowTimeOnSeekBar,
-                onShowTimeOnSeekBarChange = { editingShowTimeOnSeekBar = it },
             )
         }
     }
@@ -416,8 +415,6 @@ private fun EditModeToolbar(
     onTextSizeScaleChange: (Float) -> Unit,
     playButtonScale: Float,
     onPlayButtonScaleChange: (Float) -> Unit,
-    showTimeOnSeekBar: Boolean,
-    onShowTimeOnSeekBarChange: (Boolean) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -591,18 +588,6 @@ private fun EditModeToolbar(
                     modifier = Modifier.weight(1f),
                 )
                 Text("2x", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("Show time on seek bar", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Switch(
-                    checked = showTimeOnSeekBar,
-                    onCheckedChange = onShowTimeOnSeekBarChange,
-                )
             }
 
             Row(

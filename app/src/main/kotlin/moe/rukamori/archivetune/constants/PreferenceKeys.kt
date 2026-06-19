@@ -68,6 +68,14 @@ val BlurRadiusKey = floatPreferencesKey("blurRadius")
 val BackdropEnabledKey = booleanPreferencesKey("backdropEnabled")
 val BackdropBlurAmountKey = intPreferencesKey("backdropBlurAmount")
 val ModularPlayerEnabledKey = booleanPreferencesKey("modularPlayerEnabled")
+enum class ModularCoverArtStyle {
+    NORMAL,
+    STYLE_CARD,
+    LYRIC,
+}
+val ModularCoverArtStyleKey = stringPreferencesKey("modularCoverArtStyle")
+val ModularButtonShapeKey = stringPreferencesKey("modularButtonShape")
+val ShowTimeOnSeekBarKey = booleanPreferencesKey("showTimeOnSeekBar")
 val MiniPlayerLastAnchorKey = intPreferencesKey("miniPlayerLastAnchor")
 val MiniPlayerBackgroundStyleKey = stringPreferencesKey("miniPlayerBackgroundStyle")
 

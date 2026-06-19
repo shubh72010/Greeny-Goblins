@@ -902,6 +902,7 @@ fun BottomSheetPlayer(
     ) {
         val modularPlayerEnabled by rememberPreference(ModularPlayerEnabledKey, defaultValue = false)
         if (modularPlayerEnabled) {
+            var modularQueueVisible by remember { mutableStateOf(false) }
             ModularExpandedPlayer(
                 playerConnection = playerConnection,
                 isPlaying = isPlaying,
@@ -919,11 +920,49 @@ fun BottomSheetPlayer(
                 sliderPosition = sliderPosition,
                 modifier = Modifier.fillMaxSize(),
                 onEditModeChanged = { editing -> state.isLocked = editing },
-                onQueueClick = { queueSheetState.expandSoft() },
+                onQueueClick = {
+                    modularQueueVisible = true
+                    queueSheetState.expandSoft()
+                },
                 onLyricsClick = { isLyricsScreenVisible = true },
                 onSleepTimerClick = { showSleepTimerDialog = true },
+                onMenuClick = {
+                    menuState.show {
+                        PlayerMenu(
+                            mediaMetadata = mediaMetadata,
+                            navController = navController,
+                            playerBottomSheetState = state,
+                            onShowDetailsDialog = {
+                                bottomSheetPageState.show {
+                                    ShowMediaInfo(mediaMetadata?.id.orEmpty())
+                                }
+                            },
+                            onDismiss = menuState::dismiss,
+                        )
+                    }
+                },
             )
-            return@BottomSheet
+
+            LaunchedEffect(queueSheetState.isExpandedOrExpanding) {
+                if (!queueSheetState.isExpandedOrExpanding) {
+                    modularQueueVisible = false
+                }
+            }
+            if (modularQueueVisible) {
+                Queue(
+                    state = queueSheetState,
+                    playerBottomSheetState = state,
+                    navController = navController,
+                    backgroundColor = if (useBlackBackground) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                    onBackgroundColor = if (useBlackBackground) Color.White else MaterialTheme.colorScheme.onSurface,
+                    TextBackgroundColor = TextBackgroundColor,
+                    textButtonColor = textButtonColor,
+                    iconButtonColor = iconButtonColor,
+                    onShowLyrics = { isLyricsScreenVisible = true },
+                    pureBlack = pureBlack,
+                    onDismiss = { modularQueueVisible = false },
+                )
+            }
         }
 
         val onSliderValueChange: (Long) -> Unit = {
@@ -948,6 +987,8 @@ fun BottomSheetPlayer(
         val seekEnabled = duration > 0L && duration != C.TIME_UNSET
         val updatedOnSliderValueChange by rememberUpdatedState(onSliderValueChange)
         val updatedOnSliderValueChangeFinished by rememberUpdatedState(onSliderValueChangeFinished)
+
+        if (!modularPlayerEnabled) {
 
         val nextUpMetadata =
             remember(queueWindows, currentWindowIndex) {
@@ -1636,35 +1677,35 @@ fun BottomSheetPlayer(
                 }
             }
         }
+            val queueOnBackgroundColor = if (useBlackBackground) Color.White else MaterialTheme.colorScheme.onSurface
+            val queueSurfaceColor = if (useBlackBackground) Color.Black else MaterialTheme.colorScheme.surface
 
-        val queueOnBackgroundColor = if (useBlackBackground) Color.White else MaterialTheme.colorScheme.onSurface
-        val queueSurfaceColor = if (useBlackBackground) Color.Black else MaterialTheme.colorScheme.surface
+            val (queueTextButtonColor, queueIconButtonColor) = when (playerButtonsStyle) {
+                PlayerButtonsStyle.DEFAULT -> Pair(queueOnBackgroundColor, queueSurfaceColor)
+                PlayerButtonsStyle.SECONDARY -> Pair(
+                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.onSecondary
+                )
+            }
 
-        val (queueTextButtonColor, queueIconButtonColor) = when (playerButtonsStyle) {
-            PlayerButtonsStyle.DEFAULT -> Pair(queueOnBackgroundColor, queueSurfaceColor)
-            PlayerButtonsStyle.SECONDARY -> Pair(
-                MaterialTheme.colorScheme.secondary,
-                MaterialTheme.colorScheme.onSecondary
+            Queue(
+                state = queueSheetState,
+                playerBottomSheetState = state,
+                navController = navController,
+                backgroundColor =
+                if (useBlackBackground) {
+                    Color.Black
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+                onBackgroundColor = queueOnBackgroundColor,
+                TextBackgroundColor = TextBackgroundColor,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                onShowLyrics = { isLyricsScreenVisible = true },
+                pureBlack = pureBlack,
             )
         }
-
-        Queue(
-            state = queueSheetState,
-            playerBottomSheetState = state,
-            navController = navController,
-            backgroundColor =
-            if (useBlackBackground) {
-                Color.Black
-            } else {
-                MaterialTheme.colorScheme.surfaceContainer
-            },
-            onBackgroundColor = queueOnBackgroundColor,
-            TextBackgroundColor = TextBackgroundColor,
-            textButtonColor = textButtonColor,
-            iconButtonColor = iconButtonColor,
-            onShowLyrics = { isLyricsScreenVisible = true },
-            pureBlack = pureBlack,
-        )
 
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(

@@ -1099,4 +1099,6 @@
     <string name="modular_save_layout">Save layout</string>
     <string name="modular_done_adding">Done adding</string>
     <string name="title_artist">Title + Artist</string>
+    <string name="style_card">Style Card</string>
+    <string name="modular_cover_art_style">Cover Art Style</string>
 </resources>

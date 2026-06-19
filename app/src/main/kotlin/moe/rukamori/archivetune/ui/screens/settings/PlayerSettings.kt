@@ -539,17 +539,6 @@ fun PlayerSettings(
                     onCheckedChange = onModularPlayerEnabledChange,
                 )
             }
-
-            if (modularPlayerEnabled) {
-                item {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.modular_layout_editor)) },
-                        description = stringResource(R.string.modular_drag_to_move),
-                        icon = { Icon(painterResource(R.drawable.edit), null) },
-                        onClick = { navController.navigate("modular_layout_editor") },
-                    )
-                }
-            }
         }
     }
 

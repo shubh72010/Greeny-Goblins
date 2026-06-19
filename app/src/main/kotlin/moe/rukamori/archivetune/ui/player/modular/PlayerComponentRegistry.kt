@@ -1,21 +1,32 @@
 package moe.rukamori.archivetune.ui.player.modular
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import moe.rukamori.archivetune.constants.PlayerButtonsStyle
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.models.MediaMetadata
 
 data class PlayerComponentStyle(
     val textSizeScale: Float = 1f,
     val playButtonScale: Float = 1f,
-    val showTimeOnSeekBar: Boolean = true,
 )
+
+val LocalShowTimeOnSeekBar = staticCompositionLocalOf { true }
+val LocalModularButtonShape = staticCompositionLocalOf<Shape> { RoundedCornerShape(50) }
+val LocalSliderStyle = staticCompositionLocalOf { moe.rukamori.archivetune.constants.SliderStyle.Standard }
+val LocalPlayerButtonStyle = staticCompositionLocalOf { PlayerButtonsStyle.DEFAULT }
+val LocalThumbnailCornerRadius = staticCompositionLocalOf { 16f }
 
 data class PlayerActions(
     val onQueueClick: () -> Unit = {},
     val onLyricsClick: () -> Unit = {},
     val onSleepTimerClick: () -> Unit = {},
+    val onMenuClick: () -> Unit = {},
 )
 
 val LocalPlayerActions = staticCompositionLocalOf { PlayerActions() }

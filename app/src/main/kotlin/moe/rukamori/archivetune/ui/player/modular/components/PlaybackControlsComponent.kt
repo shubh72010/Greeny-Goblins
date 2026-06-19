@@ -12,6 +12,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -21,6 +23,9 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
+import moe.rukamori.archivetune.constants.PlayerButtonsStyle
+import moe.rukamori.archivetune.ui.player.modular.LocalModularButtonShape
+import moe.rukamori.archivetune.ui.player.modular.LocalPlayerButtonStyle
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentRegistry
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentType
 
@@ -43,15 +48,24 @@ fun PlayPauseButton(
     modifier: Modifier = Modifier,
     playButtonScale: Float = 1f,
 ) {
+    val haptic = LocalHapticFeedback.current
+    val buttonShape = LocalModularButtonShape.current
+    val buttonStyle = LocalPlayerButtonStyle.current
+    val containerColor = if (buttonStyle == PlayerButtonsStyle.SECONDARY)
+        MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         FilledIconButton(
-            onClick = { playerConnection.player.togglePlayPause() },
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                playerConnection.player.togglePlayPause()
+            },
             modifier = Modifier.size((56 * playButtonScale).dp),
+            shape = buttonShape,
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
+                containerColor = containerColor,
             ),
         ) {
             Icon(
@@ -71,15 +85,24 @@ fun NextButton(
     modifier: Modifier = Modifier,
     playButtonScale: Float = 1f,
 ) {
+    val haptic = LocalHapticFeedback.current
+    val buttonShape = LocalModularButtonShape.current
+    val buttonStyle = LocalPlayerButtonStyle.current
+    val containerColor = if (buttonStyle == PlayerButtonsStyle.SECONDARY)
+        MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         FilledIconButton(
-            onClick = { playerConnection.seekToNext() },
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                playerConnection.seekToNext()
+            },
             modifier = Modifier.size((48 * playButtonScale).dp),
+            shape = buttonShape,
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                containerColor = containerColor,
             ),
         ) {
             Icon(
@@ -97,15 +120,24 @@ fun PreviousButton(
     modifier: Modifier = Modifier,
     playButtonScale: Float = 1f,
 ) {
+    val haptic = LocalHapticFeedback.current
+    val buttonShape = LocalModularButtonShape.current
+    val buttonStyle = LocalPlayerButtonStyle.current
+    val containerColor = if (buttonStyle == PlayerButtonsStyle.SECONDARY)
+        MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         FilledIconButton(
-            onClick = { playerConnection.seekToPrevious() },
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                playerConnection.seekToPrevious()
+            },
             modifier = Modifier.size((48 * playButtonScale).dp),
+            shape = buttonShape,
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                containerColor = containerColor,
             ),
         ) {
             Icon(

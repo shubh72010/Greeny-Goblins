@@ -103,6 +103,11 @@ import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
 import moe.rukamori.archivetune.constants.SwipeThumbnailKey
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
+import moe.rukamori.archivetune.constants.AodThumbnailShape
+import moe.rukamori.archivetune.constants.ModularButtonShapeKey
+import moe.rukamori.archivetune.constants.ModularCoverArtStyle
+import moe.rukamori.archivetune.constants.ModularCoverArtStyleKey
+import moe.rukamori.archivetune.constants.ShowTimeOnSeekBarKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
 import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
@@ -772,6 +777,55 @@ fun AppearanceSettings(
                     description = stringResource(R.string.sensitivity_percentage, (swipeSensitivity * 100).roundToInt()),
                     icon = { Icon(painterResource(R.drawable.tune), null) },
                     onClick = { showSensitivityDialog = true }
+                )
+            }
+        }
+
+        PreferenceGroup(title = stringResource(R.string.modular_player_layout)) {
+            item {
+                val (coverArtStyle, onCoverArtStyleChange) = rememberEnumPreference(
+                    ModularCoverArtStyleKey,
+                    defaultValue = ModularCoverArtStyle.NORMAL,
+                )
+                EnumListPreference(
+                    title = { Text(stringResource(R.string.modular_cover_art_style)) },
+                    icon = { Icon(painterResource(R.drawable.image), null) },
+                    selectedValue = coverArtStyle,
+                    onValueSelected = onCoverArtStyleChange,
+                    valueText = {
+                        when (it) {
+                            ModularCoverArtStyle.NORMAL -> stringResource(R.string.cover_art)
+                            ModularCoverArtStyle.STYLE_CARD -> stringResource(R.string.style_card)
+                            ModularCoverArtStyle.LYRIC -> "Lyric"
+                        }
+                    },
+                )
+            }
+
+            item {
+                val (buttonShape, onButtonShapeChange) = rememberEnumPreference(
+                    ModularButtonShapeKey,
+                    defaultValue = AodThumbnailShape.CIRCLE,
+                )
+                EnumListPreference(
+                    title = { Text("Button Shape") },
+                    icon = { Icon(painterResource(R.drawable.radio_button_checked), null) },
+                    selectedValue = buttonShape,
+                    onValueSelected = onButtonShapeChange,
+                    valueText = { it.name },
+                )
+            }
+
+            item {
+                val (showTimeOnSeekBar, onShowTimeOnSeekBarChange) = rememberPreference(
+                    ShowTimeOnSeekBarKey,
+                    defaultValue = true,
+                )
+                SwitchPreference(
+                    title = { Text("Show time on seek bar") },
+                    icon = { Icon(painterResource(R.drawable.timer), null) },
+                    checked = showTimeOnSeekBar,
+                    onCheckedChange = onShowTimeOnSeekBarChange,
                 )
             }
         }

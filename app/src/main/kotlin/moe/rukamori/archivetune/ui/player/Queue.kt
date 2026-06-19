@@ -146,6 +146,7 @@ fun Queue(
     iconButtonColor: Color,
     onShowLyrics: () -> Unit = {},
     pureBlack: Boolean,
+    onDismiss: (() -> Unit)? = null,
 ) {
     val view = LocalView.current
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
@@ -314,6 +315,7 @@ fun Queue(
     BottomSheet(
         state = state,
         backgroundColor = Color.Unspecified,
+        onDismiss = onDismiss,
         modifier = modifier,
         collapsedContent = {
             when (playerDesignStyle) {

@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.player.modular.components
 
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +54,7 @@ fun TitleComponent(
             textAlign = TextAlign.Start,
             modifier = Modifier
                 .fillMaxSize()
+                .basicMarquee()
                 .padding(horizontal = 12.dp),
         )
     }
@@ -109,6 +111,7 @@ fun TitleArtistCombinedComponent(
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee(),
             )
             Text(
                 text = metadata?.artists?.joinToString(", ") { it.name } ?: "",
@@ -118,6 +121,7 @@ fun TitleArtistCombinedComponent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.basicMarquee(),
             )
         }
     }

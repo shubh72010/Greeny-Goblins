@@ -7,28 +7,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.playback.PlayerConnection
+import moe.rukamori.archivetune.ui.player.StyledPlaybackSlider
+import moe.rukamori.archivetune.ui.player.modular.LocalShowTimeOnSeekBar
+import moe.rukamori.archivetune.ui.player.modular.LocalSliderStyle
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentRegistry
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentType
 import moe.rukamori.archivetune.utils.makeTimeString
 
 fun registerSeekBarComponent() {
     PlayerComponentRegistry.register(PlayerComponentType.SEEK_BAR.id) { _, _, playerConnection, _, position, duration, isSeeking, onSeek, onSeekEnd, sliderPosition, modifier, style ->
-        SeekBarComponent(position, duration, isSeeking, onSeek, onSeekEnd, sliderPosition, modifier, style.textSizeScale, style.showTimeOnSeekBar)
+        val showTimeOnSeekBar = LocalShowTimeOnSeekBar.current
+        SeekBarComponent(position, duration, isSeeking, onSeek, onSeekEnd, sliderPosition, modifier, style.textSizeScale, showTimeOnSeekBar)
     }
     PlayerComponentRegistry.register(PlayerComponentType.TIME_DISPLAY.id) { _, _, _, _, position, duration, _, _, _, _, modifier, style ->
         TimeDisplayComponent(position, duration, modifier, style.textSizeScale)
@@ -47,6 +43,8 @@ fun SeekBarComponent(
     textSizeScale: Float = 1f,
     showTimeOnSeekBar: Boolean = true,
 ) {
+    val sliderStyle = LocalSliderStyle.current
+
     Column(
         modifier = modifier.fillMaxSize().padding(horizontal = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -73,27 +71,18 @@ fun SeekBarComponent(
             }
         }
 
-        var sliderFloatValue by remember(position, sliderPosition) {
-            mutableFloatStateOf(
-                if (duration > 0) {
-                    ((if (isSeeking) (sliderPosition ?: position) else position).toFloat() / duration.toFloat())
-                        .coerceIn(0f, 1f)
-                } else 0f
-            )
-        }
+        val safeDuration = if (duration <= 0L) 0f else duration.toFloat()
+        val safeValue = (sliderPosition ?: position).toFloat().coerceIn(0f, maxOf(0f, safeDuration))
 
-        Slider(
-            value = sliderFloatValue,
-            onValueChange = { value ->
-                sliderFloatValue = value
-                onSeek((value * duration).toLong())
-            },
+        StyledPlaybackSlider(
+            sliderStyle = sliderStyle,
+            value = safeValue,
+            valueRange = 0f..maxOf(1f, safeDuration),
+            onValueChange = { onSeek(it.toLong()) },
             onValueChangeFinished = onSeekEnd,
+            activeColor = MaterialTheme.colorScheme.primary,
+            isPlaying = true,
             modifier = Modifier.fillMaxWidth(),
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary,
-            ),
         )
     }
 }

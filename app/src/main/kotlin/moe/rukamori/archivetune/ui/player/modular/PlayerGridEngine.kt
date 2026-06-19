@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +41,21 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.constants.AodThumbnailShape
+import moe.rukamori.archivetune.constants.PlayerButtonsStyle
+import moe.rukamori.archivetune.constants.PlayerButtonsStyleKey
+import moe.rukamori.archivetune.constants.ShowTimeOnSeekBarKey
+import moe.rukamori.archivetune.constants.SliderStyle
+import moe.rukamori.archivetune.constants.SliderStyleKey
+import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
+import moe.rukamori.archivetune.ui.utils.toComposeShape
+import moe.rukamori.archivetune.ui.player.modular.LocalModularButtonShape
+import moe.rukamori.archivetune.ui.player.modular.LocalPlayerButtonStyle
+import moe.rukamori.archivetune.ui.player.modular.LocalShowTimeOnSeekBar
+import moe.rukamori.archivetune.ui.player.modular.LocalSliderStyle
+import moe.rukamori.archivetune.ui.player.modular.LocalThumbnailCornerRadius
+import moe.rukamori.archivetune.utils.rememberEnumPreference
+import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -68,6 +84,7 @@ fun ModularPlayerGrid(
     onSeekEnd: () -> Unit,
     sliderPosition: Long?,
     cellSize: Dp,
+    buttonShape: AodThumbnailShape = AodThumbnailShape.CIRCLE,
     style: PlayerComponentStyle = PlayerComponentStyle(),
     isEditMode: Boolean = false,
     onSlotSelected: (Int) -> Unit = {},
@@ -87,6 +104,18 @@ fun ModularPlayerGrid(
 
     val gridHeight = cellSize * GRID_ROWS
 
+    val (showTimeOnSeekBar) = rememberPreference(ShowTimeOnSeekBarKey, defaultValue = true)
+    val (sliderStyle) = rememberEnumPreference(SliderStyleKey, defaultValue = SliderStyle.Standard)
+    val (playerButtonStyle) = rememberEnumPreference(PlayerButtonsStyleKey, defaultValue = PlayerButtonsStyle.DEFAULT)
+    val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 16f)
+    val buttonShapeValue = buttonShape.toComposeShape(cornerRadius = 0f, startAngle = 0)
+    CompositionLocalProvider(
+        LocalShowTimeOnSeekBar provides showTimeOnSeekBar,
+        LocalModularButtonShape provides buttonShapeValue,
+        LocalSliderStyle provides sliderStyle,
+        LocalPlayerButtonStyle provides playerButtonStyle,
+        LocalThumbnailCornerRadius provides thumbnailCornerRadius,
+    ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -296,6 +325,7 @@ fun ModularPlayerGrid(
                 }
             }
         }
+    }
     }
 }
 

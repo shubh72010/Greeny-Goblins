@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -41,8 +42,10 @@ fun VolumeSliderComponent(
 ) {
     val playerVolume = playerConnection.service.playerVolume.collectAsState()
 
-    var sliderValue by remember(playerVolume.value) {
-        mutableFloatStateOf(playerVolume.value)
+    var sliderValue by remember { mutableFloatStateOf(playerVolume.value) }
+
+    LaunchedEffect(playerVolume.value) {
+        sliderValue = playerVolume.value
     }
 
     Row(

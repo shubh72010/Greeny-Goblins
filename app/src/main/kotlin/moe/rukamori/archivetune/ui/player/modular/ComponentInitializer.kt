@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.ui.player.modular
 
+import moe.rukamori.archivetune.ui.player.modular.components.registerCanvasArtworkComponent
 import moe.rukamori.archivetune.ui.player.modular.components.registerCoverArtComponent
 import moe.rukamori.archivetune.ui.player.modular.components.registerPlaybackControlsComponents
 import moe.rukamori.archivetune.ui.player.modular.components.registerSeekBarComponent
@@ -19,5 +20,6 @@ object ComponentInitializer {
         registerSeekBarComponent()
         registerSecondaryControlsComponents()
         registerVolumeComponent()
+        registerCanvasArtworkComponent()
     }
 }
