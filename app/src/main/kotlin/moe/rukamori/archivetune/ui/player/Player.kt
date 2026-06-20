@@ -167,9 +167,6 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
-import androidx.compose.animation.AnimatedVisibility
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -222,66 +219,6 @@ import moe.rukamori.archivetune.ui.component.ResizableIconButton
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.player.modular.ModularExpandedPlayer
-import moe.rukamori.archivetune.ui.screens.settings.DarkMode
-import moe.rukamori.archivetune.ui.theme.PlayerBackgroundColorUtils
-import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
-import moe.rukamori.archivetune.ui.theme.PlayerSliderColors
-import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
-import moe.rukamori.archivetune.ui.utils.resize
-import moe.rukamori.archivetune.utils.makeTimeString
-import moe.rukamori.archivetune.utils.rememberEnumPreference
-import moe.rukamori.archivetune.utils.rememberLowDataModeActive
-import moe.rukamori.archivetune.utils.rememberPreference
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.withContext
-import me.saket.squiggles.SquigglySlider
-import moe.rukamori.archivetune.LocalDownloadUtil
-import moe.rukamori.archivetune.LocalPlayerConnection
-import moe.rukamori.archivetune.R
-import moe.rukamori.archivetune.canvas.models.CanvasArtwork
-import moe.rukamori.archivetune.constants.ArchiveTuneCanvasKey
-import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
-import moe.rukamori.archivetune.constants.BackdropEnabledKey
-import moe.rukamori.archivetune.constants.BlurRadiusKey
-import moe.rukamori.archivetune.constants.DarkModeKey
-import moe.rukamori.archivetune.constants.DisableBlurKey
-import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
-import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
-import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
-import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
-import moe.rukamori.archivetune.constants.PlayerButtonsStyle
-import moe.rukamori.archivetune.constants.PlayerButtonsStyleKey
-import moe.rukamori.archivetune.constants.PlayerCustomBlurKey
-import moe.rukamori.archivetune.constants.PlayerCustomBrightnessKey
-import moe.rukamori.archivetune.constants.PlayerCustomContrastKey
-import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
-import moe.rukamori.archivetune.constants.PlayerDesignStyle
-import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
-import moe.rukamori.archivetune.constants.PlayerHorizontalPadding
-import moe.rukamori.archivetune.constants.QueuePeekHeight
-import moe.rukamori.archivetune.constants.SliderStyle
-import moe.rukamori.archivetune.constants.SliderStyleKey
-import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
-import moe.rukamori.archivetune.db.entities.FormatEntity
-import moe.rukamori.archivetune.extensions.metadata
-import moe.rukamori.archivetune.extensions.togglePlayPause
-import moe.rukamori.archivetune.extensions.toggleRepeatMode
-import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.playback.PlayerConnection
-import moe.rukamori.archivetune.ui.component.BigSeekBar
-import moe.rukamori.archivetune.ui.component.BottomSheet
-import moe.rukamori.archivetune.ui.component.BottomSheetPageState
-import moe.rukamori.archivetune.ui.component.BottomSheetState
-import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
-import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.component.MenuState
-import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
-import moe.rukamori.archivetune.ui.component.ResizableIconButton
-import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
-import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.theme.PlayerBackgroundColorUtils
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
@@ -1919,6 +1856,7 @@ fun BottomSheetPlayer(
             }
         }
     }
+}
 }
 
 @Composable

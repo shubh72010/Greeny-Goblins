@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
@@ -117,6 +118,7 @@ import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.taster.TasteProfile
 import moe.rukamori.archivetune.viewmodels.StatsViewModel
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -144,6 +146,7 @@ fun StatsScreen(
     val listeningByHour by viewModel.listeningByHour.collectAsStateWithLifecycle()
     val listeningByDayOfWeek by viewModel.listeningByDayOfWeek.collectAsStateWithLifecycle()
     val listeningSummary by viewModel.listeningSummary.collectAsStateWithLifecycle()
+    val tasteProfile by viewModel.tasteProfile.collectAsStateWithLifecycle()
 
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
@@ -389,6 +392,12 @@ fun StatsScreen(
                         topSongEntity = mostPlayedSongs.firstOrNull(),
                         navController = navController,
                     )
+                }
+            }
+
+            tasteProfile?.let { profile ->
+                item(key = "tasteProfile", contentType = "taste_profile") {
+                    TasteProfileSection(profile = profile)
                 }
             }
 
@@ -1267,6 +1276,111 @@ private fun ListeningByHourChart(
                 Text(text = "12AM", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
+}
+
+@Composable
+private fun TasteProfileSection(profile: TasteProfile) {
+    val topArtists = profile.topArtistNames.entries
+        .sortedByDescending { it.value }
+        .take(3)
+        .joinToString(", ") { it.key }
+
+    val decadeStr = profile.preferredDecades.entries
+        .maxByOrNull { it.value }
+        ?.let { "${it.key}s" }
+        ?: "Mixed"
+
+    val timeOfDay = when (profile.sessionHour) {
+        in 5..11 -> "Morning"
+        in 12..16 -> "Afternoon"
+        in 17..20 -> "Evening"
+        else -> "Night"
+    }
+
+    val avgDurationSec = (profile.preferredDurationAvg / 1000).toInt()
+    val avgDurationStr = if (avgDurationSec >= 60) {
+        "${avgDurationSec / 60}m ${avgDurationSec % 60}s"
+    } else {
+        "${avgDurationSec}s"
+    }
+
+    val totalSkips = profile.skipRatios.values.sumOf { (it * profile.totalEventCount).toInt() }
+    val skipRate = if (profile.totalEventCount > 0) {
+        (totalSkips * 100 / profile.totalEventCount)
+    } else {
+        0
+    }
+
+    Spacer(modifier = Modifier.size(8.dp))
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.elevatedCardColors(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Your Taste Profile",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TasteStatChip(label = "Top Artists", value = topArtists, flex = 2f)
+                TasteStatChip(label = "Decade", value = decadeStr, flex = 1f)
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TasteStatChip(label = "Avg Duration", value = avgDurationStr, flex = 1f)
+                TasteStatChip(label = "Best Time", value = timeOfDay, flex = 1f)
+                TasteStatChip(label = "Skip Rate", value = "${skipRate}%", flex = 1f)
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TasteStatChip(label = "Songs Analyzed", value = "${profile.totalEventCount}", flex = 1f)
+                TasteStatChip(label = "Liked", value = "${profile.likedSongIds.size}", flex = 1f)
+                TasteStatChip(label = "Unique Artists", value = "${profile.topArtistIds.size}", flex = 1f)
+            }
+        }
+    }
+    Spacer(modifier = Modifier.size(8.dp))
+}
+
+@Composable
+private fun RowScope.TasteStatChip(
+    label: String,
+    value: String,
+    flex: Float = 1f,
+) {
+    Column(
+        modifier = Modifier.weight(flex),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

@@ -25,6 +25,7 @@ import dagger.hilt.components.SingletonComponent
 import moe.rukamori.archivetune.constants.MaxSongCacheSizeKey
 import moe.rukamori.archivetune.db.InternalDatabase
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.spotify.Spotify
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
 import moe.rukamori.archivetune.utils.dataStore
@@ -141,6 +142,10 @@ object AppModule {
     fun provideDatabase(
         @ApplicationContext context: Context,
     ): MusicDatabase = InternalDatabase.newInstance(context)
+
+    @Singleton
+    @Provides
+    fun provideSpotify(): Spotify = Spotify
 
     @Singleton
     @Provides

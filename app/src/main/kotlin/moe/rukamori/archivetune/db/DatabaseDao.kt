@@ -33,6 +33,7 @@ import moe.rukamori.archivetune.constants.PlaylistSortType
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.AlbumArtistMap
+import moe.rukamori.archivetune.db.entities.AudioFeatureEntity
 import moe.rukamori.archivetune.db.entities.AlbumEntity
 import moe.rukamori.archivetune.db.entities.AlbumWithSongs
 import moe.rukamori.archivetune.db.entities.Artist
@@ -60,6 +61,8 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongAlbumMap
 import moe.rukamori.archivetune.db.entities.SongArtistMap
 import moe.rukamori.archivetune.db.entities.SongEntity
+import moe.rukamori.archivetune.db.entities.RecExposure
+
 import moe.rukamori.archivetune.db.entities.SongWithStats
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.extensions.reversed
@@ -1352,6 +1355,9 @@ interface DatabaseDao {
     @Query("SELECT * FROM event ORDER BY rowId DESC")
     fun events(): Flow<List<EventWithSong>>
 
+    @Query("SELECT * FROM event WHERE timestamp > :since ORDER BY rowId DESC")
+    fun eventsSince(since: Long): List<Event>
+
     @Transaction
     @Query(
         """
@@ -1579,6 +1585,12 @@ interface DatabaseDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: RelatedSongMap)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    fun insert(exposure: RecExposure)
+
+    @Query("SELECT COUNT(1) FROM rec_exposure WHERE songId = :songId AND shownAt > :since")
+    fun exposureCount(songId: String, since: Long): Int
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(playCountEntity: PlayCountEntity): Long
@@ -2055,4 +2067,19 @@ interface DatabaseDao {
             addTagToPlaylist(playlistId, tagId)
         }
     }
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(audioFeature: AudioFeatureEntity)
+
+    @Query("SELECT * FROM audio_feature WHERE songId IN (:songIds)")
+    fun getAudioFeatures(songIds: List<String>): List<AudioFeatureEntity>
+
+    @Query("SELECT * FROM audio_feature WHERE songId = :songId")
+    fun getAudioFeature(songId: String): AudioFeatureEntity?
+
+    @Query("SELECT songId FROM audio_feature")
+    fun allCachedAudioFeatureSongIds(): List<String>
+
+    @Query("SELECT COUNT(1) FROM audio_feature")
+    fun audioFeatureCount(): Int
 }

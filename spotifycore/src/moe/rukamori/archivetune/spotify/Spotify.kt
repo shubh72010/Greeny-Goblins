@@ -7,6 +7,24 @@
 
 package moe.rukamori.archivetune.spotify
 
+import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
+import moe.rukamori.archivetune.spotify.models.SpotifyArtist
+import moe.rukamori.archivetune.spotify.models.SpotifyAudioFeatures
+import moe.rukamori.archivetune.spotify.models.SpotifyAudioFeaturesResponse
+import moe.rukamori.archivetune.spotify.models.SpotifyImage
+import moe.rukamori.archivetune.spotify.models.SpotifyPaging
+import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
+import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistOwner
+import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTrack
+import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTracksRef
+import moe.rukamori.archivetune.spotify.models.SpotifyRecommendations
+import moe.rukamori.archivetune.spotify.models.SpotifySavedTrack
+import moe.rukamori.archivetune.spotify.models.SpotifySearchResult
+import moe.rukamori.archivetune.spotify.models.SpotifySimpleAlbum
+import moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist
+import moe.rukamori.archivetune.spotify.models.SpotifyTrack
+import moe.rukamori.archivetune.spotify.models.SpotifyUser
+
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -37,22 +55,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
-import moe.rukamori.archivetune.spotify.models.SpotifyAlbum
-import moe.rukamori.archivetune.spotify.models.SpotifyArtist
-import moe.rukamori.archivetune.spotify.models.SpotifyImage
-import moe.rukamori.archivetune.spotify.models.SpotifyPaging
-import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
-import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistOwner
-import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTrack
-import moe.rukamori.archivetune.spotify.models.SpotifyPlaylistTracksRef
-import moe.rukamori.archivetune.spotify.models.SpotifyRecommendations
-import moe.rukamori.archivetune.spotify.models.SpotifySavedTrack
-import moe.rukamori.archivetune.spotify.models.SpotifySearchResult
-import moe.rukamori.archivetune.spotify.models.SpotifySimpleAlbum
-import moe.rukamori.archivetune.spotify.models.SpotifySimpleArtist
-import moe.rukamori.archivetune.spotify.models.SpotifyTrack
-import moe.rukamori.archivetune.spotify.models.SpotifyUser
-
 /**
  * Spotify API client that uses the internal GraphQL API (api-partner.spotify.com)
  * for most operations, falling back to the public REST API (api.spotify.com/v1/)
@@ -1119,6 +1121,20 @@ object Spotify {
                 if (seedArtistIds.isNotEmpty()) parameter("seed_artists", seedArtistIds.joinToString(","))
                 if (seedGenres.isNotEmpty()) parameter("seed_genres", seedGenres.joinToString(","))
                 parameter("limit", limit)
+            }
+        }
+
+    // ── Audio Features (REST — no GQL equivalent) ────────────────────────
+
+    suspend fun audioFeatures(trackId: String): Result<SpotifyAudioFeatures> =
+        runCatching {
+            authenticatedGet("audio-features/$trackId")
+        }
+
+    suspend fun audioFeaturesMulti(trackIds: List<String>): Result<SpotifyAudioFeaturesResponse> =
+        runCatching {
+            authenticatedGet("audio-features") {
+                parameter("ids", trackIds.joinToString(","))
             }
         }
 

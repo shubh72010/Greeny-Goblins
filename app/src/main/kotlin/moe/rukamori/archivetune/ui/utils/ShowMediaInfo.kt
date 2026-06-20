@@ -13,6 +13,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+
 import android.text.format.Formatter
 import android.widget.Toast
 import androidx.annotation.DrawableRes
@@ -80,11 +81,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.db.entities.AudioFeatureEntity
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.Song
+import moe.rukamori.archivetune.di.AudioFeatureEntryPoint
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.MediaInfo
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
@@ -124,9 +130,17 @@ fun ShowMediaInfo(videoId: String) {
     val song by database.song(videoId).collectAsState(initial = null)
     val currentFormat by database.format(videoId).collectAsState(initial = null)
     var info by remember(videoId) { mutableStateOf<MediaInfo?>(null) }
+    var audioFeature by remember(videoId) { mutableStateOf<AudioFeatureEntity?>(null) }
     var selectedTab by rememberSaveable(videoId) { mutableStateOf(MediaInfoTab.Information) }
 
     val unknownText = stringResource(R.string.unknown)
+    val audioFeatureCache = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            AudioFeatureEntryPoint::class.java,
+        ).audioFeatureCache()
+    }
+
     val pleaseWaitText = stringResource(R.string.please_wait)
     val copyText = stringResource(R.string.copy)
     val shareText = stringResource(R.string.share)
@@ -150,6 +164,26 @@ fun ShowMediaInfo(videoId: String) {
 
     LaunchedEffect(videoId) {
         info = YouTube.getMediaInfo(videoId).getOrNull()
+    }
+
+    LaunchedEffect(videoId, song) {
+        if (audioFeature != null) return@LaunchedEffect
+
+        val cached = withContext(Dispatchers.IO) {
+            database.getAudioFeature(videoId)
+        }
+        if (cached != null) {
+            audioFeature = cached
+            return@LaunchedEffect
+        }
+
+        val songData = song ?: return@LaunchedEffect
+        val title = songData.title
+        val artist = songData.artists.firstOrNull()?.name.orEmpty()
+        if (artist.isBlank()) return@LaunchedEffect
+
+        val fetched = audioFeatureCache.fetchForTrack(videoId, title, artist)
+        audioFeature = fetched
     }
 
     val heroTitle = song?.title ?: info?.title ?: videoId
@@ -423,16 +457,27 @@ fun ShowMediaInfo(videoId: String) {
                         }
 
                         MediaInfoTab.Details -> {
-                            if (technicalDetails.isEmpty()) {
-                                MediaInfoPendingCard(
-                                    title = detailsLabel,
-                                    message = pleaseWaitText,
-                                )
-                            } else {
+                            if (technicalDetails.isNotEmpty()) {
                                 MediaInfoDetailCard(
                                     items = technicalDetails,
                                     copyContentDescription = copyText,
                                     onCopy = { copyToClipboard(context, it) },
+                                )
+                            }
+
+                            val audioDetails = audioFeature?.let { buildAudioFeatureDetails(it) }
+                            if (audioDetails != null) {
+                                MediaInfoDetailCard(
+                                    items = audioDetails,
+                                    copyContentDescription = copyText,
+                                    onCopy = { copyToClipboard(context, it) },
+                                )
+                            }
+
+                            if (technicalDetails.isEmpty() && audioDetails == null) {
+                                MediaInfoPendingCard(
+                                    title = detailsLabel,
+                                    message = pleaseWaitText,
                                 )
                             }
                         }
@@ -452,6 +497,37 @@ fun ShowMediaInfo(videoId: String) {
             }
         }
     }
+}
+
+private val KEY_NAMES = mapOf(
+    0 to "C", 1 to "C♯/D♭", 2 to "D", 3 to "D♯/E♭",
+    4 to "E", 5 to "F", 6 to "F♯/G♭", 7 to "G",
+    8 to "G♯/A♭", 9 to "A", 10 to "A♯/B♭", 11 to "B",
+)
+
+private val MODE_NAMES = mapOf(0 to "Minor", 1 to "Major")
+
+private fun buildAudioFeatureDetails(feature: AudioFeatureEntity): List<MediaInfoDetail> {
+    fun pct(v: Float) = "${(v * 100).toInt()}%"
+    return listOf(
+        MediaInfoDetail(label = "Danceability", value = pct(feature.danceability)),
+        MediaInfoDetail(label = "Energy", value = pct(feature.energy)),
+        MediaInfoDetail(label = "Acousticness", value = pct(feature.acousticness)),
+        MediaInfoDetail(label = "Instrumentalness", value = pct(feature.instrumentalness)),
+        MediaInfoDetail(label = "Liveness", value = pct(feature.liveness)),
+        MediaInfoDetail(label = "Speechiness", value = pct(feature.speechiness)),
+        MediaInfoDetail(label = "Valence", value = pct(feature.valence)),
+        MediaInfoDetail(
+            label = "Tempo",
+            value = "${feature.tempo.toInt()} BPM",
+        ),
+        MediaInfoDetail(
+            label = "Key",
+            value = "${KEY_NAMES[feature.key] ?: feature.key.toString()} ${MODE_NAMES[feature.mode] ?: ""}",
+        ),
+        MediaInfoDetail(label = "Loudness", value = "${feature.loudness} dB"),
+        MediaInfoDetail(label = "Time Signature", value = "${feature.timeSignature}/4"),
+    )
 }
 
 @Composable

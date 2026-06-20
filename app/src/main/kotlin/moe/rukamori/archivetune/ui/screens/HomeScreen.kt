@@ -73,6 +73,7 @@ fun HomeScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     val quickPicks by viewModel.quickPicks.collectAsStateWithLifecycle()
+    val forYouItems by viewModel.forYouRecommendations.collectAsStateWithLifecycle()
     val speedDialItems by viewModel.speedDialItems.collectAsStateWithLifecycle()
     val forgottenFavorites by viewModel.forgottenFavorites.collectAsStateWithLifecycle()
     val keepListening by viewModel.keepListening.collectAsStateWithLifecycle()
@@ -311,21 +312,55 @@ fun HomeScreen(
                     }
                  */
 
-                        item(
-                            key = "home_quick_picks",
-                            contentType = "quick_picks",
-                        ) {
-                            QuickPicksSection(
-                                quickPicks = picks,
-                                mediaMetadata = mediaMetadata,
-                                isPlaying = isPlaying,
-                                displayMode = quickPicksDisplayMode,
-                                navController = navController,
-                                playerConnection = playerConnection,
-                                menuState = menuState,
-                                haptic = haptic,
-                            )
-                        }
+                    item(
+                        key = "home_quick_picks",
+                        contentType = "quick_picks",
+                    ) {
+                        QuickPicksSection(
+                            quickPicks = picks,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            displayMode = quickPicksDisplayMode,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            menuState = menuState,
+                            haptic = haptic
+                        )
+                    }
+                }
+
+                forYouItems.takeIf { it.isNotEmpty() }?.let { items ->
+                    item {
+                        NavigationTitle(
+                            title = "For You",
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+
+                    item(
+                        key = "home_for_you",
+                        contentType = "quick_picks",
+                    ) {
+                        QuickPicksSection(
+                            quickPicks = items,
+                            mediaMetadata = mediaMetadata,
+                            isPlaying = isPlaying,
+                            displayMode = QuickPicksDisplayMode.CARD,
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            menuState = menuState,
+                            haptic = haptic
+                        )
+                    }
+                }
+
+                speedDialItems.takeIf { it.isNotEmpty() }?.let { items ->
+                    item {
+                        NavigationTitle(
+                            title = stringResource(R.string.speed_dial),
+                            modifier = Modifier.animateItem()
+                        )
+
                     }
 
                     speedDialItems.takeIf { it.isNotEmpty() }?.let { items ->
@@ -452,4 +487,5 @@ fun HomeScreen(
             }
         }
     }
+}
 }

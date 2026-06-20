@@ -47,6 +47,11 @@ import moe.rukamori.archivetune.innertube.pages.HomePage
 import moe.rukamori.archivetune.innertube.utils.completed
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.models.SimilarRecommendation
+import moe.rukamori.archivetune.taster.RecRepository
+import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.parseSpeedDialPins
+
 import moe.rukamori.archivetune.utils.SavedAccount
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.SyncUtils
@@ -88,16 +93,16 @@ data class AccountChannelUiModel(
 )
 
 @HiltViewModel
-class HomeViewModel
-    @Inject
-    constructor(
-        @ApplicationContext val context: Context,
-        val database: MusicDatabase,
-        val syncUtils: SyncUtils,
-    ) : ViewModel() {
-        val isRefreshing = MutableStateFlow(false)
-        val isLoading = MutableStateFlow(false)
-        private val isInitialLoadComplete = MutableStateFlow(false)
+class HomeViewModel @Inject constructor(
+    @ApplicationContext val context: Context,
+    val database: MusicDatabase,
+    val syncUtils: SyncUtils,
+    private val recRepository: RecRepository,
+) : ViewModel() {
+    val isRefreshing = MutableStateFlow(false)
+    val isLoading = MutableStateFlow(false)
+    private val isInitialLoadComplete = MutableStateFlow(false)
+
 
         private val quickPicksMode =
             context.dataStore.data
@@ -119,8 +124,12 @@ class HomeViewModel
         val recentActivity = MutableStateFlow<List<YTItem>?>(null)
         val recentPlaylistsDb = MutableStateFlow<List<Playlist>?>(null)
 
-        val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
-        val allYtItems = MutableStateFlow<List<YTItem>>(emptyList())
+    val forYouRecommendations = recRepository.observeRecommendations()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val allLocalItems = MutableStateFlow<List<LocalItem>>(emptyList())
+    val allYtItems = MutableStateFlow<List<YTItem>>(emptyList())
+
 
         // Account display info
         val accountName = MutableStateFlow("")
@@ -224,10 +233,9 @@ class HomeViewModel
                     }.collect { picks ->
                         quickPicks.value = picks
                         updateAllLocalItems()
-                    }
             }
         }
-
+    }
         private suspend fun refreshQuickPicks() {
             val picks =
                 when (quickPicksMode.first()) {
@@ -271,9 +279,9 @@ class HomeViewModel
                         SpeedDialPinType.ARTIST.value -> artistsById[pin.id]
                         SpeedDialPinType.PLAYLIST.value -> playlistsById[pin.id]
                         else -> null
+                        }
                     }
                 }
-        }
 
         private suspend fun load() {
             if (isLoading.value) return

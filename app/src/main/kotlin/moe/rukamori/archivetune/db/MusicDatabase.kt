@@ -30,6 +30,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.db.entities.AlbumArtistMap
 import moe.rukamori.archivetune.db.entities.AlbumEntity
+import moe.rukamori.archivetune.db.entities.AudioFeatureEntity
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.FormatEntity
@@ -37,10 +38,12 @@ import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
 import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.PlayCountEntity
+import moe.rukamori.archivetune.db.entities.PlaylistTagMap
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.db.entities.PlaylistSongMapPreview
-import moe.rukamori.archivetune.db.entities.PlaylistTagMap
+import moe.rukamori.archivetune.db.entities.RecExposure
+
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.SearchHistory
 import moe.rukamori.archivetune.db.entities.SetVideoIdEntity
@@ -59,7 +62,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 30
+private const val CURRENT_VERSION = 32
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -121,12 +124,14 @@ class MusicDatabase(
         LyricsEntity::class,
         Event::class,
         RelatedSongMap::class,
+        RecExposure::class,
         SetVideoIdEntity::class,
         PlayCountEntity::class,
         TagEntity::class,
         PlaylistTagMap::class,
         LibraryTopMixEntity::class,
         LibraryTopMixSongMap::class,
+        AudioFeatureEntity::class,
     ],
     views = [
         SortedSongArtistMap::class,
