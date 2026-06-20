@@ -71,11 +71,9 @@
     <string name="show_tags_in_library_desc">Hiển thị chip lọc thẻ trong thư viện</string>
     <string name="already_in_playlist">Đã có trong danh sách phát:</string>
     <plurals name="n_element">
-        <item quantity="one">%d phần tử</item>
         <item quantity="other">%d phần tử</item>
     </plurals>
     <plurals name="n_time">
-        <item quantity="one">%d lần</item>
         <item quantity="other">%d lần</item>
     </plurals>
     <string name="seek_backward">Lùi 5 giây</string>
@@ -151,9 +149,9 @@
     <string name="swipe_sensitivity">Độ nhạy vuốt trình phát mini</string>
     <string name="swipe_sensitivity_desc">Điều chỉnh độ nhạy của cử chỉ vuốt để thay đổi bài hát</string>
     <string name="sensitivity_percentage">%1$d%%</string>
-    <string name="clear_song_cache_dialog">  Bạn có chắc chắn muốn xóa tất cả các bài hát đã cache không?</string>
-    <string name="clear_image_cache_dialog">  Bạn có chắc chắn muốn xóa tất cả các hình ảnh đã cache không?</string>
-    <string name="clear_downloads_dialog">  Bạn có chắc chắn muốn xóa tất cả các tải xuống không?</string>
+    <string name="clear_song_cache_dialog">Bạn có chắc chắn muốn xóa tất cả các bài hát đã cache không?</string>
+    <string name="clear_image_cache_dialog">Bạn có chắc chắn muốn xóa tất cả các hình ảnh đã cache không?</string>
+    <string name="clear_downloads_dialog">Bạn có chắc chắn muốn xóa tất cả các tải xuống không?</string>
     <string name="disable">Tắt</string>
     <string name="pause_remote_listen_history">Tạm dừng chia sẻ lịch sử nghe với YouTube Music</string>
     <string name="not_logged_in_youtube">Chưa đăng nhập YouTube</string>
@@ -181,7 +179,6 @@
     <string name="empty_playlist">Danh sách phát trống</string>
     <string name="empty_playlist_desc">Danh sách phát này không chứa bài hát nào</string>
     <plurals name="seconds">
-        <item quantity="one">1 giây</item>
         <item quantity="other">%d giây</item>
     </plurals>
     <string name="disable_load_more_when_repeat_all">Tắt tải thêm khi lặp tất cả</string>
@@ -193,7 +190,7 @@
     <string name="settings_section_storage">Lưu trữ &amp; Dữ liệu</string>
     <string name="settings_section_system">Hệ thống &amp; Giới thiệu</string>
     <string name="similar_content">Nội dung tương tự</string>
-    <string name="year_in_music">Year in Music</string>
+    <string name="year_in_music">Năm âm nhạc</string>
     <string name="total_listening_time">Tổng Thời gian Nghe</string>
     <string name="top_artists">Nghệ sĩ Hàng đầu</string>
     <string name="share_summary">Chia sẻ Tóm tắt</string>
@@ -228,7 +225,7 @@
     <string name="copy">Sao chép</string>
     <string name="player_design_v5">Little</string>
     <string name="player_stream_client">Client phát nhạc</string>
-    <string name="player_stream_client_desc">Kiểm soát client YouTube nào được sử dụng để lấy luồng phát</string>
+    <string name="player_stream_client_desc">Tùy chọn điều khiển nguồn phát lại được sử dụng để tải luồng dữ liệu</string>
     <string name="player_stream_client_android_vr">Android VR</string>
     <string name="player_stream_client_android_vr_desc">Phát trực tiếp mà không cần giải mã chữ ký, cung cấp tốc độ tối đa. Thích hợp cho đại đa số người dùng.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
@@ -244,8 +241,6 @@
     <string name="restore_step_restoring_file">Đang khôi phục %1$s</string>
     <string name="restore_step_restarting">Đang khởi động lại ứng dụng</string>
     <string name="canvas_cache">Canvas Cache</string>
-    <string name="canvas_cache_items">%d mục</string>
-    <string name="canvas_cache_usage">%1$s / %2$s</string>
     <string name="clear_canvas_cache">Xóa bộ nhớ cache canvas</string>
     <string name="clear_canvas_cache_dialog">Bạn có chắc chắn muốn xóa tất cả dữ liệu canvas đã lưu trong bộ nhớ cache không?</string>
     <string name="playlist_private_title">Danh sách phát này là riêng tư</string>
@@ -382,7 +377,6 @@
     <string name="news_tooltip_body">Bạn có thông báo chưa đọc từ nhà phát triển.</string>
     <string name="news_author_on_date">%1$s · %2$s</string>
     <plurals name="news_article_count">
-        <item quantity="one">%d bài viết</item>
         <item quantity="other">%d bài viết</item>
     </plurals>
     <!-- AOD customization -->
@@ -626,14 +620,13 @@
     <string name="lyrics_share_style_clear_glass">Kính trong</string>
     <string name="lyrics_share_style_deep_blur">Mờ sâu</string>
     <string name="lyrics_share_style_vivid_glow">Phát sáng rực rỡ</string>
-
     <!-- About Screen -->
     <string name="about_lead_developer">Nhà phát triển chính</string>
     <string name="about_archive_tune_team">Nhóm ArchiveTune</string>
     <string name="about_respecter">Tôn kính</string>
     <string name="about_contributors">Người đóng góp</string>
     <string name="about_position_lead_dev">Hả?</string>
-    <string name="about_position_wttexe">Lời bài hát đồng bộ, Gradient và Cải thiện Giao diện</string>
+    <string name="about_position_wttexe">Lời bài hát đồng bộ, Gradient và Cải thiện Giao diện!</string>
     <string name="about_position_miko">Nhóm đóng góp</string>
     <string name="about_position_sang765">Nhóm đóng góp</string>
     <string name="about_position_mo_agamy">Khung cơ bản | Metrolist</string>
@@ -643,4 +636,6 @@
     <string name="about_content_desc_discord">Discord</string>
     <string name="about_content_desc_telegram">Telegram</string>
     <string name="about_content_desc_donate">Quyên góp</string>
+    <string name="storage_cache_cleared">Cache đã được dọn.</string>
+    <string name="storage_cache_clear_failed">Không thể xóa cache. Kiểm tra quyền truy cập thẻ SD.</string>
 </resources>
