@@ -176,10 +176,16 @@ class HomeViewModel @Inject constructor(
 
         private suspend fun quickPicksWithFallback(primary: List<Song>): List<Song> {
             val primaryPicks = primary.toQuickPickSample()
-            if (primaryPicks.isNotEmpty()) return primaryPicks
+            if (primaryPicks.size >= 10) return primaryPicks
 
             val recentPicks = database.recentSongs(limit = 60).first().toQuickPickSample()
-            if (recentPicks.isNotEmpty()) return recentPicks
+            if (recentPicks.size >= 10) return recentPicks
+
+            val likedPicks = database.likedSongsByCreateDateAsc().first().toQuickPickSample()
+            if (likedPicks.size >= 10) return likedPicks
+
+            val forgottenPicks = database.forgottenFavorites().first().toQuickPickSample()
+            if (forgottenPicks.size >= 10) return forgottenPicks
 
             return database.allSongs().first().toQuickPickSample()
         }

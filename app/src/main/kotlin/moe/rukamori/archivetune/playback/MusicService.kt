@@ -4977,6 +4977,10 @@ class MusicService :
                         ).filterVideo(dataStore.get(HideVideoKey, false))
                 if (player.playbackState != STATE_IDLE) {
                     player.addMediaItems(mediaItems.drop(1))
+                    if (player.playbackState == Player.STATE_ENDED) {
+                        player.seekToNext()
+                        player.playWhenReady = true
+                    }
                 } else {
                     try {
                         DiscordPresenceManager.stop()
@@ -4995,12 +4999,13 @@ class MusicService :
             !currentQueue.hasNextPage()
         ) {
             scope.launch(SilentHandler) {
-                if (suppressAutoPlayback || player.mediaItemCount == 0) return@launch
-
-                val currentMediaMetadata = player.currentMetadata ?: return@launch
-                val currentMediaId = currentMediaMetadata.id.trim().ifBlank { return@launch }
+                if (suppressAutoPlayback || player.mediaItemCount == 0 || infiniteQueueLoading.value) return@launch
+                infiniteQueueLoading.value = true
 
                 try {
+                    val currentMediaMetadata = player.currentMetadata ?: return@launch
+                    val currentMediaId = currentMediaMetadata.id.trim().ifBlank { return@launch }
+
                     val radioQueue = YouTubeQueue(WatchEndpoint(videoId = currentMediaId), followAutomixPreview = true)
                     val status = withContext(Dispatchers.IO) { radioQueue.getInitialStatus() }
 
@@ -5012,8 +5017,14 @@ class MusicService :
                         newItems.forEach { autoAddedMediaIds.add(it.mediaId) }
                     }
                     currentQueue = radioQueue
+                    if (player.playbackState == Player.STATE_ENDED) {
+                        player.seekToNext()
+                        player.playWhenReady = true
+                    }
                 } catch (e: Exception) {
                     Timber.e(e, "Failed to inject YouTube replacement queue")
+                } finally {
+                    infiniteQueueLoading.value = false
                 }
             }
         }
@@ -5032,6 +5043,35 @@ class MusicService :
         if (!isCrossfading) {
             scheduleCrossfade()
         }
+
+        if (reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+            val nextIndex = player.currentMediaItemIndex + 1
+            if (nextIndex < player.mediaItemCount) {
+                val nextMediaId = player.getMediaItemAt(nextIndex).mediaId.trim()
+                if (nextMediaId.isNotBlank() && !playbackUrlCache.containsKey(nextMediaId)) {
+                    scope.launch(Dispatchers.IO) {
+                        retryWithoutPlaybackLoginContext {
+                            YTPlayerUtils.playerResponseForPlayback(
+                                videoId = nextMediaId,
+                                audioQuality = if (isLowDataModeActive()) AudioQuality.LOW else audioQuality,
+                                connectivityManager = connectivityManager,
+                                preferredStreamClient = preferredStreamClient,
+                                networkMetered = isLowDataModeActive(),
+                            )
+                        }.onSuccess { playbackData ->
+                            playbackUrlCache[nextMediaId] =
+                                AuthScopedCacheValue(
+                                    url = playbackData.streamUrl,
+                                    expiresAtMs = System.currentTimeMillis() + playbackData.streamExpiresInSeconds * 1000L,
+                                    authFingerprint = playbackData.authFingerprint,
+                                )
+                        }.onFailure { e ->
+                            Timber.d(e, "Pre-resolve stream URL failed for next track: $nextMediaId")
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun onPlaybackStateChanged(
@@ -5045,8 +5085,13 @@ class MusicService :
             if (!isCrossfading || playbackState == Player.STATE_IDLE) {
                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
             }
+            player.pauseAtEndOfMediaItems = false
         } else if (playbackState == Player.STATE_READY) {
             scheduleCrossfade()
+        }
+
+        if (playbackState == Player.STATE_ENDED && !isCrossfading && !sleepTimer.pauseWhenSongEnd && !player.hasNextMediaItem()) {
+            onMediaItemTransitionInternal()
         }
 
         widgetUpdater.update()
@@ -5081,6 +5126,9 @@ class MusicService :
                     secondaryPlayer.pause()
                 }
             }
+        }
+        if (playWhenReady && reason != Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
+            suppressAutoPlayback = false
         }
         if (playWhenReady && !isCrossfading) {
             scheduleCrossfade()
@@ -6903,8 +6951,8 @@ class MusicService :
         const val CROSSFADE_MAX_BUFFER_BEFORE_START_MS = 12_500L
         const val PRIMARY_MIN_BUFFER_MS = 20_000
         const val PRIMARY_MAX_BUFFER_MS = 60_000
-        const val PRIMARY_BUFFER_FOR_PLAYBACK_MS = 750
-        const val PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 2_500
+        const val PRIMARY_BUFFER_FOR_PLAYBACK_MS = 5_000
+        const val PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000
         const val CROSSFADE_MIN_BUFFER_MS = 15_000
         const val CROSSFADE_MAX_BUFFER_MS = 45_000
         const val CROSSFADE_FRAME_MS = 32L
