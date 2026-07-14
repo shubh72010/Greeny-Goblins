@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -366,9 +366,9 @@ class GatewayClient {
         d.put("token", token)
         val properties = JSONObject()
         properties.put("os", "Android")
-        properties.put("browser", "ArchiveTune")
+        properties.put("browser", "JusPlayer")
         properties.put("device", "Android")
-        properties.put("browser_user_agent", "ArchiveTune")
+        properties.put("browser_user_agent", "JusPlayer")
         properties.put("browser_version", "1.0")
         properties.put("client_version", "1.0")
         properties.put("client_build_number", 1)

@@ -10,7 +10,7 @@
             android:name=".musicrecognition.MusicRecognitionCaptureActivity"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:theme="@style/Theme.ArchiveTune.Transparent" />
+            android:theme="@style/Theme.JusPlayer.Transparent" />
 
         <service
             android:name=".musicrecognition.BackgroundMusicRecognitionService"

@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -333,7 +333,7 @@ class DiscordRPC(
     private suspend fun resolveButtons(song: Song): List<DiscordPresenceButton> {
         val button1Label = context.dataStore[DiscordActivityButton1LabelKey] ?: "Listen on YouTube Music"
         val button1Enabled = context.dataStore[DiscordActivityButton1EnabledKey] ?: true
-        val button2Label = context.dataStore[DiscordActivityButton2LabelKey] ?: "Go to ArchiveTune"
+        val button2Label = context.dataStore[DiscordActivityButton2LabelKey] ?: "Go to JusPlayer"
         val button2Enabled = context.dataStore[DiscordActivityButton2EnabledKey] ?: true
         val button1UrlSource = context.dataStore[DiscordActivityButton1UrlSourceKey] ?: "songurl"
         val button1CustomUrl = context.dataStore[DiscordActivityButton1CustomUrlKey] ?: ""

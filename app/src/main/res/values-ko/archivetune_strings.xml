@@ -397,7 +397,7 @@
     <string name="lyrics_share_style_frosted_dark">프로스테드 다크</string>
     <string name="local_songs_scan_included_folders_desc">지정한 특정 폴더 경로 아래에 있는 음원 파일들만 스캔합니다.</string>
     <string name="android_auto_sort_option_format">%1$s - %2$s</string>
-    <string name="about_position_zion_huang">InnerTune 원작 개발자 · Metrolist, ArchiveTune 및 기타 포크 버전의 핵심 토대 구축</string>
+    <string name="about_position_zion_huang">InnerTune 원작 개발자 · Metrolist, JusPlayer 및 기타 포크 버전의 핵심 토대 구축</string>
     <string name="aod_customize_subtitle">모양, 레이아웃, 컨트롤 및 앰비언트 스타일 설정</string>
     <string name="aod_shape_circle">원형</string>
     <string name="aod_customize_visibility">표시 설정</string>
@@ -414,7 +414,7 @@
     <string name="aod_accent_theme">테마 색상</string>
     <string name="lyrics_share_style_deep_blur">딥 블러</string>
     <string name="aod_shape_pentagon">오각형</string>
-    <string name="about_archive_tune_team">ArchiveTune 팀</string>
+    <string name="about_archive_tune_team">JusPlayer 팀</string>
     <string name="storage_migration_cache_progress">캐시 이동 중… %1$d%%</string>
     <string name="aod_customize_horizontal_padding">가로 여백</string>
     <string name="local_songs_scan_included_folders_empty">모든 폴더가 포함됩니다.</string>
@@ -519,7 +519,7 @@
     <string name="year_in_music_empty_subtitle">%d년에 음악을 더 많이 감상하시면 연말 요약이 여기에 나타납니다.</string>
     <string name="storage_location_free">%s 여유 공간 있음</string>
     <string name="aod_customize_show_artist">아티스트 표시</string>
-    <string name="storage_folder_not_writable">ArchiveTune이 이 폴더에 캐시 파일을 저장할 수 없습니다. 쓰기 권한을 확인해 주세요.</string>
+    <string name="storage_folder_not_writable">JusPlayer이 이 폴더에 캐시 파일을 저장할 수 없습니다. 쓰기 권한을 확인해 주세요.</string>
     <string name="storage_folder_unsupported">이 폴더는 파일 기반 음악 캐시에 사용할 수 없습니다.</string>
     <string name="aod_customize_sample_elapsed">1:24</string>
     <string name="mini_player_background_style">미니 플레이어 배경 스타일</string>

@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -36,7 +36,7 @@ object AiTextService {
     private const val OpenRouterEndpoint = "https://openrouter.ai/api/v1/chat/completions"
     private const val OpenRouterModelsEndpoint = "https://openrouter.ai/api/v1/models?output_modalities=text"
     private const val OpenRouterReferer = "https://github.com/rukamori/ArchiveTune"
-    private const val OpenRouterTitle = "ArchiveTune"
+    private const val OpenRouterTitle = "JusPlayer"
 
     private val client =
         HttpClient(OkHttp) {

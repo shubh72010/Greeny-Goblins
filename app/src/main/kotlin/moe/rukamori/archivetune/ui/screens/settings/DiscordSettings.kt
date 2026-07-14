@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -321,7 +321,7 @@ fun DiscordSettings(navController: NavController) {
     val (button2Label) =
         rememberPreference(
             key = DiscordActivityButton2LabelKey,
-            defaultValue = "Go to ArchiveTune",
+            defaultValue = "Go to JusPlayer",
         )
     val (button2Enabled) =
         rememberPreference(
@@ -1228,7 +1228,7 @@ fun RichPresence(
     button1Enabled: Boolean = true,
     button1UrlSource: String = "songurl",
     button1CustomUrl: String = "",
-    button2Label: String = "Go to ArchiveTune",
+    button2Label: String = "Go to JusPlayer",
     button2Enabled: Boolean = true,
     button2UrlSource: String = "custom",
     button2CustomUrl: String = "https://github.com/rukamori/ArchiveTune",

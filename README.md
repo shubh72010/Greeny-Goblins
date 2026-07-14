@@ -1,8 +1,8 @@
 <div align="center">
 
-  <img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="160" height="160" alt="ArchiveTune Logo" style="border-radius: 22%">
+  <img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="160" height="160" alt="JusPlayer Logo" style="border-radius: 22%">
 
-  <h1>ArchiveTune</h1>
+  <h1>JusPlayer</h1>
 
   <p align="center">
     <a href="README.md">
@@ -45,13 +45,13 @@
   <br />
 
   <a href="https://trendshift.io/repositories/17521" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/17521" alt="ArchiveTune | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
+    <img src="https://trendshift.io/api/badge/repositories/17521" alt="JusPlayer | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
   </a>
 </div>
 
 <hr />
 
-**ArchiveTune** isn’t just another generic YouTube Music wrapper. It’s a fully custom-built player made from the ground up, because we think your music should stay private, look clean, and work exactly the way you expect. If you care about sound quality and want something that actually feels good to use, this is it.
+**JusPlayer** isn’t just another generic YouTube Music wrapper. It’s a fully custom-built player made from the ground up, because we think your music should stay private, look clean, and work exactly the way you expect. If you care about sound quality and want something that actually feels good to use, this is it.
 
 ---
 
@@ -184,12 +184,12 @@
     <tr>
       <td align="center">
         <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/rukamori/ArchiveTune/">
-          <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" height="50" alt="Get ArchiveTune on Obtainium">
+          <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" height="50" alt="Get JusPlayer on Obtainium">
         </a>
       </td>
       <td align="center">
         <a href="https://apt.izzysoft.de/fdroid/index/apk/moe.rukamori.archivetune">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/757d5932832e1da27ced56de98c5ad1275cf0db1/assets/IzzyOnDroidButtonBorder.svg" height="50" alt="Get ArchiveTune on IzzyOnDroid">
+          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/757d5932832e1da27ced56de98c5ad1275cf0db1/assets/IzzyOnDroidButtonBorder.svg" height="50" alt="Get JusPlayer on IzzyOnDroid">
         </a>
       </td>
     </tr>
@@ -199,7 +199,7 @@
     <tr>
       <td align="center" colspan="2">
         <a href="https://github.com/rukamori/ArchiveTune/releases/latest">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Get ArchiveTune on GitHub">
+          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Get JusPlayer on GitHub">
         </a>
       </td>
     </tr>
@@ -210,12 +210,12 @@
     <tr>
       <td align="center">
         <a href="https://www.openapk.net/archivetune/moe.rukamori.archivetune/">
-          <img src="https://www.openapk.net/images/openapk-badge.png" height="75" alt="Get ArchiveTune on OpenAPK">
+          <img src="https://www.openapk.net/images/openapk-badge.png" height="75" alt="Get JusPlayer on OpenAPK">
         </a>
       </td>
       <td align="center">
         <a href="https://unclouded.app/apps/archivetune/">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/assets/badge_unclouded.png" height="50" alt="Get ArchiveTune on Unclouded">
+          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/assets/badge_unclouded.png" height="50" alt="Get JusPlayer on Unclouded">
         </a>
       </td>
     </tr>
@@ -234,7 +234,7 @@
     <tr>
       <td align="center">
         <a href="https://nightly.link/rukamori/ArchiveTune/workflows/build/dev/app-gms-mobile-universal-release">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Download the latest ArchiveTune nightly build">
+          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Download the latest JusPlayer nightly build">
         </a>
       </td>
     </tr>
@@ -255,7 +255,7 @@ Join Our Telegram Channels or Discord Servers for Support and Discussion.
 
 ## 🌍 Globalization
 
-ArchiveTune belongs to everyone. Help us localize the experience for your region.
+JusPlayer belongs to everyone. Help us localize the experience for your region.
 
 [![Static Badge](https://img.shields.io/badge/translate-help?style=for-the-badge&logo=weblate&labelColor=grey)](https://translate.codeberg.org/engage/archivetune/)
 
@@ -271,14 +271,14 @@ ArchiveTune belongs to everyone. Help us localize the experience for your region
 </a>
 
 ### 🛠️ Development & Engineering
-Interested in building the project or contributing? ArchiveTune is built on a high-performance Kotlin stack.
+Interested in building the project or contributing? JusPlayer is built on a high-performance Kotlin stack.
 <a href="CONTRIBUTING.md"><b>Read the Build & Contribution Guide →</b></a>
 
 ---
 
 ### Open-Source Acknowledgments
 
-ArchiveTune is made possible by the work of many open-source projects and communities:
+JusPlayer is made possible by the work of many open-source projects and communities:
 
 - **Metrolist** by [Mostafa Alagamy](https://github.com/mostafaalagamy/Metrolist) for the base framework.
 - **SimpMusic** by [maxrave-dev](https://github.com/maxrave-dev/SimpMusic) for the lyrics API provider.
@@ -291,7 +291,7 @@ ArchiveTune is made possible by the work of many open-source projects and commun
 
 ## ⚖️ Legal Disclaimer
 
-ArchiveTune is an independent third-party client.
+JusPlayer is an independent third-party client.
 - Not affiliated with Google LLC or YouTube.
 - Does not bypass YouTube's technical protections.
 - Users are encouraged to support artists by purchasing music via official channels.
@@ -299,8 +299,8 @@ ArchiveTune is an independent third-party client.
 ---
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/fastlane/metadata/android/en-US/images/ArchiveTuneFull.png" alt="ArchiveTune Banner" style="width: 100%; max-width: 500px;">
-  <p><b>If ArchiveTune elevated your music experience, please consider giving us a ⭐</b></p>
+  <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/fastlane/metadata/android/en-US/images/ArchiveTuneFull.png" alt="JusPlayer Banner" style="width: 100%; max-width: 500px;">
+  <p><b>If JusPlayer elevated your music experience, please consider giving us a ⭐</b></p>
   <br />
-  <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/assets/badge_part.png" alt="ArchiveTune Banner" style="width: 180px">
+  <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/assets/badge_part.png" alt="JusPlayer Banner" style="width: 180px">
 </div>

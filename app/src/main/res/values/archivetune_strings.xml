@@ -17,7 +17,7 @@
     <string name="music_recognition_error">Something went wrong</string>
     <string name="music_recognition_settings">Music recognition settings</string>
     <string name="music_recognition_background_title">Recognition in background</string>
-    <string name="music_recognition_background_description">When enabled, the Quick Settings tile recognizes audio playing on this device without opening ArchiveTune.</string>
+    <string name="music_recognition_background_description">When enabled, the Quick Settings tile recognizes audio playing on this device without opening JusPlayer.</string>
     <string name="music_recognition_background_foss_description">Background recognition is unavailable in the FOSS variant. The Quick Settings tile opens the recognition screen instead.</string>
     <string name="music_recognition_notification_channel_name">Music recognition</string>
     <string name="music_recognition_notification_channel_description">Music recognition progress and results</string>
@@ -350,14 +350,14 @@
     <string name="storage_folder_selected_restart">Storage folder saved. App will restart in 3 seconds.</string>
     <string name="storage_folder_invalid">Select a valid folder.</string>
     <string name="storage_folder_unsupported">This folder cannot be used by the file-backed media cache.</string>
-    <string name="storage_folder_not_writable">ArchiveTune cannot write cache files in this folder.</string>
+    <string name="storage_folder_not_writable">JusPlayer cannot write cache files in this folder.</string>
     <string name="storage_cache_cleared">Cache cleared.</string>
     <string name="storage_cache_clear_failed">Cache could not be cleared. Check SD card access.</string>
     <string name="storage_clear_song_cache_progress">Clearing song cache...%1$d%%</string>
     <string name="storage_clear_downloads_progress">Clearing downloads...%1$d%%</string>
     <string name="storage_clear_image_cache_progress">Clearing image cache...%1$d%%</string>
     <string name="storage_clear_canvas_cache_progress">Clearing canvas cache...%1$d%%</string>
-    <string name="storage_cache_clear_warning">Keep ArchiveTune open while cache files are being removed.</string>
+    <string name="storage_cache_clear_warning">Keep JusPlayer open while cache files are being removed.</string>
     <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="sensitivity_percentage">%1$d%%</string>
     <string name="clear_song_cache_dialog">  Are you sure you want to clear all cached songs?</string>
@@ -425,8 +425,8 @@
     <string name="player_stream_client_android_vr_desc">Streams directly without signature decryption, providing maximum speed. Suitable for the majority of users.</string>
     <string name="player_stream_client_web_remix">Web Remix</string>
     <string name="player_stream_client_web_remix_desc">Extended format support at the cost of speed. JavaScript signature decryption introduces a ~5–10 second startup delay.</string>
-    <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>
-    <string name="player_stream_client_archivetune_extractor_desc">Uses the ArchiveTune backend extractor for playback streams. Prefer Auto High Quality Audio.</string>
+    <string name="player_stream_client_archivetune_extractor">JusPlayer Extractor</string>
+    <string name="player_stream_client_archivetune_extractor_desc">Uses the JusPlayer backend extractor for playback streams. Prefer Auto High Quality Audio.</string>
     <string name="player_stream_client_archivetune_extractor_login_required">You Must Login Using Google Account and PoToken in Settings to use this</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_appearance_subtitle">Themes, layout, and visual styles</string>
@@ -599,7 +599,7 @@
     <string name="mori_cipher_refresh_remaining">%1$d manual refreshes remaining</string>
     <string name="mori_cipher_rate_limit_countdown">Available again in %1$s</string>
     <string name="mori_cipher_automatic_updates">Automatic updates</string>
-    <string name="mori_cipher_automatic_updates_description">ArchiveTune refreshes the current YouTube player configuration every six hours and after decryption failures.</string>
+    <string name="mori_cipher_automatic_updates_description">JusPlayer refreshes the current YouTube player configuration every six hours and after decryption failures.</string>
     <string name="mori_cipher_refresh_success">Player configuration updated</string>
     <string name="mori_cipher_refresh_failed">Player configuration could not be updated</string>
     <string name="mori_cipher_rate_limited">Manual refresh limit reached</string>
@@ -628,7 +628,7 @@
     <string name="about_position_developers">Developer | Team</string>
     <string name="about_position_yuki">dummy reze | Admin</string>
     <string name="about_position_mo_agamy">Base Framework | Metrolist</string>
-    <string name="about_position_zion_huang">Creator of InnerTune · Foundation for Metrolist, ArchiveTune, and other forks</string>
+    <string name="about_position_zion_huang">Creator of InnerTune · Foundation for Metrolist, JusPlayer, and other forks</string>
     <string name="about_content_desc_github">GitHub</string>
     <string name="about_content_desc_website">Website</string>
     <string name="about_content_desc_discord">Discord</string>

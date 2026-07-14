@@ -1,18 +1,18 @@
-# ArchiveTune Privacy Notice
+# JusPlayer Privacy Notice
 
 Last updated: 2026-04-20
 
 ## Scope
 
-This notice covers the Android ArchiveTune app in this repository. It explains what the app stores on your device, what it can send to external services when you use specific features, and what Android permissions it requests.
+This notice covers the Android JusPlayer app in this repository. It explains what the app stores on your device, what it can send to external services when you use specific features, and what Android permissions it requests.
 
-This notice is based on the current source code and build configuration. It does not replace the privacy terms of YouTube or YouTube Music, Last.fm, ListenBrainz, Discord, GitHub, lyrics providers, the ArchiveTune canvas service, or any Together server you choose to use.
+This notice is based on the current source code and build configuration. It does not replace the privacy terms of YouTube or YouTube Music, Last.fm, ListenBrainz, Discord, GitHub, lyrics providers, the JusPlayer canvas service, or any Together server you choose to use.
 
 ## Privacy Summary
 
 - Most core app data is stored locally on your device.
-- ArchiveTune does not secretly harvest, sell, or broker your personal data.
-- ArchiveTune does not silently send your data to unrelated third-party services.
+- JusPlayer does not secretly harvest, sell, or broker your personal data.
+- JusPlayer does not silently send your data to unrelated third-party services.
 - Optional network features send only the data needed to provide those features.
 - If data leaves your device, it is because you used a specific online feature or integration that requires that transfer.
 - Android backup and device-transfer features may copy part of the app's local data unless excluded by the app's backup rules.
@@ -36,13 +36,13 @@ The app stores data locally to provide playback, library, search, lyrics, sync, 
 
 ## Data the App May Send Off Your Device
 
-ArchiveTune does not silently forward your data to unrelated services. It only contacts external services when you use online features, and the exact payload depends on the feature you use and how you configure it.
+JusPlayer does not silently forward your data to unrelated services. It only contacts external services when you use online features, and the exact payload depends on the feature you use and how you configure it.
 
 | Service or feature | Data that may be sent | When it happens |
 | --- | --- | --- |
 | YouTube or YouTube Music | Search terms, media playback requests, library or playlist requests, and signed-in session values such as visitor data, sync identifiers, cookies, or token values | When you browse, stream, sync, or sign in |
 | Lyrics providers | Song title, artist name, album identifiers, or similar lookup data needed to fetch lyrics | When lyrics features are enabled or lyrics are requested |
-| ArchiveTune canvas service | Song and artist names, album ID, or album URL, plus a bearer token if configured in the app build | When canvas or artwork lookup features are used |
+| JusPlayer canvas service | Song and artist names, album ID, or album URL, plus a bearer token if configured in the app build | When canvas or artwork lookup features are used |
 | Last.fm | Now playing and scrobble metadata, plus your Last.fm session information | When Last.fm scrobbling is enabled |
 | ListenBrainz | Playback history or scrobble metadata and your ListenBrainz token | When ListenBrainz sync is enabled |
 | Discord Rich Presence | Current track, artist, album, images, configured URLs or labels for presence cards, and Discord OAuth tokens required by the official Social SDK | When Discord Rich Presence is enabled |
@@ -70,7 +70,7 @@ If you deny a permission, the related feature may stop working or provide reduce
 
 ## Backups, Device Transfer, and Local Retention
 
-ArchiveTune currently enables Android backup support. The backup and data-transfer rules exclude some cache and download paths, including the ExoPlayer cache, the download directory, and `exoplayer_internal.db`. Other app data, including local database content and app preferences, may still be included in Android cloud backup or device transfer depending on your Android settings and device behavior.
+JusPlayer currently enables Android backup support. The backup and data-transfer rules exclude some cache and download paths, including the ExoPlayer cache, the download directory, and `exoplayer_internal.db`. Other app data, including local database content and app preferences, may still be included in Android cloud backup or device transfer depending on your Android settings and device behavior.
 
 The app also provides a manual backup feature that creates a ZIP archive containing app settings and database files. This is a user-triggered export action.
 
@@ -107,7 +107,7 @@ You can control a significant amount of privacy-related behavior from the app an
 
 ## Changes to This Notice
 
-This file should be reviewed whenever ArchiveTune changes its permissions, storage model, external integrations, backup behavior, or network architecture.
+This file should be reviewed whenever JusPlayer changes its permissions, storage model, external integrations, backup behavior, or network architecture.
 
 ## Project Contact
 

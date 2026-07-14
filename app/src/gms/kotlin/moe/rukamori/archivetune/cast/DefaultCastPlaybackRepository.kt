@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -636,7 +636,7 @@ private class LocalCastMediaServer(
                 connectTimeout = REMOTE_CONNECT_TIMEOUT_MS
                 readTimeout = REMOTE_READ_TIMEOUT_MS
                 instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "ArchiveTune Cast")
+                setRequestProperty("User-Agent", "JusPlayer Cast")
                 rangeHeader?.let { setRequestProperty(HttpHeaders.Range, it) }
             }
         return runCatching {

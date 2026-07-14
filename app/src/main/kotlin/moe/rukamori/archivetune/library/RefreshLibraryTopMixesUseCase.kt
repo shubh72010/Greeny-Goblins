@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -119,7 +119,7 @@ class RefreshLibraryTopMixesUseCase
                     config = config,
                     systemPrompt =
                         """
-                        You are a music curator for ArchiveTune.
+                        You are a music curator for JusPlayer.
                         Build up to $TopMixCountLimit personal mixes using only the provided candidate song IDs.
                         Return JSON only with this schema: {"mixes":[{"title":"short title containing Mix","description":"short genre and mood description","songIds":["id"]}]}.
                         Every title must contain the word Mix.

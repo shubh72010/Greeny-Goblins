@@ -457,7 +457,7 @@
     <string name="storage_folder_selected_restart">Đã lưu thư mục lưu trữ. Ứng dụng sẽ khởi động lại sau 3 giây.</string>
     <string name="storage_folder_invalid">Chọn một thư mục hợp lệ.</string>
     <string name="storage_folder_unsupported">Thư mục này không thể được sử dụng bởi bộ nhớ đệm phương tiện dựa trên tệp.</string>
-    <string name="storage_folder_not_writable">ArchiveTune không thể ghi tệp cache trong thư mục này.</string>
+    <string name="storage_folder_not_writable">JusPlayer không thể ghi tệp cache trong thư mục này.</string>
     <string name="storage_size_ratio">%1$s / %2$s</string>
     <string name="spotify_connect">Kết nối Spotify</string>
     <string name="spotify_available_count">%1$d danh sách phát có sẵn</string>
@@ -534,12 +534,12 @@
     <string name="lyrics_share_style_deep_blur">Mờ sâu</string>
     <string name="lyrics_share_style_vivid_glow">Phát sáng rực rỡ</string>
     <string name="about_lead_developer">Nhà phát triển chính</string>
-    <string name="about_archive_tune_team">Nhóm ArchiveTune</string>
+    <string name="about_archive_tune_team">Nhóm JusPlayer</string>
     <string name="about_respecter">Tôn kính</string>
     <string name="about_contributors">Người đóng góp</string>
     <string name="about_position_lead_dev">Hả?</string>
     <string name="about_position_mo_agamy">Khung cơ bản | Metrolist</string>
-    <string name="about_position_zion_huang">Người tạo InnerTune · Nền tảng cho Metrolist, ArchiveTune và các fork khác</string>
+    <string name="about_position_zion_huang">Người tạo InnerTune · Nền tảng cho Metrolist, JusPlayer và các fork khác</string>
     <string name="about_content_desc_github">GitHub</string>
     <string name="about_content_desc_website">Trang web</string>
     <string name="about_content_desc_discord">Discord</string>
@@ -558,8 +558,8 @@
     <string name="theme_export_success">Đã xuất giao diện</string>
     <string name="theme_export_failed">Xuất thất bại</string>
     <string name="theme_import_failed_title">Không thể nhập giao diện</string>
-    <string name="player_stream_client_archivetune_extractor">ArchiveTune Extractor</string>
-    <string name="player_stream_client_archivetune_extractor_desc">Sử dụng trình trích xuất phụ trợ của ArchiveTune cho các luồng phát lại. Ưu tiên Âm thanh Chất lượng Cao Tự động.</string>
+    <string name="player_stream_client_archivetune_extractor">JusPlayer Extractor</string>
+    <string name="player_stream_client_archivetune_extractor_desc">Sử dụng trình trích xuất phụ trợ của JusPlayer cho các luồng phát lại. Ưu tiên Âm thanh Chất lượng Cao Tự động.</string>
     <string name="top_albums">Album hàng đầu</string>
     <string name="about_position_developers">Nhà phát triển | Nhóm</string>
     <string name="about_position_yuki">Chỉ để Trang trí 😂 | Quản trị viên</string>

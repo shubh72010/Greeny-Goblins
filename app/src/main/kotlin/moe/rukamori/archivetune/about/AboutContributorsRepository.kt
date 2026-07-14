@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -142,7 +142,7 @@ class AboutContributorsRepository
                 client.get("https://api.github.com/repos/$owner/$repo/contributors?per_page=$perPage") {
                     headers {
                         append("Accept", "application/vnd.github+json")
-                        append("User-Agent", "ArchiveTune")
+                        append("User-Agent", "JusPlayer")
                     }
                 }
             return ContributorsNetworkResult(

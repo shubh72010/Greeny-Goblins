@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -84,7 +84,7 @@ object LastFM {
         extra: Map<String, String> = emptyMap(),
         format: String = "json",
     ) {
-        headers.append(HttpHeaders.UserAgent, "ArchiveTune (https://github.com/rukamori/ArchiveTune)")
+        headers.append(HttpHeaders.UserAgent, "JusPlayer (https://github.com/rukamori/ArchiveTune)")
         val paramsForSig =
             mutableMapOf(
                 "method" to method,

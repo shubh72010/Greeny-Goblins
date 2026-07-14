@@ -1,5 +1,5 @@
 /*
- * ArchiveTune (2026)
+ * JusPlayer (2026)
  * © Rukamori — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
@@ -204,7 +204,7 @@ fun NewReleaseScreen(
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "ArchiveTune could not load this YouTube Music section. Try again later.",
+                                text = "JusPlayer could not load this YouTube Music section. Try again later.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
