@@ -1025,4 +1025,25 @@
     <string name="hidden_playlists_description">Playlists hidden from library appear here</string>
     <string name="no_hidden_playlists">No hidden playlists</string>
     <string name="unhide">Unhide</string>
+    <string name="cover_art">Cover Art</string>
+    <string name="seek_bar">Seek Bar</string>
+    <string name="time_display">Time Display</string>
+    <string name="play_pause">Play / Pause</string>
+    <string name="canvas_artwork">Canvas Artwork</string>
+    <string name="empty_space">Empty Space</string>
+    <string name="like">Like</string>
+    <string name="previous">Previous</string>
+    <string name="repeat">Repeat</string>
+    <string name="spacer">Spacer</string>
+    <string name="title_artist">Title + Artist</string>
+    <string name="modular_add_component">Add Component</string>
+    <string name="modular_done_adding">Done adding</string>
+    <string name="modular_layout_classic">Classic</string>
+    <string name="modular_layout_compact">Compact</string>
+    <string name="modular_layout_editor">Layout Editor</string>
+    <string name="modular_layout_minimal">Minimal</string>
+    <string name="modular_remove_component">Remove</string>
+    <string name="modular_reset_layout">Reset layout</string>
+    <string name="modular_save_layout">Save layout</string>
+
 </resources>
