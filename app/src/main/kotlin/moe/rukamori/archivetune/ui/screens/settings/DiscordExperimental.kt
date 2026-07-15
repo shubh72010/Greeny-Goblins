@@ -1,6 +1,6 @@
 /*
  * JusPlayer (2026)
- * © Rukamori — github.com/rukamori
+ * © Følius — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
@@ -88,7 +88,7 @@ fun DiscordExperimental(navController: NavController) {
     val (button2CustomUrl, onButton2CustomUrlChange) =
         rememberPreference(
             key = DiscordActivityButton2CustomUrlKey,
-            defaultValue = "https://github.com/rukamori/ArchiveTune",
+            defaultValue = "https://github.com/shubh72010/Greeny-Goblins",
         )
 
     Scaffold { inner ->

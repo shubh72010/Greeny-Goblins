@@ -1,6 +1,6 @@
 /*
  * JusPlayer (2026)
- * © Rukamori — github.com/rukamori
+ * © Følius — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
@@ -66,25 +66,9 @@ fun StarDialog(
                 style = MaterialTheme.typography.bodyMedium,
             )
 
-            Button(
-                onClick = {
-                    uriHandler.openUri("https://koiiverse.cloud/donate")
-                    onSupport()
-                },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.coffee),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(text = stringResource(R.string.support_development_donate))
-            }
-
             FilledTonalButton(
                 onClick = {
-                    uriHandler.openUri("https://github.com/rukamori/ArchiveTune")
+                    uriHandler.openUri("https://github.com/shubh72010/Greeny-Goblins")
                     onSupport()
                 },
                 modifier = Modifier.fillMaxWidth(),

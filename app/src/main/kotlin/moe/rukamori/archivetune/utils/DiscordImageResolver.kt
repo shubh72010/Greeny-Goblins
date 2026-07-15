@@ -1,6 +1,6 @@
 /*
  * JusPlayer (2026)
- * © Rukamori — github.com/rukamori
+ * © Følius — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
@@ -134,7 +134,7 @@ object DiscordImageResolver {
             }
 
             "appicon" -> {
-                "https://raw.githubusercontent.com/rukamori/ArchiveTune/main/fastlane/metadata/android/en-US/images/icon.png"
+                "https://raw.githubusercontent.com/shubh72010/Greeny-Goblins/main/fastlane/metadata/android/en-US/images/icon.png"
             }
 
             "custom" -> {

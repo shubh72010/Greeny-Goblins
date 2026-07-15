@@ -1,6 +1,6 @@
 /*
  * JusPlayer (2026)
- * © Rukamori — github.com/rukamori
+ * © Følius — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
 
 object TogetherOnlineEndpoint {
     private const val EndpointSourceUrl =
-        "https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/ArchiveTuneKoiverseServer.txt"
+        "https://raw.githubusercontent.com/shubh72010/Greeny-Goblins/refs/heads/dev/ArchiveTuneKoiverseServer.txt"
 
     private const val CacheTtlMs: Long = 6 * 60 * 60 * 1000L
 

@@ -1,6 +1,6 @@
 /*
  * JusPlayer (2026)
- * Copyright Rukamori - github.com/rukamori
+ * Copyright Følius - github.com/shubh72010
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */

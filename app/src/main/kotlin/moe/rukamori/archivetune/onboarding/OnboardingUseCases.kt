@@ -1,6 +1,6 @@
 /*
  * JusPlayer (2026)
- * © Rukamori — github.com/rukamori
+ * © Følius — github.com/rukamori
  * GPL-3.0 License | Contributors: see git history
  * Do not remove or alter this notice. - Per GPL-3.0 Section 4 & Section 5
  */
@@ -142,28 +142,14 @@ class BuildOnboardingUiStateUseCase
                         titleResId = R.string.support_development_star,
                         descriptionResId = R.string.onboarding_community_github_desc,
                         iconResId = R.drawable.github,
-                        url = "https://github.com/rukamori/ArchiveTune",
+                        url = "https://github.com/shubh72010/Greeny-Goblins",
                     ),
                     OnboardingCommunityActionUiModel(
                         id = "discord",
                         titleResId = R.string.onboarding_community_discord_title,
                         descriptionResId = R.string.onboarding_community_telegram_desc,
                         iconResId = R.drawable.discord,
-                        url = "https://discord.gg/XF2fpb9rTq",
-                    ),
-                    OnboardingCommunityActionUiModel(
-                        id = "telegram",
-                        titleResId = R.string.onboarding_community_telegram_title,
-                        descriptionResId = R.string.onboarding_community_telegram_desc,
-                        iconResId = R.drawable.telegram,
-                        url = "https://t.me/ArchiveTuneGC",
-                    ),
-                    OnboardingCommunityActionUiModel(
-                        id = "donate",
-                        titleResId = R.string.about_content_desc_donate,
-                        descriptionResId = R.string.onboarding_community_donate_desc,
-                        iconResId = R.drawable.coffee,
-                        url = "https://koiiverse.cloud/donate",
+                        url = "https://discord.gg/8VDJB7HztQ",
                     ),
                 )
         }
