@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="./fastlane/metadata/android/en-US/images/icon.png" width="160" height="160" alt="JusPlayer Logo" style="border-radius: 22%">
+  <img src="./assets/logo.svg" width="160" height="160" alt="JusPlayer Logo" style="border-radius: 22%">
 
   <h1>JusPlayer</h1>
 
@@ -206,9 +206,9 @@ JusPlayer belongs to everyone. Help us localize the experience for your region.
 </div>
 
 ### ✨ Project Contributors
-<a href="https://github.com/shubh72010/Greeny-Goblins/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=shubh72010/Greeny-Goblins&columns=6" />
-</a>
+
+- **shubh72010** — lead developer
+- **oliver-lebaigue-2-bright-bench** — contributor
 
 ### 🛠️ Development & Engineering
 Interested in building the project or contributing? JusPlayer is built on a high-performance Kotlin stack.
@@ -241,6 +241,4 @@ JusPlayer is an independent third-party client.
 
 <div align="center">
   <p><b>If JusPlayer elevated your music experience, please consider giving us a ⭐</b></p>
-  <br />
-  <img src="./assets/badge_part.png" alt="JusPlayer" style="width: 180px">
 </div>
