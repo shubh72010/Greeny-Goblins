@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/icon.png" width="160" height="160" alt="JusPlayer Logo" style="border-radius: 22%">
+  <img src="./fastlane/metadata/android/en-US/images/icon.png" width="160" height="160" alt="JusPlayer Logo" style="border-radius: 22%">
 
   <h1>JusPlayer</h1>
 
@@ -16,42 +16,35 @@
   <p align="center">
     <strong>Redefining the YouTube Music Experience on Android.</strong>
     <br />
-    <em>It’s high-performance, privacy-focused, and packed with features for people who really care about their experience.</em>
+    <em>It's high-performance, privacy-focused, and packed with features for people who really care about their experience.</em>
   </p>
 
   <p align="center">
-    <a href="https://archivetune.koiiverse.cloud"><b>Official Website</b></a> •
     <a href="#features"><b>Features</b></a> •
-    <a href="https://archivetune.koiiverse.cloud/privacy"><b>Privacy</b></a> •
-    <a href="#download-now"><b>Download</b></a> •
     <a href="#screenshots"><b>Screenshots</b></a> •
-    <a href="https://github.com/rukamori/ArchiveTune/issues/new/choose"><b>Support</b></a>
+    <a href="#download-now"><b>Download</b></a> •
+    <a href="https://github.com/shubh72010/Greeny-Goblins/issues/new/choose"><b>Support</b></a>
   </p>
 
   <div align="center">
-    <img src="https://img.shields.io/github/v/release/rukamori/ArchiveTune?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Latest Version" />
-    <img src="https://img.shields.io/github/downloads/rukamori/ArchiveTune/total?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Downloads" />
-    <img src="https://img.shields.io/github/stars/rukamori/ArchiveTune?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Stars" />
-    <img src="https://img.shields.io/github/license/rukamori/ArchiveTune?style=for-the-badge&color=6366f1&labelColor=1e1e2e" alt="License" />
+    <img src="https://img.shields.io/github/v/release/shubh72010/Greeny-Goblins?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Latest Version" />
+    <img src="https://img.shields.io/github/downloads/shubh72010/Greeny-Goblins/total?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Downloads" />
+    <img src="https://img.shields.io/github/stars/shubh72010/Greeny-Goblins?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Stars" />
+    <img src="https://img.shields.io/github/license/shubh72010/Greeny-Goblins?style=for-the-badge&color=6366f1&labelColor=1e1e2e" alt="License" />
     <img src="https://img.shields.io/badge/Architecture-MVVM-6366f1?style=for-the-badge&labelColor=1e1e2e&logo=kotlin" alt="MVVM Architecture" />
     <img src="https://img.shields.io/badge/Language-Kotlin-7f52ff?style=for-the-badge&logo=kotlin&color=6366f1&labelColor=1e1e2e" alt="Kotlin Language" />
     <img src="https://img.shields.io/badge/Toolkit-Jetpack_Compose-4285f4?style=for-the-badge&logo=jetpack-compose&color=6366f1&labelColor=1e1e2e" alt="Jetpack Compose Toolkit" />
     <img src="https://img.shields.io/badge/Design-Material_3-000000?style=for-the-badge&logo=material-design&color=6366f1&labelColor=1e1e2e" alt="Material Design 3" />
-    <a href="https://www.virustotal.com/gui/file/176bea37aff02a606d04ff0a61478fabdb0bd079f9e97319645452af420e5d84/detection/f-176bea37aff02a606d04ff0a61478fabdb0bd079f9e97319645452af420e5d84-1778840479" target="_blank"><img src="https://img.shields.io/badge/VirusTotal-SAFE-green?style=for-the-badge&logo=virustotal&logoColor=white&labelColor=1e1e2e&color=5865F2" alt="VirusTotal" /></a>
-    <a href="https://t.me/ArchiveTuneGC"><img src="https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" /></a>
-    <a href="https://discord.gg/XF2fpb9rTq"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" /></a>
+    <a href="https://discord.gg/8VDJB7HztQ"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" /></a>
   </div>
-  
-  <br />
 
-  <a href="https://trendshift.io/repositories/17521" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/17521" alt="JusPlayer | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
-  </a>
 </div>
+
+> **Fork of [ArchiveTune](https://github.com/rukamori/ArchiveTune)** by Rukamori.
 
 <hr />
 
-**JusPlayer** isn’t just another generic YouTube Music wrapper. It’s a fully custom-built player made from the ground up, because we think your music should stay private, look clean, and work exactly the way you expect. If you care about sound quality and want something that actually feels good to use, this is it.
+**JusPlayer** isn't just another generic YouTube Music wrapper. It's a fully custom-built player made from the ground up, because we think your music should stay private, look clean, and work exactly the way you expect. If you care about sound quality and want something that actually feels good to use, this is it.
 
 ---
 
@@ -64,15 +57,15 @@
 
 <div align="center">
 
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_1.jpg" alt="Browse" width="30%" />
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_2.jpg" alt="Live Lyrics" width="30%" />
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_3.jpg" alt="Theme Customization" width="30%" />
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_4.jpg" alt="Live Statistics" width="30%" />
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_5.jpg" alt="Artist" width="30%" />
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_6.jpg" alt="Album" width="30%" />
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_7.jpg" alt="Player" width="30%" />
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_8.jpg" alt="Settings" width="30%" />
-<img src="https://github.com/rukamori/ArchiveTune/blob/main/fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_9.jpg" alt="Settings" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_1.jpg" alt="Browse" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_2.jpg" alt="Live Lyrics" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_3.jpg" alt="Theme Customization" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_4.jpg" alt="Live Statistics" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_5.jpg" alt="Artist" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_6.jpg" alt="Album" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_7.jpg" alt="Player" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_8.jpg" alt="Settings" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_9.jpg" alt="Settings" width="30%" />
 
 </div>
 
@@ -171,85 +164,32 @@
 
 <div align="center">
 
-<h2>Stable Release</h2>
-
 <table>
   <thead>
     <tr>
-      <th align="center">Obtainium</th>
-      <th align="center">IzzyOnDroid</th>
+      <th align="center">GitHub</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td align="center">
-        <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/rukamori/ArchiveTune/">
-          <img src="https://github.com/ImranR98/Obtainium/blob/main/assets/graphics/badge_obtainium.png" height="50" alt="Get JusPlayer on Obtainium">
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://apt.izzysoft.de/fdroid/index/apk/moe.rukamori.archivetune">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/757d5932832e1da27ced56de98c5ad1275cf0db1/assets/IzzyOnDroidButtonBorder.svg" height="50" alt="Get JusPlayer on IzzyOnDroid">
-        </a>
-      </td>
-    </tr>
-    <tr>
-      <th align="center" colspan="2">GitHub</th>
-    </tr>
-    <tr>
-      <td align="center" colspan="2">
-        <a href="https://github.com/rukamori/ArchiveTune/releases/latest">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Get JusPlayer on GitHub">
-        </a>
-      </td>
-    </tr>
-    <tr>
-      <th align="center">OpenAPK</th>
-      <th align="center">Unclouded</th>
-    </tr>
-    <tr>
-      <td align="center">
-        <a href="https://www.openapk.net/archivetune/moe.rukamori.archivetune/">
-          <img src="https://www.openapk.net/images/openapk-badge.png" height="75" alt="Get JusPlayer on OpenAPK">
-        </a>
-      </td>
-      <td align="center">
-        <a href="https://unclouded.app/apps/archivetune/">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/assets/badge_unclouded.png" height="50" alt="Get JusPlayer on Unclouded">
+        <a href="https://github.com/shubh72010/Greeny-Goblins/releases/latest">
+          <img src="./assets/badge_github.png" height="50" alt="Get JusPlayer on GitHub">
         </a>
       </td>
     </tr>
   </tbody>
 </table>
 
-<h2>Nightly Build</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th align="center">GitHub Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">
-        <a href="https://nightly.link/rukamori/ArchiveTune/workflows/build/dev/app-gms-mobile-universal-release">
-          <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/main/assets/badge_github.png" height="50" alt="Download the latest JusPlayer nightly build">
-        </a>
-      </td>
-    </tr>
-  </tbody>
-</table>
 </div>
 
 > [!WARNING]  
 > **Notes:** The trusted download source is listed above; we are not responsible for any risks you may encounter from downloading from other sources.
 
 ## ❓ Need Help or Have Questions?
-Join Our Telegram Channels or Discord Servers for Support and Discussion.
+Join Our Discord Server for Support and Discussion.
 
-[![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/ArchiveTuneGC)
-[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/XF2fpb9rTq)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/8VDJB7HztQ)
 
 ---
 
@@ -266,8 +206,8 @@ JusPlayer belongs to everyone. Help us localize the experience for your region.
 </div>
 
 ### ✨ Project Contributors
-<a href="https://github.com/rukamori/ArchiveTune/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=rukamori/ArchiveTune&columns=6" />
+<a href="https://github.com/shubh72010/Greeny-Goblins/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=shubh72010/Greeny-Goblins&columns=6" />
 </a>
 
 ### 🛠️ Development & Engineering
@@ -280,6 +220,7 @@ Interested in building the project or contributing? JusPlayer is built on a high
 
 JusPlayer is made possible by the work of many open-source projects and communities:
 
+- Forked from [ArchiveTune](https://github.com/rukamori/ArchiveTune) by Rukamori.
 - **Metrolist** by [Mostafa Alagamy](https://github.com/mostafaalagamy/Metrolist) for the base framework.
 - **SimpMusic** by [maxrave-dev](https://github.com/maxrave-dev/SimpMusic) for the lyrics API provider.
 - [BetterLyrics](https://better-lyrics.boidu.dev/) for word-by-word lyrics, unison and artwork provider support.
@@ -299,8 +240,7 @@ JusPlayer is an independent third-party client.
 ---
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/fastlane/metadata/android/en-US/images/ArchiveTuneFull.png" alt="JusPlayer Banner" style="width: 100%; max-width: 500px;">
   <p><b>If JusPlayer elevated your music experience, please consider giving us a ⭐</b></p>
   <br />
-  <img src="https://raw.githubusercontent.com/rukamori/ArchiveTune/refs/heads/dev/assets/badge_part.png" alt="JusPlayer Banner" style="width: 180px">
+  <img src="./assets/badge_part.png" alt="JusPlayer" style="width: 180px">
 </div>
