@@ -89,7 +89,6 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.screens.MoodAndGenresButton
-import moe.rukamori.archivetune.ui.screens.MoodAndGenresButtonHeight
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryScreenState
 import moe.rukamori.archivetune.viewmodels.SearchDiscoveryTab
@@ -387,16 +386,17 @@ private fun SearchMoodAndGenresGrid(
     ) {
         val columnCount = (maxWidth.value / MoodAndGenresMinCellWidth.value).toInt().coerceAtLeast(1)
         val rowCount = ((data.moodAndGenres.size + columnCount - 1) / columnCount).coerceAtLeast(1)
+        val cardSize = ((maxWidth - 12.dp) / columnCount - 12.dp).coerceAtLeast(1.dp)
 
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = MoodAndGenresMinCellWidth),
+            columns = GridCells.Fixed(columnCount),
             contentPadding = PaddingValues(6.dp),
             userScrollEnabled = false,
             verticalArrangement = Arrangement.spacedBy(0.dp),
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height((MoodAndGenresButtonHeight + 12.dp) * rowCount + 12.dp),
+                    .height(12.dp + cardSize * rowCount),
         ) {
             items(
                 items = data.moodAndGenres,

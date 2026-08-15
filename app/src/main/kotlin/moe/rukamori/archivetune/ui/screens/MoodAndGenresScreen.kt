@@ -11,11 +11,10 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -60,7 +59,6 @@ import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.ui.component.NavigationTitle
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
-import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.viewmodels.MoodAndGenresViewModel
 import java.util.concurrent.ConcurrentHashMap
 
@@ -112,10 +110,13 @@ fun MoodAndGenresScreen(
                 contentType = { "mood_genres_shimmer" },
             ) {
                 ShimmerHost {
-                    TextPlaceholder(
-                        height = MoodAndGenresButtonHeight,
-                        shape = MoodAndGenresButtonShape,
-                        modifier = Modifier.padding(6.dp),
+                    Box(
+                        modifier =
+                            Modifier
+                                .padding(6.dp)
+                                .aspectRatio(1f)
+                                .clip(MoodAndGenresButtonShape)
+                                .background(MaterialTheme.colorScheme.onSurface),
                     )
                 }
             }
@@ -163,39 +164,12 @@ fun MoodAndGenresButton(
         remember(base, colorScheme.surfaceContainerHighest) {
             lerp(base, colorScheme.surfaceContainerHighest, 0.34f)
         }
-    val coverStart =
-        remember(base, colorScheme.surface) {
-            lerp(base, colorScheme.surface, 0.28f)
-        }
-    val coverEnd =
-        remember(base, colorScheme.scrim) {
-            lerp(base, colorScheme.scrim, 0.2f)
-        }
     val cardBrush =
         remember(cardStart, cardEnd) {
             Brush.linearGradient(
                 colors = listOf(cardStart, cardEnd),
                 start = Offset.Zero,
                 end = Offset(900f, 650f),
-            )
-        }
-    val coverBrush =
-        remember(coverStart, coverEnd) {
-            Brush.linearGradient(
-                colors = listOf(coverStart, coverEnd),
-                start = Offset.Zero,
-                end = Offset(360f, 360f),
-            )
-        }
-    val textScrimBrush =
-        remember(colorScheme.scrim) {
-            Brush.horizontalGradient(
-                colors =
-                    listOf(
-                        colorScheme.scrim.copy(alpha = 0.38f),
-                        colorScheme.scrim.copy(alpha = 0.18f),
-                        Color.Transparent,
-                    ),
             )
         }
 
@@ -206,7 +180,7 @@ fun MoodAndGenresButton(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier =
             modifier
-                .height(MoodAndGenresButtonHeight),
+                .aspectRatio(1f),
     ) {
         Box(
             modifier =
@@ -214,40 +188,36 @@ fun MoodAndGenresButton(
                     .fillMaxSize()
                     .background(cardBrush),
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(top = 10.dp, end = 12.dp)
-                        .size(MoodAndGenresCoverSize)
-                        .clip(MoodAndGenresCoverShape)
-                        .background(coverBrush),
-            ) {
-                if (artworkModel != null) {
-                    AsyncImage(
-                        model = artworkModel,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+            if (artworkModel != null) {
+                AsyncImage(
+                    model = artworkModel,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .background(textScrimBrush),
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                0.48f to Color.Black.copy(alpha = 0.08f),
+                                1f to Color.Black.copy(alpha = 0.84f),
+                            ),
+                        ),
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
                 color = Color.White,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier =
                     Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 16.dp, end = 92.dp, bottom = 16.dp),
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             )
         }
     }
@@ -307,8 +277,6 @@ private fun buildMoodAndGenresArtworkCacheKey(endpoint: BrowseEndpoint): String 
 private val moodAndGenresArtworkCache = ConcurrentHashMap<String, String>()
 
 private val MoodAndGenresButtonShape = RoundedCornerShape(24.dp)
-private val MoodAndGenresCoverShape = RoundedCornerShape(16.dp)
-private val MoodAndGenresCoverSize = 80.dp
-private val MoodAndGenresArtworkRequestSize = 80.dp
+private val MoodAndGenresArtworkRequestSize = 512.dp
 
 val MoodAndGenresButtonHeight = 100.dp
