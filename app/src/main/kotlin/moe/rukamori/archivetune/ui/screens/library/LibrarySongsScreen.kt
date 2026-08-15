@@ -105,7 +105,7 @@ fun LibrarySongsScreen(
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val isDarkTheme = isSystemInDarkTheme()
-    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val pureBlack by rememberPreference(PureBlackKey, defaultValue = true)
 
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(

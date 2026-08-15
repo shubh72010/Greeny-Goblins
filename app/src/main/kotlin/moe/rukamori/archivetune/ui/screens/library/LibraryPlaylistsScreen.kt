@@ -675,7 +675,7 @@ fun rememberArtworkCardColor(
         )
     val surfaceColor = MaterialTheme.colorScheme.surface
     val useDarkTheme = remember(surfaceColor) { ColorUtils.calculateLuminance(surfaceColor.toArgb()) < 0.5 }
-    val pureBlack by rememberPreference(PureBlackKey, defaultValue = false)
+    val pureBlack by rememberPreference(PureBlackKey, defaultValue = true)
 
     return remember(gradientColors, useDarkTheme, pureBlack) {
         val baseColor = gradientColors.firstOrNull() ?: fallbackColor

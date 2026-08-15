@@ -172,6 +172,7 @@ import moe.rukamori.archivetune.constants.PlayerCustomContrastKey
 import moe.rukamori.archivetune.constants.PlayerCustomImageUriKey
 import moe.rukamori.archivetune.constants.PlayerDesignStyle
 import moe.rukamori.archivetune.constants.PlayerDesignStyleKey
+import moe.rukamori.archivetune.ui.player.modular.ModularExpandedPlayer
 import moe.rukamori.archivetune.constants.QueuePeekHeight
 import moe.rukamori.archivetune.constants.ShowPlayerVolumeBarKey
 import moe.rukamori.archivetune.constants.SliderStyle
@@ -317,7 +318,7 @@ fun BottomSheetPlayer(
 
     val storedPlayerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.DEFAULT,
+        defaultValue = PlayerBackgroundStyle.BLUR,
     )
     val playerUsesFixedBackground =
         playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9
@@ -341,7 +342,7 @@ fun BottomSheetPlayer(
 
     val playerButtonsStyle by rememberEnumPreference(
         key = PlayerButtonsStyleKey,
-        defaultValue = PlayerButtonsStyle.DEFAULT,
+        defaultValue = PlayerButtonsStyle.SECONDARY,
     )
 
     val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -406,7 +407,7 @@ fun BottomSheetPlayer(
     val canSkipNext by playerConnection.canSkipNext.collectAsState()
 
     val aodModeEnabled by playerConnection.aodModeEnabled.collectAsStateWithLifecycle()
-    val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 8f)
+    val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 45f)
     val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, false)
     val lowDataModeActive = rememberLowDataModeActive()
     val (maxCanvasCacheSize, _) =
@@ -415,7 +416,7 @@ fun BottomSheetPlayer(
             defaultValue = 256,
         )
 
-    val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.Standard)
+    val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.Circular)
 
     LaunchedEffect(maxCanvasCacheSize) {
         CanvasArtworkPlaybackCache.setMaxSize(maxCanvasCacheSize)
@@ -436,6 +437,7 @@ fun BottomSheetPlayer(
     var isUserSeeking by remember(mediaMetadata?.id) {
         mutableStateOf(false)
     }
+    var requestEditLayout by remember { mutableStateOf(false) }
 
     // Track loading state: when buffering or when user is seeking
     val isLoading = playbackState == STATE_BUFFERING || sliderPosition != null
@@ -1230,11 +1232,11 @@ fun BottomSheetPlayer(
                                                         ShowMediaInfo(metadata.id)
                                                     }
                                                 },
-                                                onDismiss = menuState::dismiss,
-                                            )
-                                        }
-                                    },
+                                    onDismiss = menuState::dismiss,
                                 )
+                            }
+                        },
+                    )
                             }
                         }
                     }
@@ -1359,42 +1361,54 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V9) {
-                    enrichedMetadata?.let { metadata ->
-                        V9PlayerContent(
-                            mediaMetadata = metadata,
-                            playbackState = playbackState,
-                            isPlaying = isPlaying,
-                            isLoading = isLoading,
-                            canSkipPrevious = canSkipPrevious,
-                            canSkipNext = canSkipNext,
-                            sliderPosition = sliderPosition,
-                            position = position,
-                            duration = duration,
-                            playerConnection = playerConnection,
-                            navController = navController,
-                            state = state,
-                            textBackgroundColor = TextBackgroundColor,
-                            textButtonColor = textButtonColor,
-                            iconButtonColor = iconButtonColor,
-                            canvasPrimaryUrl = artworkCanvas?.animated,
-                            canvasFallbackUrl = artworkCanvas?.videoUrl,
-                            onCollapseClick = { state.collapseSoft() },
-                            onQueueClick = openQueue,
-                            onLyricsClick = { isLyricsScreenVisible = true },
-                            onSliderValueChange = onSliderValueChange,
-                            onSliderValueChangeFinished = onSliderValueChangeFinished,
-                            landscape = true,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(bottom = queueSheetState.collapsedBound)
-                                    .windowInsetsPadding(
-                                        WindowInsets.systemBars.only(
-                                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                                        ),
-                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
-                        )
-                    }
+                    ModularExpandedPlayer(
+                        playerConnection = playerConnection,
+                        isPlaying = isPlaying,
+                        position = position,
+                        duration = duration,
+                        isSeeking = isUserSeeking,
+                        onSeek = { sliderPosition = it; isUserSeeking = true },
+                        onSeekEnd = {
+                            sliderPosition?.let {
+                                playerConnection.player.seekTo(it)
+                                position = it
+                            }
+                            isUserSeeking = false
+                        },
+                        sliderPosition = sliderPosition,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(bottom = queueSheetState.collapsedBound)
+                                .windowInsetsPadding(
+                                    WindowInsets.systemBars.only(
+                                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                                    ),
+                                ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        onEditModeChanged = { editing ->
+                            if (editing) requestEditLayout = false
+                        },
+                        onQueueClick = openQueue,
+                        onLyricsClick = { isLyricsScreenVisible = true },
+                        onSleepTimerClick = { showSleepTimerDialog = true },
+                        startEditing = requestEditLayout,
+                        onMenuClick = {
+                            menuState.show {
+                                PlayerMenu(
+                                    mediaMetadata = mediaMetadata,
+                                    navController = navController,
+                                    playerBottomSheetState = state,
+                                    onShowDetailsDialog = {
+                                        bottomSheetPageState.show {
+                                            ShowMediaInfo(mediaMetadata?.id.orEmpty())
+                                        }
+                                    },
+                                    onDismiss = menuState::dismiss,
+                                    onEditLayout = { requestEditLayout = true },
+                                )
+                            }
+                        },
+                    )
                 } else {
                     Row(
                         modifier =
@@ -1633,41 +1647,54 @@ fun BottomSheetPlayer(
                         }
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V9) {
-                    enrichedMetadata?.let { metadata ->
-                        V9PlayerContent(
-                            mediaMetadata = metadata,
-                            playbackState = playbackState,
-                            isPlaying = isPlaying,
-                            isLoading = isLoading,
-                            canSkipPrevious = canSkipPrevious,
-                            canSkipNext = canSkipNext,
-                            sliderPosition = sliderPosition,
-                            position = position,
-                            duration = duration,
-                            playerConnection = playerConnection,
-                            navController = navController,
-                            state = state,
-                            textBackgroundColor = TextBackgroundColor,
-                            textButtonColor = textButtonColor,
-                            iconButtonColor = iconButtonColor,
-                            canvasPrimaryUrl = artworkCanvas?.animated,
-                            canvasFallbackUrl = artworkCanvas?.videoUrl,
-                            onCollapseClick = { state.collapseSoft() },
-                            onQueueClick = openQueue,
-                            onLyricsClick = { isLyricsScreenVisible = true },
-                            onSliderValueChange = onSliderValueChange,
-                            onSliderValueChangeFinished = onSliderValueChangeFinished,
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(bottom = queueSheetState.collapsedBound)
-                                    .windowInsetsPadding(
-                                        WindowInsets.systemBars.only(
-                                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                                        ),
-                                    ).nestedScroll(state.preUpPostDownNestedScrollConnection),
-                        )
-                    }
+                    ModularExpandedPlayer(
+                        playerConnection = playerConnection,
+                        isPlaying = isPlaying,
+                        position = position,
+                        duration = duration,
+                        isSeeking = isUserSeeking,
+                        onSeek = { sliderPosition = it; isUserSeeking = true },
+                        onSeekEnd = {
+                            sliderPosition?.let {
+                                playerConnection.player.seekTo(it)
+                                position = it
+                            }
+                            isUserSeeking = false
+                        },
+                        sliderPosition = sliderPosition,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(bottom = queueSheetState.collapsedBound)
+                                .windowInsetsPadding(
+                                    WindowInsets.systemBars.only(
+                                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                                    ),
+                                ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        onEditModeChanged = { editing ->
+                            if (editing) requestEditLayout = false
+                        },
+                        onQueueClick = openQueue,
+                        onLyricsClick = { isLyricsScreenVisible = true },
+                        onSleepTimerClick = { showSleepTimerDialog = true },
+                        startEditing = requestEditLayout,
+                        onMenuClick = {
+                            menuState.show {
+                                PlayerMenu(
+                                    mediaMetadata = mediaMetadata,
+                                    navController = navController,
+                                    playerBottomSheetState = state,
+                                    onShowDetailsDialog = {
+                                        bottomSheetPageState.show {
+                                            ShowMediaInfo(mediaMetadata?.id.orEmpty())
+                                        }
+                                    },
+                                    onDismiss = menuState::dismiss,
+                                    onEditLayout = { requestEditLayout = true },
+                                )
+                            }
+                        },
+                    )
                 } else {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,

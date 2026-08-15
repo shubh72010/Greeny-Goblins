@@ -44,7 +44,7 @@ fun ThumbnailCornerRadiusSelectorButton(
     val (thumbnailCornerRadius, onThumbnailCornerRadiusChange) =
         rememberPreference(
             ThumbnailCornerRadiusKey,
-            defaultValue = 16f,
+            defaultValue = 45f,
         )
 
     var showDialog by remember { mutableStateOf(false) }

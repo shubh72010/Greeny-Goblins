@@ -159,6 +159,7 @@ fun PlayerMenu(
     onRemoveFromQueue: (() -> Unit)? = null,
     onShowDetailsDialog: () -> Unit,
     onDismiss: () -> Unit,
+    onEditLayout: (() -> Unit)? = null,
 ) {
     mediaMetadata ?: return
     val context = LocalContext.current
@@ -855,6 +856,29 @@ fun PlayerMenu(
                             },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     )
+
+                    onEditLayout?.let { editLayout ->
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 56.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+
+                        ListItem(
+                            headlineContent = { Text(text = stringResource(R.string.modular_layout_editor)) },
+                            leadingContent = {
+                                Icon(
+                                    painter = painterResource(R.drawable.grid_view),
+                                    contentDescription = null,
+                                )
+                            },
+                            modifier =
+                                Modifier.clickable {
+                                    editLayout()
+                                    onDismiss()
+                                },
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        )
+                    }
 
                     if (isQueueTrigger != true) {
                         HorizontalDivider(

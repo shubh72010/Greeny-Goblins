@@ -148,7 +148,7 @@ fun AodCustomizedScreen(navController: NavController) {
         )
     val (thumbnailSize, onThumbnailSizeChange) = rememberPreference(AodThumbnailSizeKey, defaultValue = 260f)
     val (thumbnailShapeRotation, onThumbnailShapeRotationChange) = rememberPreference(AodThumbnailShapeRotationKey, defaultValue = 0)
-    val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 16f)
+    val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 45f)
     val (showThumbnail, onShowThumbnailChange) = rememberPreference(AodShowThumbnailKey, defaultValue = true)
     val (showArtist, onShowArtistChange) = rememberPreference(AodShowArtistKey, defaultValue = true)
     val (showAlbum, onShowAlbumChange) = rememberPreference(AodShowAlbumKey, defaultValue = false)

@@ -693,7 +693,7 @@ class MainActivity : ComponentActivity() {
                 remember(darkTheme, isSystemInDarkTheme) {
                     if (darkTheme == DarkMode.AUTO) isSystemInDarkTheme else darkTheme == DarkMode.ON
                 }
-            val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
+            val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = true)
             val pureBlack = pureBlackEnabled && useDarkTheme
 
             val customThemeSeedPalette =
@@ -978,7 +978,7 @@ class MainActivity : ComponentActivity() {
 
                     val playerBackground by rememberEnumPreference(
                         key = PlayerBackgroundStyleKey,
-                        defaultValue = PlayerBackgroundStyle.DEFAULT,
+                        defaultValue = PlayerBackgroundStyle.BLUR,
                     )
                     val playerDesignStyle by rememberEnumPreference(
                         key = PlayerDesignStyleKey,
@@ -1703,14 +1703,14 @@ class MainActivity : ComponentActivity() {
                                                         )
                                                     }
 
-                                                    TranslucentTopAppBarIconButton(
-                                                        onClick = { navController.navigate("new_release") },
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.new_release),
-                                                            contentDescription = stringResource(R.string.new_release_albums),
-                                                        )
-                                                    }
+                                                    // TranslucentTopAppBarIconButton(
+                                                    //     onClick = { navController.navigate("new_release") },
+                                                    // ) {
+                                                    //     Icon(
+                                                    //         painter = painterResource(R.drawable.new_release),
+                                                    //         contentDescription = stringResource(R.string.new_release_albums),
+                                                    //     )
+                                                    // }
                                                     TranslucentTopAppBarIconButton(
                                                         onClick = { navController.navigate("settings") },
                                                     ) {

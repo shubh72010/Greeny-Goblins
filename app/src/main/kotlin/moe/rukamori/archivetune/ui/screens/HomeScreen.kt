@@ -319,19 +319,19 @@ private fun HomeContent(
                             .fillMaxWidth()
                             .align(Alignment.TopCenter),
                 ) {
-                    if (uiState.showCategoryChips) {
-                        item(
-                            key = "home_category_chips",
-                            contentType = "category_chips",
-                        ) {
-                            HomeCategoryChips(
-                                chips = uiState.homePage?.chips.orEmpty(),
-                                selectedChip = uiState.selectedChip,
-                                onChipSelected = { onAction(HomeAction.SelectChip(it)) },
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                    }
+                    // if (uiState.showCategoryChips) {
+                    //     item(
+                    //         key = "home_category_chips",
+                    //         contentType = "category_chips",
+                    //     ) {
+                    //         HomeCategoryChips(
+                    //             chips = uiState.homePage?.chips.orEmpty(),
+                    //             selectedChip = uiState.selectedChip,
+                    //             onChipSelected = { onAction(HomeAction.SelectChip(it)) },
+                    //             modifier = Modifier.animateItem(),
+                    //         )
+                    //     }
+                    // }
 
                     if (uiState.quickPicks.isNotEmpty()) {
                         item(

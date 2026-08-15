@@ -167,7 +167,7 @@ fun AppearanceSettings(navController: NavController) {
     val (thumbnailCornerRadius, onThumbnailCornerRadiusChange) =
         rememberPreference(
             key = ThumbnailCornerRadiusKey,
-            defaultValue = 16f, // default dp
+            defaultValue = 45f, // default dp
         )
     val (cropThumbnailToSquare, onCropThumbnailToSquareChange) =
         rememberPreference(
@@ -177,14 +177,14 @@ fun AppearanceSettings(navController: NavController) {
     val (playerBackground, onPlayerBackgroundChange) =
         rememberEnumPreference(
             PlayerBackgroundStyleKey,
-            defaultValue = PlayerBackgroundStyle.DEFAULT,
+            defaultValue = PlayerBackgroundStyle.BLUR,
         )
     val (miniPlayerBackground, onMiniPlayerBackgroundChange) =
         rememberEnumPreference(
             MiniPlayerBackgroundStyleKey,
             defaultValue = MiniPlayerBackgroundStyle.THEME,
         )
-    val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = false)
+    val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = true)
     val (disableBlur, onDisableBlurChange) = rememberPreference(DisableBlurKey, defaultValue = false)
     val (disableAnimations, onDisableAnimationsChange) =
         rememberPreference(
@@ -214,12 +214,12 @@ fun AppearanceSettings(navController: NavController) {
     val (playerButtonsStyle, onPlayerButtonsStyleChange) =
         rememberEnumPreference(
             PlayerButtonsStyleKey,
-            defaultValue = PlayerButtonsStyle.DEFAULT,
+            defaultValue = PlayerButtonsStyle.SECONDARY,
         )
     val (sliderStyle, onSliderStyleChange) =
         rememberEnumPreference(
             SliderStyleKey,
-            defaultValue = SliderStyle.Standard,
+            defaultValue = SliderStyle.Circular,
         )
     val (swipeThumbnail, onSwipeThumbnailChange) =
         rememberPreference(

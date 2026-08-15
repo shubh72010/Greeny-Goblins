@@ -69,6 +69,14 @@ val BackdropEnabledKey = booleanPreferencesKey("backdropEnabled")
 val BackdropBlurAmountKey = intPreferencesKey("backdropBlurAmount")
 val MiniPlayerLastAnchorKey = intPreferencesKey("miniPlayerLastAnchor")
 val MiniPlayerBackgroundStyleKey = stringPreferencesKey("miniPlayerBackgroundStyle")
+val ModularButtonShapeKey = stringPreferencesKey("modularButtonShape")
+enum class ModularCoverArtStyle {
+    NORMAL,
+    STYLE_CARD,
+    LYRIC,
+}
+val ModularCoverArtStyleKey = stringPreferencesKey("modularCoverArtStyle")
+val ShowTimeOnSeekBarKey = booleanPreferencesKey("showTimeOnSeekBar")
 
 enum class AodThumbnailShape {
     ROUNDED,

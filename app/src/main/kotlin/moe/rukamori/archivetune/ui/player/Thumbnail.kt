@@ -157,7 +157,7 @@ fun Thumbnail(
     val (thumbnailCornerRadius, _) =
         rememberPreference(
             key = ThumbnailCornerRadiusKey,
-            defaultValue = 16f,
+            defaultValue = 45f,
         )
     val cropThumbnailToSquare by rememberPreference(CropThumbnailToSquareKey, false)
     val (disableBlur) = rememberPreference(DisableBlurKey, false)
@@ -169,7 +169,7 @@ fun Thumbnail(
     // Player background style for consistent theming
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.DEFAULT,
+        defaultValue = PlayerBackgroundStyle.BLUR,
     )
 
     val textBackgroundColor =
