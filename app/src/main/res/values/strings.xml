@@ -1030,6 +1030,10 @@
     <string name="time_display">Time Display</string>
     <string name="play_pause">Play / Pause</string>
     <string name="canvas_artwork">Canvas Artwork</string>
+    <string name="canvas_source">Canvas source</string>
+    <string name="canvas_source_auto">Auto</string>
+    <string name="canvas_source_apple">Apple Music</string>
+    <string name="canvas_source_youtube">YouTube Music</string>
     <string name="empty_space">Empty Space</string>
     <string name="like">Like</string>
     <string name="previous">Previous</string>

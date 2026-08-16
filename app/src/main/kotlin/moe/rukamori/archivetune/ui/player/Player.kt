@@ -154,6 +154,7 @@ import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -310,6 +311,10 @@ fun BottomSheetPlayer(
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
         defaultValue = PlayerDesignStyle.V4,
+    )
+    val canvasSource by rememberEnumPreference(
+        key = CanvasSourceKey,
+        defaultValue = CanvasSource.AUTO,
     )
     val showPlayerVolumeBar by rememberPreference(
         key = ShowPlayerVolumeBarKey,
@@ -1067,6 +1072,8 @@ fun BottomSheetPlayer(
                         storefront = storefront,
                         requireVertical = true,
                         allowNetwork = shouldFetchV7Canvas,
+                        currentIsMusicVideo = metadata.isMusicVideo,
+                        canvasSource = canvasSource,
                     )
             } finally {
                 v7CanvasFetchInFlight = false
@@ -1102,6 +1109,8 @@ fun BottomSheetPlayer(
                         storefront = storefront,
                         requireVertical = false,
                         allowNetwork = shouldFetchArtworkCanvas,
+                        currentIsMusicVideo = metadata.isMusicVideo,
+                        canvasSource = canvasSource,
                     )
             } finally {
                 artworkCanvasFetchInFlight = false

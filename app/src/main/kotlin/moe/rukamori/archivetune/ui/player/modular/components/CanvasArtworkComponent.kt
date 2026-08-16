@@ -8,17 +8,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.models.MediaMetadata
-import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
-import moe.rukamori.archivetune.ui.player.fetchCanvasArtworkForPlayback
+import moe.rukamori.archivetune.ui.player.CanvasSource
+import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
+import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentRegistry
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentType
+import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import java.util.Locale
 
@@ -44,6 +44,7 @@ fun CanvasArtworkComponent(
     var fetchInFlight by remember(metadata?.id) {
         mutableStateOf(false)
     }
+    val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.AUTO)
 
     val storefront = remember {
         val country = java.util.Locale.getDefault().country
@@ -57,28 +58,22 @@ fun CanvasArtworkComponent(
             return@LaunchedEffect
         }
 
-        CanvasArtworkPlaybackCache.get(meta.id)
-            ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-            ?.let { cached ->
-                canvasArtwork = cached
-                return@LaunchedEffect
-            }
-
         if (fetchInFlight) return@LaunchedEffect
         fetchInFlight = true
         try {
-            val fetched = withContext(Dispatchers.IO) {
-                fetchCanvasArtworkForPlayback(
+            canvasArtwork =
+                resolveCanvasArtworkForPlayback(
+                    mediaId = meta.id,
                     songTitleRaw = meta.title,
                     artistNameRaw = meta.artists.firstOrNull()?.name.orEmpty(),
+                    albumId = meta.album?.id,
+                    albumTitleRaw = meta.album?.title,
                     storefront = storefront,
                     requireVertical = false,
+                    allowNetwork = true,
+                    currentIsMusicVideo = meta.isMusicVideo,
+                    canvasSource = canvasSource,
                 )
-            }
-            canvasArtwork = fetched
-            if (fetched != null) {
-                canvasArtwork = CanvasArtworkPlaybackCache.put(meta.id, fetched)
-            }
         } finally {
             fetchInFlight = false
         }
@@ -91,6 +86,8 @@ fun CanvasArtworkComponent(
             fallbackUrl = artwork.preferredVerticalAnimationUrl.takeIf { !it.isNullOrBlank() }
                 ?: artwork.preferredAnimationUrl,
             isPlaying = isPlaying,
+            clipStartMs = artwork.loopStartMs,
+            clipEndMs = artwork.loopEndMs,
             modifier = modifier.fillMaxSize(),
         )
     }

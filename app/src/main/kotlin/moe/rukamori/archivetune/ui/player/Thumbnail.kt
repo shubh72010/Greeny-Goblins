@@ -89,6 +89,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -146,6 +147,10 @@ fun Thumbnail(
 
     val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
     val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, false)
+    val canvasSource by rememberEnumPreference(
+        key = CanvasSourceKey,
+        defaultValue = CanvasSource.AUTO,
+    )
     val lowDataModeActive = rememberLowDataModeActive()
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
@@ -469,6 +474,8 @@ fun Thumbnail(
                                             storefront = storefront,
                                             requireVertical = false,
                                             allowNetwork = shouldFetchCanvas,
+                                            currentIsMusicVideo = itemMetadata?.isMusicVideo ?: false,
+                                            canvasSource = canvasSource,
                                         )
                                 } finally {
                                     canvasFetchInFlight = false
@@ -526,11 +533,12 @@ fun Thumbnail(
                                         },
                                 contentAlignment = Alignment.Center,
                             ) {
+                                val thumbnailShape =
+                                    rememberThumbnailShape(ThumbnailShapeKind.SONG, thumbnailCornerRadius)
                                 Box(
                                     modifier =
                                         Modifier
-                                            .size(containerMaxWidth - (PlayerHorizontalPadding * 2))
-                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.SONG, thumbnailCornerRadius)),
+                                            .size(containerMaxWidth - (PlayerHorizontalPadding * 2)),
                                 ) {
                                     if (hidePlayerThumbnail) {
                                         // Show app logo when thumbnail is hidden
@@ -538,6 +546,7 @@ fun Thumbnail(
                                             modifier =
                                                 Modifier
                                                     .fillMaxSize()
+                                                    .clip(thumbnailShape)
                                                     .background(MaterialTheme.colorScheme.surfaceVariant),
                                             contentAlignment = Alignment.Center,
                                         ) {
@@ -585,17 +594,22 @@ fun Thumbnail(
                                                     Modifier
                                                         .fillMaxSize()
                                                         .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
+                                                        .clip(thumbnailShape)
                                                         .graphicsLayer(
                                                             renderEffect = BlurEffect(radiusX = blurRadiusPx, radiusY = blurRadiusPx),
                                                             alpha = 0.6f,
                                                         ),
                                             )
                                         } else if (thumbnailBgBlurEnabled) {
-                                            ThumbnailBgBlurApi30(
-                                                imageUrl = displayUrl,
-                                                blurAmount = backdropBlurAmount,
-                                                shouldCropArtwork = shouldCropArtwork,
-                                            )
+                                            Box(
+                                                modifier = Modifier.fillMaxSize().clip(thumbnailShape),
+                                            ) {
+                                                ThumbnailBgBlurApi30(
+                                                    imageUrl = displayUrl,
+                                                    blurAmount = backdropBlurAmount,
+                                                    shouldCropArtwork = shouldCropArtwork,
+                                                )
+                                            }
                                         } else {
                                             AsyncImage(
                                                 model = thumbnailBgRequest,
@@ -605,6 +619,7 @@ fun Thumbnail(
                                                     Modifier
                                                         .fillMaxSize()
                                                         .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
+                                                        .clip(thumbnailShape)
                                                         .graphicsLayer(alpha = 0.6f),
                                             )
                                         }
@@ -616,7 +631,8 @@ fun Thumbnail(
                                             modifier =
                                                 Modifier
                                                     .fillMaxSize()
-                                                    .let { if (shouldCropArtwork) it.aspectRatio(1f) else it },
+                                                    .let { if (shouldCropArtwork) it.aspectRatio(1f) else it }
+                                                    .clip(thumbnailShape),
                                         )
 
                                         if (shouldUseCanvas &&
@@ -626,7 +642,9 @@ fun Thumbnail(
                                                 primaryUrl = primaryCanvasUrl,
                                                 fallbackUrl = fallbackCanvasUrl,
                                                 isPlaying = isPlaying,
-                                                modifier = Modifier.fillMaxSize(),
+                                                clipStartMs = canvasArtwork?.loopStartMs,
+                                                clipEndMs = canvasArtwork?.loopEndMs,
+                                                modifier = Modifier.fillMaxSize().clip(thumbnailShape),
                                             )
                                         }
                                     }

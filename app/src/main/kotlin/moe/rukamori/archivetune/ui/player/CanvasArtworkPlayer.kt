@@ -54,7 +54,9 @@ internal fun CanvasArtworkPlayer(
     fallbackUrl: String?,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
-    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_FIT,
+    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+    clipStartMs: Long? = null,
+    clipEndMs: Long? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -186,7 +188,7 @@ internal fun CanvasArtworkPlayer(
         val listener =
             object : Player.Listener {
                 override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    Timber.tag(CanvasPlaybackLogTag).w(error, "Canvas playback failed")
+                    Timber.tag(CanvasPlaybackLogTag).w(error, "Canvas playback failed: url=%s errCode=%d", currentUrl, error.errorCode)
                     val next =
                         when (currentUrl) {
                             primary -> fallback?.takeIf { it != currentUrl }
@@ -199,6 +201,7 @@ internal fun CanvasArtworkPlayer(
                 }
 
                 override fun onRenderedFirstFrame() {
+                    Timber.tag(CanvasPlaybackLogTag).d("Canvas first frame rendered for %s", currentUrl)
                     isVideoReady = true
                     if (shouldPlay) {
                         exoPlayer.setCanvasPlayback(isPlaying = true)
@@ -206,6 +209,7 @@ internal fun CanvasArtworkPlayer(
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
+                    Timber.tag(CanvasPlaybackLogTag).d("Canvas playbackState=%d playing=%b for %s", playbackState, exoPlayer.isPlaying, currentUrl)
                     if (!shouldPlay) return
                     exoPlayer.setCanvasPlayback(isPlaying = true)
                 }
@@ -232,6 +236,7 @@ internal fun CanvasArtworkPlayer(
     LaunchedEffect(currentUrl, exoPlayer) {
         val normalized = currentUrl.trim()
         isVideoReady = false
+        Timber.tag(CanvasPlaybackLogTag).d("Canvas preparing %s (primary=%s clip=%s..%s)", normalized, primary, clipStartMs, clipEndMs)
         val lowercaseUrl = normalized.lowercase(Locale.ROOT)
         val mimeType =
             when {
@@ -242,12 +247,20 @@ internal fun CanvasArtworkPlayer(
                 else -> MimeTypes.APPLICATION_M3U8
             }
 
-        val mediaItem =
+        val mediaItemBuilder =
             MediaItem
                 .Builder()
                 .setUri(normalized)
                 .setMimeType(mimeType)
-                .build()
+        if (clipStartMs != null || clipEndMs != null) {
+            val clippingConfiguration =
+                MediaItem.ClippingConfiguration.Builder()
+                    .setStartPositionMs(clipStartMs ?: 0L)
+                    .setEndPositionMs(clipEndMs ?: C.TIME_UNSET)
+                    .build()
+            mediaItemBuilder.setClippingConfiguration(clippingConfiguration)
+        }
+        val mediaItem = mediaItemBuilder.build()
 
         exoPlayer.stop()
         exoPlayer.setMediaItem(mediaItem)

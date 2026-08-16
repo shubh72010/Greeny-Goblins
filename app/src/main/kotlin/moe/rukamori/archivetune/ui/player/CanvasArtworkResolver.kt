@@ -22,14 +22,18 @@ internal suspend fun resolveCanvasArtworkForPlayback(
     storefront: String,
     requireVertical: Boolean,
     allowNetwork: Boolean,
+    currentIsMusicVideo: Boolean = false,
+    canvasSource: CanvasSource = CanvasSource.AUTO,
 ): CanvasArtwork? {
-    withContext(Dispatchers.IO) {
-        CanvasArtworkPlaybackCache.get(
-            mediaId = mediaId,
-            preferCachedOnly = true,
-        )
-    }?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
-        ?.let { return it }
+    if (canvasSource == CanvasSource.AUTO) {
+        withContext(Dispatchers.IO) {
+            CanvasArtworkPlaybackCache.get(
+                mediaId = mediaId,
+                preferCachedOnly = true,
+            )
+        }?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
+            ?.let { return it }
+    }
 
     if (!allowNetwork || mediaId.isBlank()) {
         Timber.tag(CanvasArtworkLogTag).d("Skipping canvas network lookup for %s", mediaId)
@@ -38,18 +42,66 @@ internal suspend fun resolveCanvasArtworkForPlayback(
 
     return withContext(Dispatchers.IO) {
         val fetched =
-            fetchCanvasArtworkForPlayback(
-                songTitleRaw = songTitleRaw,
-                artistNameRaw = artistNameRaw,
-                storefront = storefront,
-                requireVertical = requireVertical,
-            ) ?: fetchCanvasArtworkByAlbumFallback(
-                albumId = albumId,
-                albumTitleRaw = albumTitleRaw,
-                artistNameRaw = artistNameRaw,
-                storefront = storefront,
-                requireVertical = requireVertical,
-            )
+            when (canvasSource) {
+                CanvasSource.YOUTUBE ->
+                    fetchYouTubeCanvasFallback(
+                        mediaId = mediaId,
+                        songTitleRaw = songTitleRaw,
+                        artistNameRaw = artistNameRaw,
+                        requireVertical = requireVertical,
+                        currentIsMusicVideo = currentIsMusicVideo,
+                        fallbackToAnyVideo = true,
+                    )
+
+                CanvasSource.APPLE ->
+                    fetchCanvasArtworkForPlayback(
+                        songTitleRaw = songTitleRaw,
+                        artistNameRaw = artistNameRaw,
+                        storefront = storefront,
+                        requireVertical = requireVertical,
+                    ) ?: fetchCanvasArtworkByAlbumFallback(
+                        albumId = albumId,
+                        albumTitleRaw = albumTitleRaw,
+                        artistNameRaw = artistNameRaw,
+                        storefront = storefront,
+                        requireVertical = requireVertical,
+                    ) ?: fetchYouTubeCanvasFallback(
+                        mediaId = mediaId,
+                        songTitleRaw = songTitleRaw,
+                        artistNameRaw = artistNameRaw,
+                        requireVertical = requireVertical,
+                        currentIsMusicVideo = currentIsMusicVideo,
+                        fallbackToAnyVideo = true,
+                    )
+
+                CanvasSource.AUTO ->
+                    fetchYouTubeCanvasFallback(
+                        mediaId = mediaId,
+                        songTitleRaw = songTitleRaw,
+                        artistNameRaw = artistNameRaw,
+                        requireVertical = requireVertical,
+                        currentIsMusicVideo = currentIsMusicVideo,
+                        fallbackToAnyVideo = false,
+                    ) ?: fetchCanvasArtworkForPlayback(
+                        songTitleRaw = songTitleRaw,
+                        artistNameRaw = artistNameRaw,
+                        storefront = storefront,
+                        requireVertical = requireVertical,
+                    ) ?: fetchCanvasArtworkByAlbumFallback(
+                        albumId = albumId,
+                        albumTitleRaw = albumTitleRaw,
+                        artistNameRaw = artistNameRaw,
+                        storefront = storefront,
+                        requireVertical = requireVertical,
+                    ) ?: fetchYouTubeCanvasFallback(
+                        mediaId = mediaId,
+                        songTitleRaw = songTitleRaw,
+                        artistNameRaw = artistNameRaw,
+                        requireVertical = requireVertical,
+                        currentIsMusicVideo = currentIsMusicVideo,
+                        fallbackToAnyVideo = true,
+                    )
+            }
 
         if (fetched == null) {
             Timber.tag(CanvasArtworkLogTag).d("No playable canvas resolved for %s", mediaId)
@@ -121,6 +173,29 @@ private suspend fun fetchCanvasArtworkByAlbumFallback(
             artist = artistName,
             storefront = storefront,
         )?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
+}
+
+private suspend fun fetchYouTubeCanvasFallback(
+    mediaId: String,
+    songTitleRaw: String,
+    artistNameRaw: String,
+    requireVertical: Boolean,
+    currentIsMusicVideo: Boolean = false,
+    fallbackToAnyVideo: Boolean = true,
+): CanvasArtwork? {
+    if (requireVertical) return null
+    return runCatching {
+        YouTubeCanvasProvider.resolveForPlayback(
+            mediaId = mediaId,
+            songTitleRaw = songTitleRaw,
+            artistNameRaw = artistNameRaw,
+            requireVertical = false,
+            currentIsMusicVideo = currentIsMusicVideo,
+            fallbackToAnyVideo = fallbackToAnyVideo,
+        )
+    }.onFailure { error ->
+        Timber.tag(CanvasArtworkLogTag).w(error, "YouTube canvas fallback failed for %s", mediaId)
+    }.getOrNull()
 }
 
 private fun CanvasArtwork.hasRequiredCanvasVariant(requireVertical: Boolean): Boolean =
