@@ -70,7 +70,6 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppFontPreference
 import moe.rukamori.archivetune.constants.AodThumbnailShape
 import moe.rukamori.archivetune.constants.ArtistThumbnailShapeKey
-import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
@@ -88,6 +87,7 @@ import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
 import moe.rukamori.archivetune.constants.GridItemSize
 import moe.rukamori.archivetune.constants.GridItemsSizeKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
+import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyleKey
@@ -101,6 +101,7 @@ import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
+import moe.rukamori.archivetune.constants.RandomThumbnailShapeKey
 import moe.rukamori.archivetune.constants.ShowHomeAccountPlaylistsKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
 import moe.rukamori.archivetune.constants.ShowHomeForgottenFavoritesKey
@@ -320,6 +321,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberEnumPreference(
             ArtistThumbnailShapeKey,
             defaultValue = AodThumbnailShape.CIRCLE,
+        )
+    val (randomThumbnailShape, onRandomThumbnailShapeChange) =
+        rememberPreference(
+            RandomThumbnailShapeKey,
+            defaultValue = false,
         )
 
     val customFontPickerLauncher =
@@ -947,6 +953,16 @@ fun AppearanceSettings(navController: NavController) {
 
             PreferenceGroup(title = stringResource(R.string.thumbnail_shapes)) {
                 item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.random_thumbnail_shape)) },
+                        description = stringResource(R.string.random_thumbnail_shape_desc),
+                        icon = { Icon(painterResource(R.drawable.shuffle), null) },
+                        checked = randomThumbnailShape,
+                        onCheckedChange = onRandomThumbnailShapeChange,
+                    )
+                }
+
+                item(visible = !randomThumbnailShape) {
                     ThumbnailShapePicker(
                         title = stringResource(R.string.song_thumbnail_shape),
                         description = stringResource(R.string.song_thumbnail_shape_desc),
@@ -956,7 +972,7 @@ fun AppearanceSettings(navController: NavController) {
                         modifier = Modifier.padding(vertical = 6.dp),
                     )
                 }
-                item {
+                item(visible = !randomThumbnailShape) {
                     ThumbnailShapePicker(
                         title = stringResource(R.string.artist_thumbnail_shape),
                         description = stringResource(R.string.artist_thumbnail_shape_desc),

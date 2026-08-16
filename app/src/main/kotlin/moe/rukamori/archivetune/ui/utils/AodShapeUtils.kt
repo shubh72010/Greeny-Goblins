@@ -19,8 +19,10 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.constants.AodThumbnailShape
 import moe.rukamori.archivetune.constants.ArtistThumbnailShapeKey
+import moe.rukamori.archivetune.constants.RandomThumbnailShapeKey
 import moe.rukamori.archivetune.constants.SongThumbnailShapeKey
 import moe.rukamori.archivetune.utils.rememberEnumPreference
+import moe.rukamori.archivetune.utils.rememberPreference
 
 enum class ThumbnailShapeKind {
     SONG,
@@ -32,6 +34,15 @@ fun rememberThumbnailShape(
     kind: ThumbnailShapeKind,
     cornerRadius: Float,
 ): Shape {
+    val (randomShapes) =
+        rememberPreference(
+            RandomThumbnailShapeKey,
+            defaultValue = false,
+        )
+    if (randomShapes) {
+        val randomShape = remember(cornerRadius) { AodThumbnailShape.entries.random() }
+        return randomShape.toComposeShape(cornerRadius = cornerRadius, startAngle = 0)
+    }
     val (shapeType) =
         when (kind) {
             ThumbnailShapeKind.SONG ->

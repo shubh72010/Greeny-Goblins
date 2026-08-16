@@ -292,6 +292,8 @@
     <string name="song_thumbnail_shape_desc">Material You shape used for song artwork</string>
     <string name="artist_thumbnail_shape">Artist thumbnail shape</string>
     <string name="artist_thumbnail_shape_desc">Material You shape used for artist images</string>
+    <string name="random_thumbnail_shape">Random shapes</string>
+    <string name="random_thumbnail_shape_desc">Use a random Material You shape for every thumbnail</string>
     <string name="follow_theme">Follow theme</string>
     <string name="gradient">Gradient</string>
     <string name="player_design_style">Player design style</string>
