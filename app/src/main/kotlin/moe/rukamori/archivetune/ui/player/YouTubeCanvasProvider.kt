@@ -138,29 +138,33 @@ object YouTubeCanvasProvider {
         val artistName = artistNameRaw.trim()
         if (artistName.isBlank()) return null
 
-        for (videoId in candidateVideoIds.distinct()) {
-            if (!videoId.isUsableVideoId()) continue
-            val resolved = resolveVideo(videoId)
-            if (resolved != null) {
-                Timber.tag(LogTag).d("Using artist page music video %s for background", videoId)
-                return resolved.toCanvasArtwork()
-            }
+        val searchHit = searchForArtistMusicVideo(artistName) ?: return null
+        val resolved = resolveVideo(searchHit.id)
+        if (resolved != null) {
+            return resolved.toCanvasArtwork()
         }
 
-        val searchHit = searchForArtistMusicVideo(artistName) ?: return null
-        val resolved = resolveVideo(searchHit.id) ?: return null
-        return resolved.toCanvasArtwork()
+        for (videoId in candidateVideoIds.distinct()) {
+            if (!videoId.isUsableVideoId()) continue
+            val candidate = resolveVideo(videoId)
+            if (candidate != null) {
+                Timber.tag(LogTag).d("Using artist page music video %s for background", videoId)
+                return candidate.toCanvasArtwork()
+            }
+        }
+        return null
     }
 
     private suspend fun searchForArtistMusicVideo(artistNameRaw: String): SongItem? {
         val artist = artistNameRaw.trim()
         if (artist.isBlank()) return null
 
+        val query = "$artist music video"
         val result =
-            YouTube.search(artist, YouTube.SearchFilter.FILTER_VIDEO).getOrNull()
+            YouTube.search(query, YouTube.SearchFilter.FILTER_VIDEO).getOrNull()
                 ?.also { res ->
                     if (res == null) {
-                        Timber.tag(LogTag).w("artist video search failed for query=%s", artist)
+                        Timber.tag(LogTag).w("artist video search failed for query=%s", query)
                     }
                 }
                 ?: return null
@@ -180,14 +184,16 @@ object YouTubeCanvasProvider {
                             ?.let { if (it in MinDurationSeconds..MaxDurationSeconds) 1 else -2 }
                             ?: 0
                     val title = item.title.lowercase(Locale.ROOT)
-                    val officialScore =
+                    val keywordScore =
                         when {
+                            title.contains("music video") -> 3
+                            title.contains("vevo") -> 3
                             title.contains("official") -> 2
                             title.contains("lyric") -> -2
                             title.contains("audio") -> -1
                             else -> 0
                         }
-                    musicVideoScore + artistScore + durationScore + officialScore
+                    musicVideoScore + artistScore + durationScore + keywordScore
                 },
             ).firstOrNull()
     }
