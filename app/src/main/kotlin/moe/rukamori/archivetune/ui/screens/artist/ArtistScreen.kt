@@ -509,7 +509,7 @@ fun ArtistScreen(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(top = systemBarsTopPadding + AppBarHeight),
+.padding(top = systemBarsTopPadding + AppBarHeight + 40.dp),
                         ) {
                             // Artist image placeholder - circular
                             Box(
@@ -602,8 +602,8 @@ fun ArtistScreen(
                     Column(
                         modifier =
                             Modifier
-                                .fillMaxWidth()
-                                .padding(top = systemBarsTopPadding + AppBarHeight),
+.fillMaxWidth()
+                                    .padding(top = systemBarsTopPadding + AppBarHeight + 40.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         // Artist Image - Circular with shadow
