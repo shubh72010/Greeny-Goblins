@@ -130,6 +130,8 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -1437,9 +1439,9 @@ fun SimilarRecommendationsTitle(
                 {
                     val shape =
                         if (recommendation.title is Artist) {
-                            CircleShape
+                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
                         } else {
-                            RoundedCornerShape(ThumbnailCornerRadius)
+                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value)
                         }
                     AsyncImage(
                         model = thumbnailUrl,
@@ -1489,9 +1491,9 @@ fun HomePageSectionTitle(
                 {
                     val shape =
                         if (section.endpoint?.isArtistEndpoint == true) {
-                            CircleShape
+                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
                         } else {
-                            RoundedCornerShape(ThumbnailCornerRadius)
+                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value)
                         }
                     AsyncImage(
                         model = thumbnailUrl,

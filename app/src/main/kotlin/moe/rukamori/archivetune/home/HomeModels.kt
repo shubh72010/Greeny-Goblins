@@ -48,6 +48,13 @@ data class HomeUiState(
     val quickPicksDisplayMode: QuickPicksDisplayMode,
     val showCategoryChips: Boolean,
     val showTonalBackdrop: Boolean,
+    val showQuickPicks: Boolean,
+    val showSpeedDial: Boolean,
+    val showKeepListening: Boolean,
+    val showAccountPlaylists: Boolean,
+    val showForgottenFavorites: Boolean,
+    val showSimilar: Boolean,
+    val showRemoteSections: Boolean,
     val isRefreshing: Boolean,
     val isLoadingMore: Boolean,
 )

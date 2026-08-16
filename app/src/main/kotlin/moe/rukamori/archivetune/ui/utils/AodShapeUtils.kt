@@ -18,6 +18,36 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.constants.AodThumbnailShape
+import moe.rukamori.archivetune.constants.ArtistThumbnailShapeKey
+import moe.rukamori.archivetune.constants.SongThumbnailShapeKey
+import moe.rukamori.archivetune.utils.rememberEnumPreference
+
+enum class ThumbnailShapeKind {
+    SONG,
+    ARTIST,
+}
+
+@Composable
+fun rememberThumbnailShape(
+    kind: ThumbnailShapeKind,
+    cornerRadius: Float,
+): Shape {
+    val (shapeType) =
+        when (kind) {
+            ThumbnailShapeKind.SONG ->
+                rememberEnumPreference(
+                    SongThumbnailShapeKey,
+                    defaultValue = AodThumbnailShape.ROUNDED,
+                )
+
+            ThumbnailShapeKind.ARTIST ->
+                rememberEnumPreference(
+                    ArtistThumbnailShapeKey,
+                    defaultValue = AodThumbnailShape.CIRCLE,
+                )
+        }
+    return shapeType.toComposeShape(cornerRadius = cornerRadius, startAngle = 0)
+}
 
 fun AodThumbnailShape.supportsArtworkGlowShadow(): Boolean =
     when (this) {

@@ -77,10 +77,13 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
+import moe.rukamori.archivetune.constants.ShowMiniPlayerControlsKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.together.isConnectedToSession
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.absoluteValue
@@ -307,9 +310,12 @@ private fun MiniPlayerArtwork(
     position: Long,
     duration: Long,
     isLoading: Boolean,
+    isPlaying: Boolean,
     colors: MiniPlayerContentColors,
     modifier: Modifier = Modifier,
+    onTogglePlayPause: () -> Unit = {},
 ) {
+    val artworkShape = rememberThumbnailShape(ThumbnailShapeKind.SONG, 18.5f)
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier.size(47.dp),
@@ -334,12 +340,12 @@ private fun MiniPlayerArtwork(
             modifier =
                 Modifier
                     .size(37.dp)
-                    .clip(CircleShape)
+                    .clip(artworkShape)
                     .background(colors.artworkContainer)
                     .border(
                         width = 1.dp,
                         color = colors.artworkBorder,
-                        shape = CircleShape,
+                        shape = artworkShape,
                     ),
         ) {
             val baseThumbnailUrl = mediaMetadata?.thumbnailUrl
@@ -364,6 +370,26 @@ private fun MiniPlayerArtwork(
                     modifier = Modifier.size(22.dp),
                 )
             }
+        }
+
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(37.dp)
+                    .clip(artworkShape)
+                    .background(Color.Black.copy(alpha = 0.35f))
+                    .clickable(onClick = onTogglePlayPause),
+        ) {
+            Icon(
+                painter =
+                    painterResource(
+                        if (isPlaying && !isLoading) R.drawable.pause else R.drawable.play,
+                    ),
+                contentDescription = stringResource(if (isPlaying) R.string.widget_pause else R.string.play),
+                tint = Color.White,
+                modifier = Modifier.size(14.dp),
+            )
         }
     }
 }
@@ -501,6 +527,9 @@ fun NewMiniPlayerContent(
     val togetherSessionState by playerConnection.service.togetherSessionState.collectAsStateWithLifecycle()
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
     val canSkipNext by playerConnection.canSkipNext.collectAsStateWithLifecycle()
+    val (showMiniPlayerControls) = rememberPreference(ShowMiniPlayerControlsKey, true)
+
+    val haptic = LocalHapticFeedback.current
 
     val isLoading = playbackState == Player.STATE_BUFFERING
 
@@ -516,7 +545,12 @@ fun NewMiniPlayerContent(
             position = position,
             duration = duration,
             isLoading = isLoading,
+            isPlaying = isPlaying,
             colors = colors,
+            onTogglePlayPause = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                playerConnection.player.togglePlayPause()
+            },
         )
 
         Spacer(modifier = Modifier.width(5.dp))
@@ -548,15 +582,17 @@ fun NewMiniPlayerContent(
             }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        if (showMiniPlayerControls) {
+            Spacer(modifier = Modifier.width(12.dp))
 
-        MiniPlayerTransportControls(
-            isPlaying = isPlaying,
-            playbackState = playbackState,
-            canSkipPrevious = canSkipPrevious,
-            canSkipNext = canSkipNext,
-            playerConnection = playerConnection,
-            colors = colors,
-        )
+            MiniPlayerTransportControls(
+                isPlaying = isPlaying,
+                playbackState = playbackState,
+                canSkipPrevious = canSkipPrevious,
+                canSkipNext = canSkipNext,
+                playerConnection = playerConnection,
+                colors = colors,
+            )
+        }
     }
 }

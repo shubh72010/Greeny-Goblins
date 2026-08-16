@@ -91,6 +91,8 @@ import moe.rukamori.archivetune.spotify.SpotifyLibraryViewModel
 import moe.rukamori.archivetune.spotify.SpotifyMapper
 import moe.rukamori.archivetune.spotify.models.SpotifyPlaylist
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryMixViewModel
 import moe.rukamori.archivetune.viewmodels.LibraryTopMixEmptyReason
@@ -620,7 +622,7 @@ fun LibraryMixScreen(
                                         modifier =
                                             Modifier
                                                 .size(72.dp)
-                                                .clip(CircleShape),
+                                                .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(

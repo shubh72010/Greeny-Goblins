@@ -104,6 +104,8 @@ import moe.rukamori.archivetune.db.entities.SongWithStats
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.ComposeToImage
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
@@ -1082,7 +1084,12 @@ private fun SummaryRankColumn(
     modifier: Modifier = Modifier,
 ) {
     val imageModel = rememberShareSafeImageRequest(imageData)
-    val imageShape = if (circularImage) CircleShape else RoundedCornerShape(14.dp)
+    val imageShape =
+        if (circularImage) {
+            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
+        } else {
+            rememberThumbnailShape(ThumbnailShapeKind.SONG, 14f)
+        }
 
     Column(
         modifier = modifier,
@@ -1339,7 +1346,7 @@ private fun RankedArtistRow(
             modifier =
                 Modifier
                     .size(46.dp)
-                    .clip(CircleShape),
+                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
         )
         Column(
             modifier = Modifier.weight(1f),

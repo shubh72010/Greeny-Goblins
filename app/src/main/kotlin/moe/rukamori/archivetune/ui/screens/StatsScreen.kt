@@ -114,7 +114,9 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
 import moe.rukamori.archivetune.ui.utils.backToMain
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.viewmodels.StatsScreenState
@@ -1142,7 +1144,13 @@ private fun StatsHighlightCard(
                 modifier =
                     Modifier
                         .size(80.dp)
-                        .clip(if (useCircleShape) CircleShape else MaterialTheme.shapes.medium),
+                        .clip(
+                            if (useCircleShape) {
+                                rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
+                            } else {
+                                rememberThumbnailShape(ThumbnailShapeKind.SONG, 10f)
+                            },
+                        ),
             )
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(

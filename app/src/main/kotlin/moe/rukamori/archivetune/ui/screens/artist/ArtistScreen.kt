@@ -167,6 +167,8 @@ import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.ArtistAction
 import moe.rukamori.archivetune.viewmodels.ArtistBlockState
@@ -568,7 +570,7 @@ fun ArtistScreen(
                                     modifier =
                                         Modifier
                                             .size(210.dp)
-                                            .clip(CircleShape),
+                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
                                 )
                             } else {
                                 // Placeholder when no image
@@ -576,7 +578,7 @@ fun ArtistScreen(
                                     modifier =
                                         Modifier
                                             .size(200.dp)
-                                            .clip(CircleShape)
+                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f))
                                             .background(MaterialTheme.colorScheme.surfaceVariant),
                                     contentAlignment = Alignment.Center,
                                 ) {

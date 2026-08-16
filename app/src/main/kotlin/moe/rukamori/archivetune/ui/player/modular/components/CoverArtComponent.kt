@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +49,8 @@ import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.player.modular.LocalThumbnailCornerRadius
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentRegistry
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentType
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -81,7 +84,7 @@ fun CoverArtComponent(
     cornerRadius: Float = 16f,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(cornerRadius.dp)
+    val shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, cornerRadius)
     when (coverArtStyle) {
         ModularCoverArtStyle.STYLE_CARD -> StyleCardVariant(
             metadata = metadata,
@@ -110,7 +113,7 @@ private fun DefaultCoverArtVariant(
     metadata: MediaMetadata?,
     hideThumbnail: Boolean = false,
     cropToSquare: Boolean = false,
-    shape: RoundedCornerShape = RoundedCornerShape(16.dp),
+    shape: Shape = RoundedCornerShape(16.dp),
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -138,7 +141,7 @@ private fun DefaultCoverArtVariant(
 private fun StyleCardVariant(
     metadata: MediaMetadata?,
     hideThumbnail: Boolean = false,
-    shape: RoundedCornerShape = RoundedCornerShape(16.dp),
+    shape: Shape = RoundedCornerShape(16.dp),
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -196,7 +199,7 @@ private fun StyleCardVariant(
 private fun LyricVariant(
     metadata: MediaMetadata?,
     playerConnection: PlayerConnection,
-    shape: RoundedCornerShape = RoundedCornerShape(16.dp),
+    shape: Shape = RoundedCornerShape(16.dp),
     modifier: Modifier = Modifier,
 ) {
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)

@@ -333,7 +333,7 @@ private fun HomeContent(
                     //     }
                     // }
 
-                    if (uiState.quickPicks.isNotEmpty()) {
+                    if (uiState.showQuickPicks && uiState.quickPicks.isNotEmpty()) {
                         item(
                             key = "home_quick_picks_header",
                             contentType = "section_header",
@@ -361,7 +361,7 @@ private fun HomeContent(
                         }
                     }
 
-                    if (uiState.speedDialItems.isNotEmpty()) {
+                    if (uiState.showSpeedDial && uiState.speedDialItems.isNotEmpty()) {
                         sectionSpacer("speed_dial")
                         item(
                             key = "home_speed_dial_header",
@@ -390,7 +390,7 @@ private fun HomeContent(
                         }
                     }
 
-                    if (uiState.keepListening.isNotEmpty()) {
+                    if (uiState.showKeepListening && uiState.keepListening.isNotEmpty()) {
                         sectionSpacer("keep_listening")
                         item(
                             key = "home_keep_listening_header",
@@ -419,7 +419,7 @@ private fun HomeContent(
                         }
                     }
 
-                    if (uiState.accountPlaylists.isNotEmpty()) {
+                    if (uiState.showAccountPlaylists && uiState.accountPlaylists.isNotEmpty()) {
                         sectionSpacer("account_playlists")
                         item(
                             key = "home_account_playlists",
@@ -445,7 +445,7 @@ private fun HomeContent(
                         }
                     }
 
-                    if (uiState.forgottenFavorites.isNotEmpty()) {
+                    if (uiState.showForgottenFavorites && uiState.forgottenFavorites.isNotEmpty()) {
                         sectionSpacer("forgotten_favorites")
                         item(
                             key = "home_forgotten_favorites_header",
@@ -476,64 +476,68 @@ private fun HomeContent(
                         }
                     }
 
-                    uiState.similarRecommendations.forEach { recommendation ->
-                        sectionSpacer("similar_${recommendation.title.id}")
-                        item(
-                            key = "home_similar_header_${recommendation.title.id}",
-                            contentType = "section_header",
-                        ) {
-                            SimilarRecommendationsTitle(
-                                recommendation = recommendation,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item(
-                            key = "home_similar_${recommendation.title.id}",
-                            contentType = "media_shelf",
-                        ) {
-                            SimilarRecommendationsSection(
-                                recommendation = recommendation,
-                                mediaMetadata = mediaMetadata,
-                                isPlaying = isPlaying,
-                                navController = navController,
-                                playerConnection = playerConnection,
-                                menuState = menuState,
-                                haptic = haptic,
-                                scope = scope,
-                                modifier = Modifier.animateItem(),
-                            )
+                    if (uiState.showSimilar) {
+                        uiState.similarRecommendations.forEach { recommendation ->
+                            sectionSpacer("similar_${recommendation.title.id}")
+                            item(
+                                key = "home_similar_header_${recommendation.title.id}",
+                                contentType = "section_header",
+                            ) {
+                                SimilarRecommendationsTitle(
+                                    recommendation = recommendation,
+                                    navController = navController,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                            item(
+                                key = "home_similar_${recommendation.title.id}",
+                                contentType = "media_shelf",
+                            ) {
+                                SimilarRecommendationsSection(
+                                    recommendation = recommendation,
+                                    mediaMetadata = mediaMetadata,
+                                    isPlaying = isPlaying,
+                                    navController = navController,
+                                    playerConnection = playerConnection,
+                                    menuState = menuState,
+                                    haptic = haptic,
+                                    scope = scope,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
                     }
 
-                    uiState.homePage?.sections.orEmpty().forEachIndexed { index, section ->
-                        val sectionKey = "${section.endpoint?.browseId ?: section.title}_$index"
-                        sectionSpacer("remote_$sectionKey")
-                        item(
-                            key = "home_remote_header_$sectionKey",
-                            contentType = "section_header",
-                        ) {
-                            HomePageSectionTitle(
-                                section = section,
-                                navController = navController,
-                                modifier = Modifier.animateItem(),
-                            )
-                        }
-                        item(
-                            key = "home_remote_$sectionKey",
-                            contentType = "media_shelf",
-                        ) {
-                            HomePageSectionContent(
-                                section = section,
-                                mediaMetadata = mediaMetadata,
-                                isPlaying = isPlaying,
-                                navController = navController,
-                                playerConnection = playerConnection,
-                                menuState = menuState,
-                                haptic = haptic,
-                                scope = scope,
-                                modifier = Modifier.animateItem(),
-                            )
+                    if (uiState.showRemoteSections) {
+                        uiState.homePage?.sections.orEmpty().forEachIndexed { index, section ->
+                            val sectionKey = "${section.endpoint?.browseId ?: section.title}_$index"
+                            sectionSpacer("remote_$sectionKey")
+                            item(
+                                key = "home_remote_header_$sectionKey",
+                                contentType = "section_header",
+                            ) {
+                                HomePageSectionTitle(
+                                    section = section,
+                                    navController = navController,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
+                            item(
+                                key = "home_remote_$sectionKey",
+                                contentType = "media_shelf",
+                            ) {
+                                HomePageSectionContent(
+                                    section = section,
+                                    mediaMetadata = mediaMetadata,
+                                    isPlaying = isPlaying,
+                                    navController = navController,
+                                    playerConnection = playerConnection,
+                                    menuState = menuState,
+                                    haptic = haptic,
+                                    scope = scope,
+                                    modifier = Modifier.animateItem(),
+                                )
+                            }
                         }
                     }
 

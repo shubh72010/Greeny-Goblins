@@ -15,7 +15,14 @@ import kotlinx.coroutines.flow.map
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
+import moe.rukamori.archivetune.constants.ShowHomeAccountPlaylistsKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
+import moe.rukamori.archivetune.constants.ShowHomeForgottenFavoritesKey
+import moe.rukamori.archivetune.constants.ShowHomeKeepListeningKey
+import moe.rukamori.archivetune.constants.ShowHomeQuickPicksKey
+import moe.rukamori.archivetune.constants.ShowHomeRemoteSectionsKey
+import moe.rukamori.archivetune.constants.ShowHomeSimilarKey
+import moe.rukamori.archivetune.constants.ShowHomeSpeedDialKey
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.utils.dataStore
 import javax.inject.Inject
@@ -39,5 +46,40 @@ class HomeRepository
         val showTonalBackdrop: Flow<Boolean> =
             context.dataStore.data
                 .map { preferences -> preferences[DisableBlurKey] != true }
+                .distinctUntilChanged()
+
+        val showQuickPicks: Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences -> preferences[ShowHomeQuickPicksKey] ?: true }
+                .distinctUntilChanged()
+
+        val showSpeedDial: Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences -> preferences[ShowHomeSpeedDialKey] ?: true }
+                .distinctUntilChanged()
+
+        val showKeepListening: Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences -> preferences[ShowHomeKeepListeningKey] ?: true }
+                .distinctUntilChanged()
+
+        val showAccountPlaylists: Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences -> preferences[ShowHomeAccountPlaylistsKey] ?: true }
+                .distinctUntilChanged()
+
+        val showForgottenFavorites: Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences -> preferences[ShowHomeForgottenFavoritesKey] ?: true }
+                .distinctUntilChanged()
+
+        val showSimilar: Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences -> preferences[ShowHomeSimilarKey] ?: true }
+                .distinctUntilChanged()
+
+        val showRemoteSections: Flow<Boolean> =
+            context.dataStore.data
+                .map { preferences -> preferences[ShowHomeRemoteSectionsKey] ?: true }
                 .distinctUntilChanged()
     }

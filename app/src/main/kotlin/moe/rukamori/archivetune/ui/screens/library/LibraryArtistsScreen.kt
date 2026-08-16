@@ -87,6 +87,8 @@ import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.LibraryArtistsViewModel
@@ -518,7 +520,7 @@ fun LibraryArtistsScreen(
                         modifier =
                             Modifier
                                 .size(52.dp)
-                                .clip(CircleShape)
+                                .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
 
@@ -613,7 +615,7 @@ fun LibraryArtistsScreen(
                                     modifier =
                                         Modifier
                                             .size(60.dp)
-                                            .clip(CircleShape),
+                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(

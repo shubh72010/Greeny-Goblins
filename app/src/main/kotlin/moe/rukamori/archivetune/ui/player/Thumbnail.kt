@@ -108,6 +108,8 @@ import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.ui.utils.highRes
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
@@ -528,7 +530,7 @@ fun Thumbnail(
                                     modifier =
                                         Modifier
                                             .size(containerMaxWidth - (PlayerHorizontalPadding * 2))
-                                            .clip(RoundedCornerShape(thumbnailCornerRadius.dp)),
+                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.SONG, thumbnailCornerRadius)),
                                 ) {
                                     if (hidePlayerThumbnail) {
                                         // Show app logo when thumbnail is hidden

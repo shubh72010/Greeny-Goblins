@@ -68,6 +68,8 @@ import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppFontPreference
+import moe.rukamori.archivetune.constants.AodThumbnailShape
+import moe.rukamori.archivetune.constants.ArtistThumbnailShapeKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -99,11 +101,20 @@ import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
 import moe.rukamori.archivetune.constants.QuickPicksDisplayModeKey
 import moe.rukamori.archivetune.constants.RandomThemeOnStartupKey
+import moe.rukamori.archivetune.constants.ShowHomeAccountPlaylistsKey
 import moe.rukamori.archivetune.constants.ShowHomeCategoryChipsKey
+import moe.rukamori.archivetune.constants.ShowHomeForgottenFavoritesKey
+import moe.rukamori.archivetune.constants.ShowHomeKeepListeningKey
+import moe.rukamori.archivetune.constants.ShowHomeQuickPicksKey
+import moe.rukamori.archivetune.constants.ShowHomeRemoteSectionsKey
+import moe.rukamori.archivetune.constants.ShowHomeSimilarKey
+import moe.rukamori.archivetune.constants.ShowHomeSpeedDialKey
+import moe.rukamori.archivetune.constants.ShowMiniPlayerControlsKey
 import moe.rukamori.archivetune.constants.ShowPlayerVolumeBarKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
 import moe.rukamori.archivetune.constants.SliderStyle
 import moe.rukamori.archivetune.constants.SliderStyleKey
+import moe.rukamori.archivetune.constants.SongThumbnailShapeKey
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
 import moe.rukamori.archivetune.constants.SwipeThumbnailKey
 import moe.rukamori.archivetune.constants.SwipeToSongKey
@@ -116,6 +127,7 @@ import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.ThumbnailCornerRadiusSelectorButton
+import moe.rukamori.archivetune.ui.component.ThumbnailShapePicker
 import moe.rukamori.archivetune.ui.player.StyledPlaybackSlider
 import moe.rukamori.archivetune.ui.theme.CustomFontLoader
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -183,6 +195,11 @@ fun AppearanceSettings(navController: NavController) {
         rememberEnumPreference(
             MiniPlayerBackgroundStyleKey,
             defaultValue = MiniPlayerBackgroundStyle.THEME,
+        )
+    val (showMiniPlayerControls, onShowMiniPlayerControlsChange) =
+        rememberPreference(
+            ShowMiniPlayerControlsKey,
+            defaultValue = true,
         )
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = true)
     val (disableBlur, onDisableBlurChange) = rememberPreference(DisableBlurKey, defaultValue = false)
@@ -253,10 +270,56 @@ fun AppearanceSettings(navController: NavController) {
             ShowHomeCategoryChipsKey,
             defaultValue = true,
         )
+    val (showHomeQuickPicks, onShowHomeQuickPicksChange) =
+        rememberPreference(
+            ShowHomeQuickPicksKey,
+            defaultValue = true,
+        )
+    val (showHomeSpeedDial, onShowHomeSpeedDialChange) =
+        rememberPreference(
+            ShowHomeSpeedDialKey,
+            defaultValue = true,
+        )
+    val (showHomeKeepListening, onShowHomeKeepListeningChange) =
+        rememberPreference(
+            ShowHomeKeepListeningKey,
+            defaultValue = true,
+        )
+    val (showHomeAccountPlaylists, onShowHomeAccountPlaylistsChange) =
+        rememberPreference(
+            ShowHomeAccountPlaylistsKey,
+            defaultValue = true,
+        )
+    val (showHomeForgottenFavorites, onShowHomeForgottenFavoritesChange) =
+        rememberPreference(
+            ShowHomeForgottenFavoritesKey,
+            defaultValue = true,
+        )
+    val (showHomeSimilar, onShowHomeSimilarChange) =
+        rememberPreference(
+            ShowHomeSimilarKey,
+            defaultValue = true,
+        )
+    val (showHomeRemoteSections, onShowHomeRemoteSectionsChange) =
+        rememberPreference(
+            ShowHomeRemoteSectionsKey,
+            defaultValue = true,
+        )
     val (quickPicksDisplayMode, onQuickPicksDisplayModeChange) =
         rememberEnumPreference(
             QuickPicksDisplayModeKey,
             defaultValue = QuickPicksDisplayMode.CARD,
+        )
+
+    val (songThumbnailShape, onSongThumbnailShapeChange) =
+        rememberEnumPreference(
+            SongThumbnailShapeKey,
+            defaultValue = AodThumbnailShape.ROUNDED,
+        )
+    val (artistThumbnailShape, onArtistThumbnailShapeChange) =
+        rememberEnumPreference(
+            ArtistThumbnailShapeKey,
+            defaultValue = AodThumbnailShape.CIRCLE,
         )
 
     val customFontPickerLauncher =
@@ -708,6 +771,16 @@ fun AppearanceSettings(navController: NavController) {
 
                 item {
                     SwitchPreference(
+                        title = { Text(stringResource(R.string.show_mini_player_controls)) },
+                        description = stringResource(R.string.show_mini_player_controls_desc),
+                        icon = { Icon(painterResource(R.drawable.play), null) },
+                        checked = showMiniPlayerControls,
+                        onCheckedChange = onShowMiniPlayerControlsChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
                         title = { Text(stringResource(R.string.hide_player_thumbnail)) },
                         description = stringResource(R.string.hide_player_thumbnail_desc),
                         icon = { Icon(painterResource(R.drawable.hide_image), null) },
@@ -872,6 +945,29 @@ fun AppearanceSettings(navController: NavController) {
                 }
             }
 
+            PreferenceGroup(title = stringResource(R.string.thumbnail_shapes)) {
+                item {
+                    ThumbnailShapePicker(
+                        title = stringResource(R.string.song_thumbnail_shape),
+                        description = stringResource(R.string.song_thumbnail_shape_desc),
+                        selectedShape = songThumbnailShape,
+                        cornerRadius = thumbnailCornerRadius,
+                        onShapeSelected = onSongThumbnailShapeChange,
+                        modifier = Modifier.padding(vertical = 6.dp),
+                    )
+                }
+                item {
+                    ThumbnailShapePicker(
+                        title = stringResource(R.string.artist_thumbnail_shape),
+                        description = stringResource(R.string.artist_thumbnail_shape_desc),
+                        selectedShape = artistThumbnailShape,
+                        cornerRadius = thumbnailCornerRadius,
+                        onShapeSelected = onArtistThumbnailShapeChange,
+                        modifier = Modifier.padding(vertical = 6.dp),
+                    )
+                }
+            }
+
             PreferenceGroup(title = stringResource(R.string.misc)) {
                 item {
                     EnumListPreference(
@@ -939,6 +1035,94 @@ fun AppearanceSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.home_outlined), null) },
                         checked = showHomeCategoryChips,
                         onCheckedChange = onShowHomeCategoryChipsChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.show_home_sections)) },
+                        description = stringResource(R.string.show_home_sections_desc),
+                        icon = { Icon(painterResource(R.drawable.home_outlined), null) },
+                        checked =
+                            showHomeQuickPicks &&
+                                showHomeSpeedDial &&
+                                showHomeKeepListening &&
+                                showHomeAccountPlaylists &&
+                                showHomeForgottenFavorites &&
+                                showHomeSimilar &&
+                                showHomeRemoteSections,
+                        onCheckedChange = { checked ->
+                            onShowHomeQuickPicksChange(checked)
+                            onShowHomeSpeedDialChange(checked)
+                            onShowHomeKeepListeningChange(checked)
+                            onShowHomeAccountPlaylistsChange(checked)
+                            onShowHomeForgottenFavoritesChange(checked)
+                            onShowHomeSimilarChange(checked)
+                            onShowHomeRemoteSectionsChange(checked)
+                        },
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.home_section_quick_picks)) },
+                        icon = { Icon(painterResource(R.drawable.home_outlined), null) },
+                        checked = showHomeQuickPicks,
+                        onCheckedChange = onShowHomeQuickPicksChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.home_section_speed_dial)) },
+                        icon = { Icon(painterResource(R.drawable.home_outlined), null) },
+                        checked = showHomeSpeedDial,
+                        onCheckedChange = onShowHomeSpeedDialChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.home_section_keep_listening)) },
+                        icon = { Icon(painterResource(R.drawable.home_outlined), null) },
+                        checked = showHomeKeepListening,
+                        onCheckedChange = onShowHomeKeepListeningChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.home_section_account_playlists)) },
+                        icon = { Icon(painterResource(R.drawable.home_outlined), null) },
+                        checked = showHomeAccountPlaylists,
+                        onCheckedChange = onShowHomeAccountPlaylistsChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.home_section_forgotten_favorites)) },
+                        icon = { Icon(painterResource(R.drawable.home_outlined), null) },
+                        checked = showHomeForgottenFavorites,
+                        onCheckedChange = onShowHomeForgottenFavoritesChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.home_section_similar)) },
+                        icon = { Icon(painterResource(R.drawable.home_outlined), null) },
+                        checked = showHomeSimilar,
+                        onCheckedChange = onShowHomeSimilarChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.home_section_remote)) },
+                        icon = { Icon(painterResource(R.drawable.home_outlined), null) },
+                        checked = showHomeRemoteSections,
+                        onCheckedChange = onShowHomeRemoteSectionsChange,
                     )
                 }
 

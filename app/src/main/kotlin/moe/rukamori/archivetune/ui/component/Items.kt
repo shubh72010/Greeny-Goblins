@@ -132,6 +132,8 @@ import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -466,7 +468,7 @@ fun SongGridItem(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = RoundedCornerShape(GridThumbnailCornerRadius),
+            shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value),
             modifier = Modifier.size(GridThumbnailHeight),
         )
         if (!isActive) {
@@ -509,7 +511,7 @@ fun ArtistListItem(
             modifier =
                 Modifier
                     .size(ListThumbnailSize)
-                    .clip(CircleShape),
+                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, ListThumbnailSize.value / 2f)),
         )
     },
     trailingContent = trailingContent,
@@ -538,7 +540,7 @@ fun ArtistGridItem(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .clip(CircleShape),
+                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1301,7 +1303,7 @@ fun MediaMetadataListItem(
                 isActive = isActive,
                 isPlaying = isPlaying,
                 shouldLoadImage = shouldLoadImage,
-                shape = RoundedCornerShape(ThumbnailCornerRadius),
+                shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value),
                 modifier = Modifier.size(ListThumbnailSize),
             )
         },
@@ -1379,7 +1381,12 @@ fun YouTubeListItem(
                     isSelected = isSelected,
                     isActive = isActive,
                     isPlaying = isPlaying,
-                    shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(ThumbnailCornerRadius),
+                    shape =
+                        if (item is ArtistItem) {
+                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
+                        } else {
+                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value)
+                        },
                     modifier = Modifier.size(ListThumbnailSize),
                 )
             },
@@ -1462,7 +1469,12 @@ fun YouTubeGridItem(
     thumbnailContent = {
         val database = LocalDatabase.current
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
-        val shape = if (item is ArtistItem) CircleShape else RoundedCornerShape(GridThumbnailCornerRadius)
+        val shape =
+            if (item is ArtistItem) {
+                rememberThumbnailShape(ThumbnailShapeKind.ARTIST, GridThumbnailCornerRadius.value)
+            } else {
+                rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value)
+            }
 
         ItemThumbnail(
             thumbnailUrl = item.thumbnail,
@@ -1524,7 +1536,7 @@ fun LocalSongsGrid(
             thumbnailUrl = thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = RoundedCornerShape(GridThumbnailCornerRadius),
+            shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value),
             modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             showCenterPlay = true,
             playButtonVisible = false,
@@ -1553,7 +1565,7 @@ fun LocalArtistsGrid(
             thumbnailUrl = thumbnailUrl,
             isActive = false,
             isPlaying = false,
-            shape = CircleShape,
+            shape = rememberThumbnailShape(ThumbnailShapeKind.ARTIST, GridThumbnailCornerRadius.value),
             modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             showCenterPlay = false,
             playButtonVisible = false,

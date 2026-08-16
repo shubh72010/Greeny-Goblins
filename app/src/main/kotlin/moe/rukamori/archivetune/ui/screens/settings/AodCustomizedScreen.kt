@@ -103,6 +103,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
+import moe.rukamori.archivetune.ui.component.ThumbnailShapePicker
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.supportsArtworkGlowShadow
@@ -371,7 +372,9 @@ fun AodCustomizedScreen(navController: NavController) {
                 key = "aod_thumbnail",
                 contentType = "shape_picker",
             ) {
-                AodShapePicker(
+                ThumbnailShapePicker(
+                    title = stringResource(R.string.aod_customize_thumbnail_shape),
+                    description = stringResource(R.string.aod_customize_thumbnail_shape_desc),
                     selectedShape = thumbnailShape,
                     cornerRadius = thumbnailCornerRadius,
                     shapeRotation = thumbnailShapeRotation,
@@ -855,132 +858,6 @@ private fun PreviewControlIcon(
 }
 
 @Composable
-private fun AodShapePicker(
-    selectedShape: AodThumbnailShape,
-    cornerRadius: Float,
-    shapeRotation: Int,
-    onShapeSelected: (AodThumbnailShape) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shapes = remember { AodThumbnailShape.entries.toList() }
-
-    ElevatedCard(
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        colors =
-            CardDefaults.elevatedCardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    text = stringResource(R.string.aod_customize_thumbnail_shape),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = stringResource(R.string.aod_customize_thumbnail_shape_desc),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                maxItemsInEachRow = 3,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                shapes.forEach { shape ->
-                    AodShapeOption(
-                        shape = shape,
-                        modifier = Modifier.weight(1f),
-                        selected = shape == selectedShape,
-                        cornerRadius = cornerRadius,
-                        shapeRotation = shapeRotation,
-                        onClick = { onShapeSelected(shape) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AodShapeOption(
-    shape: AodThumbnailShape,
-    modifier: Modifier = Modifier,
-    selected: Boolean,
-    cornerRadius: Float,
-    shapeRotation: Int,
-    onClick: () -> Unit,
-) {
-    val composeShape = shape.toComposeShape(cornerRadius = cornerRadius, startAngle = shapeRotation)
-    val borderColor =
-        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-
-    Card(
-        modifier =
-            modifier
-                .heightIn(min = 112.dp)
-                .selectable(
-                    selected = selected,
-                    onClick = onClick,
-                    role = Role.RadioButton,
-                ),
-        shape = MaterialTheme.shapes.large,
-        colors =
-            CardDefaults.cardColors(
-                containerColor =
-                    if (selected) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                    },
-            ),
-        border = BorderStroke(1.dp, borderColor),
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-        ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = composeShape,
-                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-                contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondary,
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (selected) {
-                        Icon(
-                            painter = painterResource(R.drawable.check),
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
-            }
-            Text(
-                text = shape.label(),
-                style = MaterialTheme.typography.labelMedium,
-                color = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                minLines = 2,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
 private fun AodSliderPreference(
     title: String,
     icon: @Composable () -> Unit,
@@ -1113,29 +990,6 @@ private fun Modifier.aodPreviewBackground(
 
     return background(brush)
 }
-
-@Composable
-private fun AodThumbnailShape.label(): String =
-    when (this) {
-        AodThumbnailShape.ROUNDED -> stringResource(R.string.aod_shape_rounded)
-        AodThumbnailShape.SQUARE -> stringResource(R.string.aod_shape_square)
-        AodThumbnailShape.CIRCLE -> stringResource(R.string.aod_shape_circle)
-        AodThumbnailShape.PILL -> stringResource(R.string.aod_shape_pill)
-        AodThumbnailShape.ARCH -> stringResource(R.string.aod_shape_arch)
-        AodThumbnailShape.SLANTED -> stringResource(R.string.aod_shape_slanted)
-        AodThumbnailShape.DIAMOND -> stringResource(R.string.aod_shape_diamond)
-        AodThumbnailShape.PENTAGON -> stringResource(R.string.aod_shape_pentagon)
-        AodThumbnailShape.TRIANGLE -> stringResource(R.string.aod_shape_triangle)
-        AodThumbnailShape.HEART -> stringResource(R.string.aod_shape_heart)
-        AodThumbnailShape.FLOWER -> stringResource(R.string.aod_shape_flower)
-        AodThumbnailShape.CLOVER_4 -> stringResource(R.string.aod_shape_clover_4)
-        AodThumbnailShape.COOKIE_6 -> stringResource(R.string.aod_shape_cookie_6)
-        AodThumbnailShape.COOKIE_9 -> stringResource(R.string.aod_shape_cookie_9)
-        AodThumbnailShape.SUNNY -> stringResource(R.string.aod_shape_sunny)
-        AodThumbnailShape.SOFT_BURST -> stringResource(R.string.aod_shape_soft_burst)
-        AodThumbnailShape.GHOSTISH -> stringResource(R.string.aod_shape_ghostish)
-        AodThumbnailShape.PIXEL_CIRCLE -> stringResource(R.string.aod_shape_pixel_circle)
-    }
 
 @Composable
 private fun AodBackgroundStyle.label(): String =
