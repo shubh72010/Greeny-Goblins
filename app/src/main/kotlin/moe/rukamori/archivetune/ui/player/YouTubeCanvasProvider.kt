@@ -131,6 +131,67 @@ object YouTubeCanvasProvider {
         )
     }
 
+    suspend fun resolveArtistBackgroundVideo(
+        artistNameRaw: String,
+        candidateVideoIds: List<String> = emptyList(),
+    ): CanvasArtwork? {
+        val artistName = artistNameRaw.trim()
+        if (artistName.isBlank()) return null
+
+        for (videoId in candidateVideoIds.distinct()) {
+            if (!videoId.isUsableVideoId()) continue
+            val resolved = resolveVideo(videoId)
+            if (resolved != null) {
+                Timber.tag(LogTag).d("Using artist page music video %s for background", videoId)
+                return resolved.toCanvasArtwork()
+            }
+        }
+
+        val searchHit = searchForArtistMusicVideo(artistName) ?: return null
+        val resolved = resolveVideo(searchHit.id) ?: return null
+        return resolved.toCanvasArtwork()
+    }
+
+    private suspend fun searchForArtistMusicVideo(artistNameRaw: String): SongItem? {
+        val artist = artistNameRaw.trim()
+        if (artist.isBlank()) return null
+
+        val result =
+            YouTube.search(artist, YouTube.SearchFilter.FILTER_VIDEO).getOrNull()
+                ?.also { res ->
+                    if (res == null) {
+                        Timber.tag(LogTag).w("artist video search failed for query=%s", artist)
+                    }
+                }
+                ?: return null
+
+        val normalizedArtist = artist.lowercase(Locale.ROOT)
+        return result
+            .items
+            .filterIsInstance<SongItem>()
+            .filter { it.id.isUsableVideoId() }
+            .sortedWith(
+                compareByDescending<SongItem> { item ->
+                    val musicVideoScore = if (item.isMusicVideo()) 5 else 0
+                    val artistScore =
+                        if (item.artists.any { artistMatches(it.name, normalizedArtist) }) 2 else 0
+                    val durationScore =
+                        item.duration
+                            ?.let { if (it in MinDurationSeconds..MaxDurationSeconds) 1 else -2 }
+                            ?: 0
+                    val title = item.title.lowercase(Locale.ROOT)
+                    val officialScore =
+                        when {
+                            title.contains("official") -> 2
+                            title.contains("lyric") -> -2
+                            title.contains("audio") -> -1
+                            else -> 0
+                        }
+                    musicVideoScore + artistScore + durationScore + officialScore
+                },
+            ).firstOrNull()
+    }
+
     private suspend fun resolveVideo(videoId: String): ResolvedVideo? {
         Timber.tag(LogTag).d("resolveVideo start for %s", videoId)
         val authState = YouTube.currentPlaybackAuthState()

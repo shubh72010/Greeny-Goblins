@@ -43,9 +43,12 @@ import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.extensions.filterExplicitAlbums
+import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.pages.ArtistPage
+import moe.rukamori.archivetune.ui.player.YouTubeCanvasProvider
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.reportException
@@ -105,6 +108,7 @@ class ArtistViewModel
     ) : ViewModel() {
         val artistId = savedStateHandle.get<String>("artistId")!!
         var artistPage by mutableStateOf<ArtistPage?>(null)
+        var artistCanvas by mutableStateOf<CanvasArtwork?>(null)
         private val eventChannel = Channel<ArtistEvent>(capacity = Channel.BUFFERED)
         val events = eventChannel.receiveAsFlow()
         private var blockJob: Job? = null
@@ -171,6 +175,7 @@ class ArtistViewModel
                                 }
 
                         artistPage = page.copy(sections = filteredSections)
+                        resolveArtistCanvas()
 
                         withContext(Dispatchers.IO) {
                             database.artist(artistId).firstOrNull()?.artist?.let { artistEntity ->
@@ -180,6 +185,25 @@ class ArtistViewModel
                     }.onFailure {
                         reportException(it)
                     }
+            }
+        }
+
+        private fun resolveArtistCanvas() {
+            if (artistCanvas != null) return
+            val artistName = artistPage?.artist?.title ?: return
+            val candidateVideoIds =
+                artistPage?.sections
+                    ?.flatMap { section -> section.items }
+                    ?.filterIsInstance<SongItem>()
+                    ?.map { it.id }
+                    .orEmpty()
+            viewModelScope.launch {
+                artistCanvas =
+                    runCatching {
+                        YouTubeCanvasProvider.resolveArtistBackgroundVideo(artistName, candidateVideoIds)
+                    }.onFailure {
+                        reportException(it)
+                    }.getOrNull()
             }
         }
 

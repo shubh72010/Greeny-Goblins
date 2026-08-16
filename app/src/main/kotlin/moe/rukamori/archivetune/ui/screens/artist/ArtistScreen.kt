@@ -163,6 +163,7 @@ import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
+import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.formatCompactCount
@@ -327,8 +328,57 @@ fun ArtistScreen(
                 .fillMaxSize()
                 .background(surfaceColor),
     ) {
+        // Artist video background layer (from artist's latest music video, like canvas)
+        val artistCanvas = viewModel.artistCanvas
+        if (artistCanvas != null && gradientAlpha > 0f) {
+            CanvasArtworkPlayer(
+                primaryUrl = artistCanvas.preferredAnimationUrl,
+                fallbackUrl =
+                    artistCanvas.preferredVerticalAnimationUrl.takeIf { !it.isNullOrBlank() }
+                        ?: artistCanvas.preferredAnimationUrl,
+                isPlaying = true,
+                clipStartMs = artistCanvas.loopStartMs,
+                clipEndMs = artistCanvas.loopEndMs,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxSize(0.65f)
+                        .align(Alignment.TopCenter)
+                        .zIndex(-1f)
+                        .alpha(gradientAlpha),
+            )
+
+            // Readability scrim above the video
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .fillMaxSize(0.65f)
+                        .align(Alignment.TopCenter)
+                        .zIndex(-1f)
+                        .alpha(gradientAlpha)
+                        .drawBehind {
+                            drawRect(
+                                brush =
+                                    Brush.verticalGradient(
+                                        colors =
+                                            listOf(
+                                                Color.Transparent,
+                                                Color.Transparent,
+                                                surfaceColor.copy(alpha = 0.28f),
+                                                surfaceColor.copy(alpha = 0.6f),
+                                                surfaceColor,
+                                            ),
+                                        startY = size.height * 0.35f,
+                                        endY = size.height,
+                                    ),
+                            )
+                        },
+            )
+        }
+
         // Gradient background layer
-        if (gradientColors.isNotEmpty() && gradientAlpha > 0f) {
+        if (artistCanvas == null && gradientColors.isNotEmpty() && gradientAlpha > 0f) {
             Box(
                 modifier =
                     Modifier
