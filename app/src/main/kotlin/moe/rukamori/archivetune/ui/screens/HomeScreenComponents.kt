@@ -131,6 +131,7 @@ import moe.rukamori.archivetune.ui.menu.YouTubeArtistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubePlaylistMenu
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.isTvDevice
 import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -912,27 +913,10 @@ fun KeepListeningSection(
                             .toDp() * 2
                 }
         ) * rows
+    val isTv = LocalContext.current.isTvDevice()
 
-    LazyHorizontalGrid(
-        state = rememberLazyGridState(),
-        rows = GridCells.Fixed(rows),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(gridHeight),
-    ) {
-        items(
-            items = keepListening,
-            key = { item ->
-                when (item) {
-                    is Song -> "song_${item.id}"
-                    is Album -> "album_${item.id}"
-                    is Artist -> "artist_${item.id}"
-                    is Playlist -> "playlist_${item.id}"
-                }
-            },
-            contentType = { item -> item::class },
-        ) { item ->
+    if (isTv) {
+        val itemContent: @Composable (LocalItem) -> Unit = { item ->
             LocalGridItem(
                 item = item,
                 mediaMetadata = mediaMetadata,
@@ -943,6 +927,44 @@ fun KeepListeningSection(
                 haptic = haptic,
                 scope = scope,
             )
+        }
+        TvShelfGrid(
+            items = keepListening,
+            modifier = modifier,
+            itemContent = itemContent,
+        )
+    } else {
+        LazyHorizontalGrid(
+            state = rememberLazyGridState(),
+            rows = GridCells.Fixed(rows),
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .height(gridHeight),
+        ) {
+            items(
+                items = keepListening,
+                key = { item ->
+                    when (item) {
+                        is Song -> "song_${item.id}"
+                        is Album -> "album_${item.id}"
+                        is Artist -> "artist_${item.id}"
+                        is Playlist -> "playlist_${item.id}"
+                    }
+                },
+                contentType = { item -> item::class },
+            ) { item ->
+                LocalGridItem(
+                    item = item,
+                    mediaMetadata = mediaMetadata,
+                    isPlaying = isPlaying,
+                    navController = navController,
+                    playerConnection = playerConnection,
+                    menuState = menuState,
+                    haptic = haptic,
+                    scope = scope,
+                )
+            }
         }
     }
 }
@@ -967,34 +989,52 @@ fun ForgottenFavoritesSection(
 ) {
     val rows = min(4, forgottenFavorites.size)
     val distinctForgottenFavorites = remember(forgottenFavorites) { forgottenFavorites.distinctBy { it.id } }
-
-    LazyHorizontalGrid(
-        state = lazyGridState,
-        rows = GridCells.Fixed(rows),
-        flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
-        contentPadding =
-            WindowInsets.systemBars
-                .only(WindowInsetsSides.Horizontal)
-                .asPaddingValues(),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(ListItemHeight * rows),
-    ) {
-        items(
-            items = distinctForgottenFavorites,
-            key = { it.id },
-            contentType = { "forgotten_favorite_song" },
-        ) { song ->
-            SongListItem(
-                song = song,
-                showInLibraryIcon = true,
-                isActive = song.id == mediaMetadata?.id,
-                isPlaying = isPlaying,
-                isSwipeable = false,
-                trailingContent = {
-                    IconButton(
+    val isTv = LocalContext.current.isTvDevice()
+    val itemContent: @Composable (Song) -> Unit = { song ->
+        SongListItem(
+            song = song,
+            showInLibraryIcon = true,
+            isActive = song.id == mediaMetadata?.id,
+            isPlaying = isPlaying,
+            isSwipeable = false,
+            trailingContent = {
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        menuState.show {
+                            SongMenu(
+                                originalSong = song,
+                                navController = navController,
+                                onDismiss = menuState::dismiss,
+                            )
+                        }
+                    },
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.more_vert),
+                        contentDescription = null,
+                    )
+                }
+            },
+            modifier =
+                Modifier
+                    .then(if (isTv) Modifier.fillMaxWidth() else Modifier.width(horizontalLazyGridItemWidth))
+                    .focusable()
+                    .combinedClickable(
                         onClick = {
+                            if (song.id == mediaMetadata?.id) {
+                                playerConnection.player.togglePlayPause()
+                            } else {
+                                playerConnection.playQueue(
+                                    if (song.song.isLocal) {
+                                        ListQueue(items = listOf(song.toMediaItem()))
+                                    } else {
+                                        YouTubeQueue.radio(song.toMediaMetadata())
+                                    },
+                                )
+                            }
+                        },
+                        onLongClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             menuState.show {
                                 SongMenu(
@@ -1004,43 +1044,37 @@ fun ForgottenFavoritesSection(
                                 )
                             }
                         },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.more_vert),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                modifier =
-                    Modifier
-                        .width(horizontalLazyGridItemWidth)
-                        .focusable()
-                        .combinedClickable(
-                            onClick = {
-                                if (song.id == mediaMetadata?.id) {
-                                    playerConnection.player.togglePlayPause()
-                                } else {
-                                    playerConnection.playQueue(
-                                        if (song.song.isLocal) {
-                                            ListQueue(items = listOf(song.toMediaItem()))
-                                        } else {
-                                            YouTubeQueue.radio(song.toMediaMetadata())
-                                        },
-                                    )
-                                }
-                            },
-                            onLongClick = {
-                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                menuState.show {
-                                    SongMenu(
-                                        originalSong = song,
-                                        navController = navController,
-                                        onDismiss = menuState::dismiss,
-                                    )
-                                }
-                            },
-                        ),
-            )
+                    ),
+        )
+    }
+
+    if (isTv) {
+        TvShelfGrid(
+            items = distinctForgottenFavorites,
+            modifier = modifier,
+            itemContent = itemContent,
+        )
+    } else {
+        LazyHorizontalGrid(
+            state = lazyGridState,
+            rows = GridCells.Fixed(rows),
+            flingBehavior = rememberSnapFlingBehavior(snapLayoutInfoProvider),
+            contentPadding =
+                WindowInsets.systemBars
+                    .only(WindowInsetsSides.Horizontal)
+                    .asPaddingValues(),
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .height(ListItemHeight * rows),
+        ) {
+            items(
+                items = distinctForgottenFavorites,
+                key = { it.id },
+                contentType = { "forgotten_favorite_song" },
+            ) { song ->
+                itemContent(song)
+            }
         }
     }
 }
@@ -1062,29 +1096,42 @@ fun AccountPlaylistsSection(
     modifier: Modifier = Modifier,
 ) {
     val distinctPlaylists = remember(accountPlaylists) { accountPlaylists.distinctBy { it.id } }
+    val isTv = LocalContext.current.isTvDevice()
+    val itemContent: @Composable (PlaylistItem) -> Unit = { item ->
+        YouTubeGridItemWrapper(
+            item = item,
+            mediaMetadata = mediaMetadata,
+            isPlaying = isPlaying,
+            navController = navController,
+            playerConnection = playerConnection,
+            menuState = menuState,
+            haptic = haptic,
+            scope = scope,
+            fillMaxWidth = isTv,
+        )
+    }
 
-    LazyRow(
-        contentPadding =
-            WindowInsets.systemBars
-                .only(WindowInsetsSides.Horizontal)
-                .asPaddingValues(),
-        modifier = modifier,
-    ) {
-        items(
+    if (isTv) {
+        TvShelfGrid(
             items = distinctPlaylists,
-            key = { it.id },
-            contentType = { "account_playlist" },
-        ) { item ->
-            YouTubeGridItemWrapper(
-                item = item,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
-                navController = navController,
-                playerConnection = playerConnection,
-                menuState = menuState,
-                haptic = haptic,
-                scope = scope,
-            )
+            modifier = modifier,
+            itemContent = itemContent,
+        )
+    } else {
+        LazyRow(
+            contentPadding =
+                WindowInsets.systemBars
+                    .only(WindowInsetsSides.Horizontal)
+                    .asPaddingValues(),
+            modifier = modifier,
+        ) {
+            items(
+                items = distinctPlaylists,
+                key = { it.id },
+                contentType = { "account_playlist" },
+            ) { item ->
+                itemContent(item)
+            }
         }
     }
 }
@@ -1105,28 +1152,43 @@ fun SimilarRecommendationsSection(
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        contentPadding =
-            WindowInsets.systemBars
-                .only(WindowInsetsSides.Horizontal)
-                .asPaddingValues(),
-        modifier = modifier,
-    ) {
-        items(
-            items = recommendation.items,
-            key = { it.id },
-            contentType = { item -> item::class },
-        ) { item ->
-            YouTubeGridItemWrapper(
-                item = item,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
-                navController = navController,
-                playerConnection = playerConnection,
-                menuState = menuState,
-                haptic = haptic,
-                scope = scope,
-            )
+    val distinctRecommendations = remember(recommendation.items) { recommendation.items.distinctBy { it.id } }
+    val isTv = LocalContext.current.isTvDevice()
+    val itemContent: @Composable (YTItem) -> Unit = { item ->
+        YouTubeGridItemWrapper(
+            item = item,
+            mediaMetadata = mediaMetadata,
+            isPlaying = isPlaying,
+            navController = navController,
+            playerConnection = playerConnection,
+            menuState = menuState,
+            haptic = haptic,
+            scope = scope,
+            fillMaxWidth = isTv,
+        )
+    }
+
+    if (isTv) {
+        TvShelfGrid(
+            items = distinctRecommendations,
+            modifier = modifier,
+            itemContent = itemContent,
+        )
+    } else {
+        LazyRow(
+            contentPadding =
+                WindowInsets.systemBars
+                    .only(WindowInsetsSides.Horizontal)
+                    .asPaddingValues(),
+            modifier = modifier,
+        ) {
+            items(
+                items = distinctRecommendations,
+                key = { it.id },
+                contentType = { item -> item::class },
+            ) { item ->
+                itemContent(item)
+            }
         }
     }
 }
@@ -1135,6 +1197,46 @@ fun SimilarRecommendationsSection(
  * HomePage Section - a single section from YouTube home page
  */
 @OptIn(ExperimentalFoundationApi::class)
+/**
+ * Renders a shelf's items as a static column-aligned grid, so D-pad
+ * up/down moves between cards in the same column instead of jumping
+ * horizontally (the default geometric focus search in a LazyRow).
+ */
+@Composable
+fun <T> TvShelfGrid(
+    items: List<T>,
+    modifier: Modifier = Modifier,
+    itemContent: @Composable (T) -> Unit,
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val columns =
+            (maxWidth / (GridThumbnailHeight * 1.35f)).toInt().coerceIn(2, 8)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(TvGridCellSpacing),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items.chunked(columns).forEach { rowItems ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(TvGridCellSpacing),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                ) {
+                    rowItems.forEach { item ->
+                        Box(Modifier.weight(1f)) { itemContent(item) }
+                    }
+                    repeat(columns - rowItems.size) {
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+private val TvGridCellSpacing = 8.dp
+
 @Composable
 fun HomePageSectionContent(
     section: HomePage.Section,
@@ -1147,28 +1249,42 @@ fun HomePageSectionContent(
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        contentPadding =
-            WindowInsets.systemBars
-                .only(WindowInsetsSides.Horizontal)
-                .asPaddingValues(),
-        modifier = modifier,
-    ) {
-        items(
+    val isTv = LocalContext.current.isTvDevice()
+    val itemContent: @Composable (YTItem) -> Unit = { item ->
+        YouTubeGridItemWrapper(
+            item = item,
+            mediaMetadata = mediaMetadata,
+            isPlaying = isPlaying,
+            navController = navController,
+            playerConnection = playerConnection,
+            menuState = menuState,
+            haptic = haptic,
+            scope = scope,
+            fillMaxWidth = isTv,
+        )
+    }
+
+    if (isTv) {
+        TvShelfGrid(
             items = section.items,
-            key = { it.id },
-            contentType = { item -> item::class },
-        ) { item ->
-            YouTubeGridItemWrapper(
-                item = item,
-                mediaMetadata = mediaMetadata,
-                isPlaying = isPlaying,
-                navController = navController,
-                playerConnection = playerConnection,
-                menuState = menuState,
-                haptic = haptic,
-                scope = scope,
-            )
+            modifier = modifier,
+            itemContent = itemContent,
+        )
+    } else {
+        LazyRow(
+            contentPadding =
+                WindowInsets.systemBars
+                    .only(WindowInsetsSides.Horizontal)
+                    .asPaddingValues(),
+            modifier = modifier,
+        ) {
+            items(
+                items = section.items,
+                key = { it.id },
+                contentType = { item -> item::class },
+            ) { item ->
+                itemContent(item)
+            }
         }
     }
 }
@@ -1190,6 +1306,7 @@ private fun YouTubeGridItemWrapper(
     haptic: HapticFeedback,
     scope: CoroutineScope,
     modifier: Modifier = Modifier,
+    fillMaxWidth: Boolean = false,
 ) {
     YouTubeGridItem(
         item = item,
@@ -1197,6 +1314,7 @@ private fun YouTubeGridItemWrapper(
         isPlaying = isPlaying,
         coroutineScope = scope,
         thumbnailRatio = 1f,
+        fillMaxWidth = fillMaxWidth,
         modifier =
             modifier
                 .focusable()
