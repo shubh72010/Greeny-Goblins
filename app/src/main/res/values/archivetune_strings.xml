@@ -228,6 +228,15 @@
     <string name="lyrics_share_style_vivid_glow">Vivid glow</string>
     <string name="lyrics_share_export_failed">Failed to create image: %1$s</string>
     <string name="lyrics_share_export_not_supported">Image sharing requires Android 6.0 or newer</string>
+    <string name="generating_video">Generating video</string>
+    <string name="lyrics_share_format">Format</string>
+    <string name="lyrics_share_mode_image">Image</string>
+    <string name="lyrics_share_mode_video">Video</string>
+    <string name="lyrics_share_video_duration">Duration</string>
+    <string name="lyrics_share_video_duration_short">10s</string>
+    <string name="lyrics_share_video_duration_medium">25s</string>
+    <string name="lyrics_share_video_duration_long">35s</string>
+    <string name="lyrics_share_video_duration_full">60s</string>
     <string name="more_options">More options</string>
     <string name="remove_from_cache">Remove from cache</string>
     <string name="select">Select all</string>

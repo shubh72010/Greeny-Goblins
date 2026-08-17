@@ -53,7 +53,7 @@ object ComposeToImage {
             else -> null
         }
 
-    private fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
+    internal fun ensureSoftwareBitmap(bitmap: Bitmap): Bitmap {
         val config = bitmap.config
         if (config != Bitmap.Config.HARDWARE && config != null) return bitmap
         return runCatching { bitmap.copy(Bitmap.Config.ARGB_8888, false) }.getOrNull() ?: bitmap
@@ -149,7 +149,7 @@ object ComposeToImage {
         return ensureSoftwareBitmap(Bitmap.createBitmap(safeSource, safeLeft, safeTop, safeWidth, safeHeight))
     }
 
-    fun fitBitmap(
+    internal fun fitBitmap(
         source: Bitmap,
         targetWidth: Int,
         targetHeight: Int,
@@ -467,7 +467,7 @@ object ComposeToImage {
             return@withContext bitmap
         }
 
-    private fun blurBitmap(
+    internal fun blurBitmap(
         source: Bitmap,
         radius: Float,
     ): Bitmap {
@@ -679,7 +679,7 @@ object ComposeToImage {
         return bitmap
     }
 
-    private fun AppLogo(
+    internal fun AppLogo(
         context: Context,
         canvas: Canvas,
         canvasWidth: Int,

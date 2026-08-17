@@ -10,7 +10,42 @@ package moe.rukamori.archivetune.ui.component
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.lyrics.LyricsEntry
 import kotlin.math.roundToInt
+
+enum class LyricsShareMode(
+    @StringRes val labelRes: Int,
+) {
+    Image(
+        labelRes = R.string.lyrics_share_mode_image,
+    ),
+    Video(
+        labelRes = R.string.lyrics_share_mode_video,
+    ),
+}
+
+enum class LyricsShareVideoDuration(
+    @StringRes val labelRes: Int,
+    val durationMs: Long,
+) {
+    Short(
+        labelRes = R.string.lyrics_share_video_duration_short,
+        durationMs = 10_000L,
+    ),
+    Medium(
+        labelRes = R.string.lyrics_share_video_duration_medium,
+        durationMs = 25_000L,
+    ),
+    Long(
+        labelRes = R.string.lyrics_share_video_duration_long,
+        durationMs = 35_000L,
+    ),
+    Full(
+        labelRes = R.string.lyrics_share_video_duration_full,
+        durationMs = 60_000L,
+    ),
+    ;
+}
 
 enum class LyricsShareAspectRatio(
     @StringRes val labelRes: Int,
@@ -44,6 +79,7 @@ data class LyricsShareImageOptions(
     val blurRadius: Float = 24f,
     val dimAmount: Float = 1f,
     val showArtwork: Boolean = true,
+    val videoDuration: LyricsShareVideoDuration = LyricsShareVideoDuration.Medium,
 ) {
     val sanitizedBlurRadius: Float
         get() = blurRadius.coerceIn(0f, 48f)
@@ -60,4 +96,5 @@ data class LyricsSharePayload(
     val lyricsText: String,
     val songTitle: String,
     val artists: String,
+    val timedLyrics: List<LyricsEntry>? = null,
 )

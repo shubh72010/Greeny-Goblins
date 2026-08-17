@@ -469,6 +469,11 @@ fun Lyrics(
     val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
     val lyrics = remember(lyricsEntity) { lyricsEntity?.lyrics?.trim() }
 
+    val isSyncedLyrics =
+        remember(lyrics) {
+            lyrics != null && lyrics != LYRICS_NOT_FOUND && (isLineSyncedLrc(lyrics!!) || isTtml(lyrics!!))
+        }
+
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
         defaultValue = PlayerBackgroundStyle.BLUR,
@@ -579,7 +584,8 @@ fun Lyrics(
     }
 
     var showShareDialog by remember { mutableStateOf(false) }
-    var shareDialogData by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var shareDialogPayload by remember { mutableStateOf<LyricsSharePayload?>(null) }
+    var shareDialogPositionMs by remember { mutableStateOf(0L) }
     var showShareImageDialog by remember { mutableStateOf(false) }
 
     var isSelectionModeActive by rememberSaveable { mutableStateOf(false) }
@@ -2516,12 +2522,14 @@ fun Lyrics(
                                                         .joinToString("\n")
 
                                                 if (selectedLyricsText.isNotBlank()) {
-                                                    shareDialogData =
-                                                        Triple(
-                                                            selectedLyricsText,
-                                                            metadata.title,
-                                                            metadata.artists.joinToString { it.name },
+                                                    shareDialogPayload =
+                                                        LyricsSharePayload(
+                                                            lyricsText = selectedLyricsText,
+                                                            songTitle = metadata.title,
+                                                            artists = metadata.artists.joinToString { it.name },
+                                                            timedLyrics = if (isSyncedLyrics) sortedIndices.mapNotNull { lines.getOrNull(it) } else emptyList(),
                                                         )
+                                                    shareDialogPositionMs = playerConnection.player.currentPosition
                                                     showShareDialog = true
                                                 }
                                                 isSelectionModeActive = false
@@ -2550,8 +2558,8 @@ fun Lyrics(
             }
         }
 
-        if (showShareDialog && shareDialogData != null) {
-            val (lyricsText, songTitle, artists) = shareDialogData!!
+        if (showShareDialog && shareDialogPayload != null) {
+            val sharePayload = shareDialogPayload!!
             BasicAlertDialog(onDismissRequest = { showShareDialog = false }) {
                 Card(
                     shape = MaterialTheme.shapes.medium,
@@ -2581,7 +2589,7 @@ fun Lyrics(
                                     .clickable {
                                         shareLyricsAsText(
                                             context = context,
-                                            payload = LyricsSharePayload(lyricsText, songTitle, artists),
+                                            payload = sharePayload,
                                             songId = mediaMetadata?.id,
                                         )
                                         showShareDialog = false
@@ -2606,7 +2614,6 @@ fun Lyrics(
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        shareDialogData = Triple(lyricsText, songTitle, artists)
                                         showShareImageDialog = true
                                         showShareDialog = false
                                     }.padding(vertical = 12.dp),
@@ -2648,11 +2655,11 @@ fun Lyrics(
             }
         }
 
-        if (showShareImageDialog && shareDialogData != null) {
-            val (lyricsText, songTitle, artists) = shareDialogData!!
+        if (showShareImageDialog && shareDialogPayload != null) {
             LyricsShareImageDialog(
                 mediaMetadata = mediaMetadata,
-                payload = LyricsSharePayload(lyricsText, songTitle, artists),
+                payload = shareDialogPayload!!,
+                currentPositionMs = shareDialogPositionMs,
                 onDismissRequest = { showShareImageDialog = false },
             )
         }

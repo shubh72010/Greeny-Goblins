@@ -252,7 +252,8 @@ fun LyricsV2(
     var showMaxSelectionToast by remember { mutableStateOf(false) }
     val maxSelectionLimit = 5
     var showShareDialog by remember { mutableStateOf(false) }
-    var shareDialogData by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var shareDialogPayload by remember { mutableStateOf<LyricsSharePayload?>(null) }
+    var shareDialogPositionMs by remember { mutableStateOf(0L) }
     var showShareImageDialog by remember { mutableStateOf(false) }
 
     // ── Lyrics data ──
@@ -1017,12 +1018,14 @@ fun LyricsV2(
                                                     .joinToString("\n")
 
                                             if (selectedLyricsText.isNotBlank()) {
-                                                shareDialogData =
-                                                    Triple(
-                                                        selectedLyricsText,
-                                                        metadata.title ?: "",
-                                                        metadata.artists.joinToString { it.name },
+                                                shareDialogPayload =
+                                                    LyricsSharePayload(
+                                                        lyricsText = selectedLyricsText,
+                                                        songTitle = metadata.title ?: "",
+                                                        artists = metadata.artists.joinToString { it.name },
+                                                        timedLyrics = if (isSynced) sortedIndices.mapNotNull { entriesWithWords.getOrNull(it) } else emptyList(),
                                                     )
+                                                shareDialogPositionMs = playerConnection.player.currentPosition
                                                 showShareDialog = true
                                             }
                                             isSelectionModeActive = false
@@ -1051,8 +1054,8 @@ fun LyricsV2(
         }
     }
 
-    if (showShareDialog && shareDialogData != null) {
-        val (lyricsText, songTitle, artists) = shareDialogData!!
+    if (showShareDialog && shareDialogPayload != null) {
+        val sharePayload = shareDialogPayload!!
         BasicAlertDialog(onDismissRequest = { showShareDialog = false }) {
             Card(
                 shape = RoundedCornerShape(28.dp),
@@ -1082,7 +1085,7 @@ fun LyricsV2(
                                 .clickable {
                                     shareLyricsAsText(
                                         context = context,
-                                        payload = LyricsSharePayload(lyricsText, songTitle, artists),
+                                        payload = sharePayload,
                                         songId = mediaMetadata?.id,
                                     )
                                     showShareDialog = false
@@ -1107,7 +1110,6 @@ fun LyricsV2(
                             Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    shareDialogData = Triple(lyricsText, songTitle, artists)
                                     showShareImageDialog = true
                                     showShareDialog = false
                                 }.padding(vertical = 12.dp),
@@ -1149,11 +1151,11 @@ fun LyricsV2(
         }
     }
 
-    if (showShareImageDialog && shareDialogData != null) {
-        val (lyricsText, songTitle, artists) = shareDialogData!!
+    if (showShareImageDialog && shareDialogPayload != null) {
         LyricsShareImageDialog(
             mediaMetadata = mediaMetadata,
-            payload = LyricsSharePayload(lyricsText, songTitle, artists),
+            payload = shareDialogPayload!!,
+            currentPositionMs = shareDialogPositionMs,
             onDismissRequest = { showShareImageDialog = false },
         )
     }

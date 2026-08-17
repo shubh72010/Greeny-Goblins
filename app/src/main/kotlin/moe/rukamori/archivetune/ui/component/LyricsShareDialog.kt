@@ -15,6 +15,7 @@ package moe.rukamori.archivetune.ui.component
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
@@ -47,6 +48,7 @@ import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -75,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.getSystemService
 import androidx.palette.graphics.Palette
 import androidx.window.core.layout.WindowSizeClass
 import coil3.ImageLoader
@@ -86,8 +89,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.AudioQuality
+import moe.rukamori.archivetune.constants.AudioQualityKey
+import moe.rukamori.archivetune.constants.PlayerStreamClient
+import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.utils.ComposeToImage
+import moe.rukamori.archivetune.utils.LyricsKaraokeRenderer
+import moe.rukamori.archivetune.utils.LyricsVideoExporter
+import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.enumPreference
+import moe.rukamori.archivetune.utils.isLowDataModeActive
+import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
 
 @Immutable
 private data class LyricsGlassStyleOptions(
@@ -132,6 +145,7 @@ fun shareLyricsAsText(
 fun LyricsShareImageDialog(
     mediaMetadata: MediaMetadata?,
     payload: LyricsSharePayload,
+    currentPositionMs: Long = 0L,
     onDismissRequest: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -141,10 +155,14 @@ fun LyricsShareImageDialog(
         !windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
 
     var isSharing by remember { mutableStateOf(false) }
+    var sharingProgress by remember { mutableStateOf<Float?>(null) }
+    var shareMode by remember { mutableStateOf(LyricsShareMode.Image) }
     var selectedGlassStyle by remember { mutableStateOf(LyricsGlassStyle.FrostedDark) }
     var paletteGlassStyle by remember { mutableStateOf<LyricsGlassStyle?>(null) }
     var options by remember { mutableStateOf(LyricsShareImageOptions()) }
     var areAdvancedOptionsVisible by remember { mutableStateOf(false) }
+    val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
+    val preferredStreamClient by enumPreference(context, PlayerStreamClientKey, PlayerStreamClient.WEB_REMIX)
 
     LaunchedEffect(mediaMetadata?.thumbnailUrl) {
         val coverUrl = mediaMetadata?.thumbnailUrl
@@ -188,34 +206,53 @@ fun LyricsShareImageDialog(
             Toast.makeText(context, R.string.lyrics_share_export_not_supported, Toast.LENGTH_SHORT).show()
         } else {
             isSharing = true
+            sharingProgress = null
             scope.launch {
                 try {
-                    val image =
-                        ComposeToImage.createLyricsImage(
-                            context = context,
-                            coverArtUrl = mediaMetadata?.thumbnailUrl,
-                            songTitle = payload.songTitle,
-                            artistName = payload.artists,
-                            lyrics = payload.lyricsText,
-                            width = options.aspectRatio.exportWidth,
-                            height = options.aspectRatio.exportHeight,
-                            glassStyle = selectedGlassStyle,
-                            shareOptions = options,
-                        )
-                    val fileName = "lyrics_${System.currentTimeMillis()}"
-                    val uri = ComposeToImage.saveBitmapAsFile(context, image, fileName)
-                    val shareIntent =
-                        Intent(Intent.ACTION_SEND).apply {
-                            type = "image/png"
-                            putExtra(Intent.EXTRA_STREAM, uri)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    when (shareMode) {
+                        LyricsShareMode.Image -> {
+                            val image =
+                                ComposeToImage.createLyricsImage(
+                                    context = context,
+                                    coverArtUrl = mediaMetadata?.thumbnailUrl,
+                                    songTitle = payload.songTitle,
+                                    artistName = payload.artists,
+                                    lyrics = payload.lyricsText,
+                                    width = options.aspectRatio.exportWidth,
+                                    height = options.aspectRatio.exportHeight,
+                                    glassStyle = selectedGlassStyle,
+                                    shareOptions = options,
+                                )
+                            val fileName = "lyrics_${System.currentTimeMillis()}"
+                            val uri = ComposeToImage.saveBitmapAsFile(context, image, fileName)
+                            val shareIntent =
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "image/png"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                            context.startActivity(
+                                Intent.createChooser(
+                                    shareIntent,
+                                    context.getString(R.string.share_lyrics),
+                                ),
+                            )
                         }
-                    context.startActivity(
-                        Intent.createChooser(
-                            shareIntent,
-                            context.getString(R.string.share_lyrics),
-                        ),
-                    )
+
+                        LyricsShareMode.Video -> {
+                            shareLyricsAsVideo(
+                                context = context,
+                                mediaMetadata = mediaMetadata,
+                                payload = payload,
+                                options = options,
+                                glassStyle = selectedGlassStyle,
+                                currentPositionMs = currentPositionMs,
+                                audioQuality = audioQuality,
+                                preferredStreamClient = preferredStreamClient,
+                                onProgress = { progress -> sharingProgress = progress },
+                            )
+                        }
+                    }
                     onDismissRequest()
                 } catch (e: Exception) {
                     Toast
@@ -226,6 +263,7 @@ fun LyricsShareImageDialog(
                         ).show()
                 } finally {
                     isSharing = false
+                    sharingProgress = null
                 }
             }
         }
@@ -239,6 +277,8 @@ fun LyricsShareImageDialog(
         availableStyles = availableStyles,
         selectedGlassStyle = selectedGlassStyle,
         onStyleSelect = { selectedGlassStyle = it },
+        shareMode = shareMode,
+        onModeChange = { shareMode = it },
         areAdvancedOptionsVisible = !isCompactLayout || areAdvancedOptionsVisible,
         onShowAdvancedOptions = { areAdvancedOptionsVisible = true },
         isSharing = isSharing,
@@ -248,8 +288,81 @@ fun LyricsShareImageDialog(
     )
 
     if (isSharing) {
-        LyricsShareLoadingDialog()
+        LyricsShareLoadingDialog(progress = sharingProgress)
     }
+}
+
+private suspend fun shareLyricsAsVideo(
+    context: Context,
+    mediaMetadata: MediaMetadata?,
+    payload: LyricsSharePayload,
+    options: LyricsShareImageOptions,
+    glassStyle: LyricsGlassStyle,
+    currentPositionMs: Long,
+    audioQuality: AudioQuality,
+    preferredStreamClient: PlayerStreamClient,
+    onProgress: (Float) -> Unit,
+) {
+    val mediaId = mediaMetadata?.id ?: error("No song id available")
+    val durationMs = options.videoDuration.durationMs
+    val startPositionMs = currentPositionMs.coerceAtLeast(0L)
+    val streamUrl =
+        withContext(Dispatchers.IO) {
+            val connectivityManager =
+                context.getSystemService<ConnectivityManager>() ?: error("No connectivity service")
+            context
+                .retryWithoutPlaybackLoginContext {
+                    YTPlayerUtils.playerResponseForPlayback(
+                        videoId = mediaId,
+                        audioQuality = audioQuality,
+                        connectivityManager = connectivityManager,
+                        preferredStreamClient = preferredStreamClient,
+                        networkMetered = context.isLowDataModeActive(),
+                    )
+                }.getOrThrow().streamUrl
+        }
+    val renderer =
+        withContext(Dispatchers.Default) {
+            LyricsKaraokeRenderer(
+                context = context,
+                coverArtUrl = mediaMetadata?.thumbnailUrl,
+                songTitle = payload.songTitle,
+                artistName = payload.artists,
+                timedLyrics = payload.timedLyrics.orEmpty(),
+                fallbackLyricsText = payload.lyricsText,
+                width = options.aspectRatio.exportWidth,
+                height = options.aspectRatio.exportHeight,
+                glassStyle = glassStyle,
+                options = options,
+                startPositionMs = startPositionMs,
+                totalDurationMs = durationMs,
+            )
+        }
+    val result =
+        LyricsVideoExporter.exportVideo(
+            context = context,
+            width = options.aspectRatio.exportWidth,
+            height = options.aspectRatio.exportHeight,
+            durationUs = durationMs * 1000L,
+            audioStreamUrl = streamUrl,
+            audioStartUs = startPositionMs * 1000L,
+            renderFrame = { canvas, frameTimeUs ->
+                renderer.render(canvas, startPositionMs + frameTimeUs / 1000L)
+            },
+            onProgress = onProgress,
+        )
+    val shareIntent =
+        Intent(Intent.ACTION_SEND).apply {
+            type = "video/mp4"
+            putExtra(Intent.EXTRA_STREAM, result.uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    context.startActivity(
+        Intent.createChooser(
+            shareIntent,
+            context.getString(R.string.share_lyrics),
+        ),
+    )
 }
 
 @Composable
@@ -261,6 +374,8 @@ private fun LyricsShareStudioDialog(
     availableStyles: LyricsGlassStyleOptions,
     selectedGlassStyle: LyricsGlassStyle,
     onStyleSelect: (LyricsGlassStyle) -> Unit,
+    shareMode: LyricsShareMode,
+    onModeChange: (LyricsShareMode) -> Unit,
     areAdvancedOptionsVisible: Boolean,
     onShowAdvancedOptions: () -> Unit,
     isSharing: Boolean,
@@ -311,6 +426,8 @@ private fun LyricsShareStudioDialog(
                     availableStyles = availableStyles,
                     selectedGlassStyle = selectedGlassStyle,
                     onStyleSelect = onStyleSelect,
+                    shareMode = shareMode,
+                    onModeChange = onModeChange,
                     areAdvancedOptionsVisible = areAdvancedOptionsVisible,
                     onShowAdvancedOptions = onShowAdvancedOptions,
                     isSharing = isSharing,
@@ -324,7 +441,7 @@ private fun LyricsShareStudioDialog(
 }
 
 @Composable
-private fun LyricsShareLoadingDialog() {
+private fun LyricsShareLoadingDialog(progress: Float?) {
     BasicAlertDialog(
         onDismissRequest = {},
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -341,7 +458,7 @@ private fun LyricsShareLoadingDialog() {
             ) {
                 LoadingIndicator(modifier = Modifier.size(40.dp))
                 Text(
-                    text = stringResource(R.string.generating_image),
+                    text = stringResource(R.string.generating_video),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -351,6 +468,17 @@ private fun LyricsShareLoadingDialog() {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
+                if (progress != null) {
+                    LinearProgressIndicator(
+                        progress = { progress.coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(
+                        text = "${(progress.coerceIn(0f, 1f) * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
@@ -365,6 +493,8 @@ private fun LyricsShareStudioScaffold(
     availableStyles: LyricsGlassStyleOptions,
     selectedGlassStyle: LyricsGlassStyle,
     onStyleSelect: (LyricsGlassStyle) -> Unit,
+    shareMode: LyricsShareMode,
+    onModeChange: (LyricsShareMode) -> Unit,
     areAdvancedOptionsVisible: Boolean,
     onShowAdvancedOptions: () -> Unit,
     isSharing: Boolean,
@@ -413,6 +543,8 @@ private fun LyricsShareStudioScaffold(
                     availableStyles = availableStyles,
                     selectedGlassStyle = selectedGlassStyle,
                     onStyleSelect = onStyleSelect,
+                    shareMode = shareMode,
+                    onModeChange = onModeChange,
                     areAdvancedOptionsVisible = areAdvancedOptionsVisible,
                     onShowAdvancedOptions = onShowAdvancedOptions,
                     isCompactLayout = true,
@@ -447,6 +579,8 @@ private fun LyricsShareStudioScaffold(
                             availableStyles = availableStyles,
                             selectedGlassStyle = selectedGlassStyle,
                             onStyleSelect = onStyleSelect,
+                            shareMode = shareMode,
+                            onModeChange = onModeChange,
                             areAdvancedOptionsVisible = areAdvancedOptionsVisible,
                             onShowAdvancedOptions = onShowAdvancedOptions,
                             isCompactLayout = false,
@@ -589,6 +723,8 @@ private fun ControlsSection(
     availableStyles: LyricsGlassStyleOptions,
     selectedGlassStyle: LyricsGlassStyle,
     onStyleSelect: (LyricsGlassStyle) -> Unit,
+    shareMode: LyricsShareMode,
+    onModeChange: (LyricsShareMode) -> Unit,
     areAdvancedOptionsVisible: Boolean,
     onShowAdvancedOptions: () -> Unit,
     isCompactLayout: Boolean,
@@ -610,6 +746,22 @@ private fun ControlsSection(
                     .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            LyricsShareControlGroup(title = stringResource(R.string.lyrics_share_format)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    LyricsShareMode.entries.forEach { mode ->
+                        LyricsShareModeOption(
+                            mode = mode,
+                            selected = shareMode == mode,
+                            onClick = { onModeChange(mode) },
+                        )
+                    }
+                }
+            }
+
             LyricsShareControlGroup(title = stringResource(R.string.lyrics_share_layout)) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -624,6 +776,28 @@ private fun ControlsSection(
                         )
                     }
                 }
+            }
+
+            if (shareMode == LyricsShareMode.Video) {
+                LyricsShareControlGroup(title = stringResource(R.string.lyrics_share_video_duration)) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        LyricsShareVideoDuration.entries.forEach { duration ->
+                            LyricsVideoDurationOption(
+                                duration = duration,
+                                selected = options.videoDuration == duration,
+                                onClick = {
+                                    onOptionsChange(options.copy(videoDuration = duration))
+                                },
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -816,6 +990,119 @@ private fun LyricsAspectRatioOption(
                     MaterialTheme.typography.labelLarge
                 },
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun LyricsShareModeOption(
+    mode: LyricsShareMode,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val motionScheme = MaterialTheme.motionScheme
+    val optionShape = if (selected) MaterialTheme.shapes.extraLarge else MaterialTheme.shapes.medium
+    val containerColor by animateColorAsState(
+        targetValue =
+            if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLowest
+            },
+        animationSpec = motionScheme.defaultEffectsSpec(),
+        label = "lyricsShareModeContainer",
+    )
+    val contentColor by animateColorAsState(
+        targetValue =
+            if (selected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        animationSpec = motionScheme.defaultEffectsSpec(),
+        label = "lyricsShareModeContent",
+    )
+
+    Surface(
+        modifier =
+            modifier
+                .heightIn(min = 48.dp)
+                .clip(optionShape)
+                .clickable(onClick = onClick),
+        shape = optionShape,
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Text(
+            text = stringResource(mode.labelRes),
+            style =
+                if (selected) {
+                    MaterialTheme.typography.labelLargeEmphasized
+                } else {
+                    MaterialTheme.typography.labelLarge
+                },
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun LyricsVideoDurationOption(
+    duration: LyricsShareVideoDuration,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val motionScheme = MaterialTheme.motionScheme
+    val optionShape = if (selected) MaterialTheme.shapes.extraLarge else MaterialTheme.shapes.medium
+    val containerColor by animateColorAsState(
+        targetValue =
+            if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLowest
+            },
+        animationSpec = motionScheme.defaultEffectsSpec(),
+        label = "lyricsVideoDurationContainer",
+    )
+    val contentColor by animateColorAsState(
+        targetValue =
+            if (selected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        animationSpec = motionScheme.defaultEffectsSpec(),
+        label = "lyricsVideoDurationContent",
+    )
+
+    Surface(
+        modifier =
+            modifier
+                .widthIn(min = 88.dp)
+                .heightIn(min = 44.dp)
+                .clip(optionShape)
+                .clickable(onClick = onClick),
+        shape = optionShape,
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Text(
+            text = stringResource(duration.labelRes),
+            style =
+                if (selected) {
+                    MaterialTheme.typography.labelLargeEmphasized
+                } else {
+                    MaterialTheme.typography.labelLarge
+                },
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
