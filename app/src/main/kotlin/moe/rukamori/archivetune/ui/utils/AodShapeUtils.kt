@@ -14,9 +14,18 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import kotlin.random.Random
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.AodThumbnailShape
 import moe.rukamori.archivetune.constants.ArtistThumbnailShapeKey
 import moe.rukamori.archivetune.constants.RandomThumbnailShapeKey
@@ -29,10 +38,54 @@ enum class ThumbnailShapeKind {
     ARTIST,
 }
 
+/**
+ * A single app-wide "bucket" clock for random thumbnail shapes.
+ *
+ * The bucket ticks every [BUCKET_MS] (10 minutes). Every artwork derives its random shape from
+ * `(stableItemSeed, bucket)`, so:
+ * - an item scrolled out of view and back recomputes the SAME shape (no cache/storage needed)
+ * - when the bucket flips, every artwork changes shape together (one shared refresh)
+ * - the derivation is a pure function, so it survives process restarts and screen transitions
+ */
+object ThumbnailShapeClock {
+    private const val BUCKET_MS = 10 * 60 * 1000L
+
+    private val _bucket = mutableStateOf(System.currentTimeMillis() / BUCKET_MS)
+    val bucket: State<Long> = _bucket
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    @Volatile
+    private var started = false
+
+    fun ensureStarted() {
+        if (started) return
+        started = true
+        scope.launch {
+            while (true) {
+                val now = System.currentTimeMillis()
+                val nextBoundary = ((now / BUCKET_MS) + 1) * BUCKET_MS
+                delay(nextBoundary - now)
+                _bucket.value = System.currentTimeMillis() / BUCKET_MS
+            }
+        }
+    }
+
+    /**
+     * Deterministically picks a shape for `(seed, bucket)`. Same inputs => same output.
+     */
+    fun stableShapeIndex(seed: String, bucket: Long): Int {
+        val seedHash = seed.hashCode().toLong()
+        val mixed = seedHash * 31L + bucket * 2654435761L
+        return Random(mixed).nextInt(AodThumbnailShape.entries.size)
+    }
+}
+
 @Composable
 fun rememberThumbnailShape(
     kind: ThumbnailShapeKind,
     cornerRadius: Float,
+    seed: String? = null,
 ): Shape {
     val (randomShapes) =
         rememberPreference(
@@ -40,7 +93,16 @@ fun rememberThumbnailShape(
             defaultValue = false,
         )
     if (randomShapes) {
-        val randomShape = remember(cornerRadius) { AodThumbnailShape.entries.random() }
+        LaunchedEffect(Unit) { ThumbnailShapeClock.ensureStarted() }
+        val bucket = ThumbnailShapeClock.bucket.value
+        val randomShape =
+            remember(seed, bucket) {
+                if (seed != null) {
+                    AodThumbnailShape.entries[ThumbnailShapeClock.stableShapeIndex(seed, bucket)]
+                } else {
+                    AodThumbnailShape.entries.random()
+                }
+            }
         return randomShape.toComposeShape(cornerRadius = cornerRadius, startAngle = 0)
     }
     val (shapeType) =

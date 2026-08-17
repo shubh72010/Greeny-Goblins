@@ -84,7 +84,7 @@ fun CoverArtComponent(
     cornerRadius: Float = 16f,
     modifier: Modifier = Modifier,
 ) {
-    val shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, cornerRadius)
+    val shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, cornerRadius, metadata?.id)
     when (coverArtStyle) {
         ModularCoverArtStyle.STYLE_CARD -> StyleCardVariant(
             metadata = metadata,

@@ -130,6 +130,7 @@ import moe.rukamori.archivetune.constants.CONTENT_TYPE_HEADER
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_LIST
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_PLAYLIST
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_SONG
+import moe.rukamori.archivetune.constants.HideArtistPfpKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.extensions.toMediaItem
@@ -198,6 +199,7 @@ fun ArtistScreen(
     val loadedLibraryAlbums by viewModel.libraryAlbums.collectAsStateWithLifecycle()
     val blockState by viewModel.blockState.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val hideArtistPfp by rememberPreference(key = HideArtistPfpKey, defaultValue = false)
     val isArtistBlocked = (blockState as? ArtistBlockState.Success)?.isBlocked == true
     val artistPage =
         remember(loadedArtistPage, isArtistBlocked) {
@@ -596,8 +598,9 @@ fun ArtistScreen(
                 }
             } else {
                 // Hero Header
-                item(key = "header") {
-                    val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name
+item(key = "header") {
+                            val artistName = artistPage?.artist?.title ?: libraryArtist?.artist?.name
+                            val artistSeed = artistPage?.artist?.id ?: libraryArtist?.artist?.id
 
                     Column(
                         modifier =
@@ -607,39 +610,47 @@ fun ArtistScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         // Artist Image - Circular with shadow
-                        Box(
-                            modifier =
-                                Modifier
-                                    .padding(top = 8.dp, bottom = 16.dp),
-                        ) {
-                            if (thumbnail != null) {
-                                AsyncImage(
-                                    model = thumbnail.resize(600, 600),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier =
-                                        Modifier
-                                            .size(210.dp)
-                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
-                                )
-                            } else {
-                                // Placeholder when no image
-                                Box(
-                                    modifier =
-                                        Modifier
-                                            .size(200.dp)
-                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.person),
+                        if (!hideArtistPfp) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .padding(top = 8.dp, bottom = 16.dp),
+                            ) {
+                                if (thumbnail != null) {
+                                    AsyncImage(
+                                        model = thumbnail.resize(600, 600),
                                         contentDescription = null,
-                                        modifier = Modifier.size(80.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        contentScale = ContentScale.Crop,
+                                        modifier =
+                                            Modifier
+                                                .size(210.dp)
+                                                .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, artistSeed)),
                                     )
+                                } else {
+                                    // Placeholder when no image
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .size(200.dp)
+                                                .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, artistSeed))
+                                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.person),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(80.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
+                        } else {
+                            Spacer(
+                                modifier = Modifier
+                                    .padding(top = 32.dp, bottom = 40.dp)
+                                    .height(0.dp),
+                            )
                         }
 
                         // Artist Name

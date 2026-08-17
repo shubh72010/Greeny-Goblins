@@ -190,7 +190,8 @@ class ArtistViewModel
 
         private fun resolveArtistCanvas() {
             if (artistCanvas != null) return
-            val artistName = artistPage?.artist?.title ?: return
+            val pageArtist = artistPage?.artist ?: return
+            val artistName = pageArtist.title ?: return
             val candidateVideoIds =
                 artistPage?.sections
                     ?.flatMap { section -> section.items }
@@ -200,7 +201,12 @@ class ArtistViewModel
             viewModelScope.launch {
                 artistCanvas =
                     runCatching {
-                        YouTubeCanvasProvider.resolveArtistBackgroundVideo(artistName, candidateVideoIds)
+                        YouTubeCanvasProvider.resolveArtistBackgroundVideo(
+                            artistNameRaw = artistName,
+                            artistId = pageArtist.id,
+                            channelId = pageArtist.channelId,
+                            candidateVideoIds = candidateVideoIds,
+                        )
                     }.onFailure {
                         reportException(it)
                     }.getOrNull()

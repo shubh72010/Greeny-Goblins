@@ -116,8 +116,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -908,6 +910,13 @@ class MainActivity : ComponentActivity() {
                     val searchBarFocusRequester = remember { FocusRequester() }
                     val tvRailFocusRequester = remember { FocusRequester() }
                     val contentAreaFocusRequester = remember { FocusRequester() }
+
+                    var contentAreaFocused by remember { mutableStateOf(false) }
+                    LaunchedEffect(contentAreaFocused) {
+                        if (contentAreaFocused) {
+                            focusManager.moveFocus(FocusDirection.Enter)
+                        }
+                    }
 
                     val openSearch: () -> Unit = {
                         onActiveChange(true)
@@ -2243,6 +2252,7 @@ class MainActivity : ComponentActivity() {
                                             .then(
                                                 if (isTvDevice) {
                                                     Modifier
+                                                        .onFocusChanged { contentAreaFocused = it.isFocused }
                                                         .focusRequester(contentAreaFocusRequester)
                                                         .focusGroup()
                                                         .focusable()

@@ -133,12 +133,15 @@ object YouTubeCanvasProvider {
 
     suspend fun resolveArtistBackgroundVideo(
         artistNameRaw: String,
+        artistId: String? = null,
+        channelId: String? = null,
         candidateVideoIds: List<String> = emptyList(),
     ): CanvasArtwork? {
         val artistName = artistNameRaw.trim()
         if (artistName.isBlank()) return null
 
-        val searchHit = searchForArtistMusicVideo(artistName) ?: return null
+        val searchHit =
+            searchForArtistMusicVideo(artistName, artistId, channelId) ?: return null
         val resolved = resolveVideo(searchHit.id)
         if (resolved != null) {
             return resolved.toCanvasArtwork()
@@ -155,7 +158,11 @@ object YouTubeCanvasProvider {
         return null
     }
 
-    private suspend fun searchForArtistMusicVideo(artistNameRaw: String): SongItem? {
+    private suspend fun searchForArtistMusicVideo(
+        artistNameRaw: String,
+        artistId: String? = null,
+        channelId: String? = null,
+    ): SongItem? {
         val artist = artistNameRaw.trim()
         if (artist.isBlank()) return null
 
@@ -170,32 +177,68 @@ object YouTubeCanvasProvider {
                 ?: return null
 
         val normalizedArtist = artist.lowercase(Locale.ROOT)
-        return result
-            .items
-            .filterIsInstance<SongItem>()
-            .filter { it.id.isUsableVideoId() }
-            .sortedWith(
-                compareByDescending<SongItem> { item ->
-                    val musicVideoScore = if (item.isMusicVideo()) 5 else 0
-                    val artistScore =
-                        if (item.artists.any { artistMatches(it.name, normalizedArtist) }) 2 else 0
-                    val durationScore =
-                        item.duration
-                            ?.let { if (it in MinDurationSeconds..MaxDurationSeconds) 1 else -2 }
-                            ?: 0
-                    val title = item.title.lowercase(Locale.ROOT)
-                    val keywordScore =
-                        when {
-                            title.contains("music video") -> 3
-                            title.contains("vevo") -> 3
-                            title.contains("official") -> 2
-                            title.contains("lyric") -> -2
-                            title.contains("audio") -> -1
-                            else -> 0
-                        }
-                    musicVideoScore + artistScore + durationScore + keywordScore
-                },
-            ).firstOrNull()
+        val artistChannelIds = listOfNotNull(artistId, channelId)
+
+        fun keywordTier(item: SongItem): Int {
+            val title = item.title.lowercase(Locale.ROOT)
+            return when {
+                title.contains("official music video") -> 6
+                title.contains("official video") -> 5
+                title.contains("music video") -> 3
+                title.contains("vevo") -> 3
+                title.contains("official") -> 2
+                title.contains("lyric") -> -2
+                title.contains("audio") -> -1
+                else -> 0
+            }
+        }
+
+        val candidates =
+            result
+                .items
+                .filterIsInstance<SongItem>()
+                .filter { it.id.isUsableVideoId() }
+                .sortedWith(
+                    compareByDescending<SongItem> { item ->
+                        val channelMatch =
+                            artistChannelIds.isNotEmpty() &&
+                                item.artists.any { channelArtist -> channelArtist.id in artistChannelIds }
+                        val channelScore = if (channelMatch) 10 else 0
+                        val musicVideoScore = if (item.isMusicVideo()) 5 else 0
+                        val artistScore =
+                            if (item.artists.any { artistMatches(it.name, normalizedArtist) }) 2 else 0
+                        val durationScore =
+                            item.duration
+                                ?.let { if (it in MinDurationSeconds..MaxDurationSeconds) 1 else -2 }
+                                ?: 0
+                        channelScore + musicVideoScore + artistScore + durationScore + keywordTier(item)
+                    },
+                )
+
+        val channelScoped =
+            candidates.filter { item ->
+                artistChannelIds.isNotEmpty() &&
+                    item.artists.any { channelArtist -> channelArtist.id in artistChannelIds }
+            }
+        val pool = channelScoped.ifEmpty { candidates }
+        val best =
+            pool.maxWithOrNull(
+                compareBy<SongItem>(
+                    { keywordTier(it) },
+                    { it.viewCount ?: 0L },
+                ),
+            )
+        Timber.tag(LogTag).d(
+            "artist video search query=%s candidates=%d channelScoped=%d chosen=%s (id=%s tier=%s views=%s)",
+            query,
+            candidates.size,
+            channelScoped.size,
+            best?.title,
+            best?.id,
+            best?.let(::keywordTier),
+            best?.viewCountText,
+        )
+        return best
     }
 
     private suspend fun resolveVideo(videoId: String): ResolvedVideo? {

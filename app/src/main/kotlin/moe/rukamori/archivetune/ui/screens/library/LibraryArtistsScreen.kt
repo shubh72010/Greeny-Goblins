@@ -520,7 +520,7 @@ fun LibraryArtistsScreen(
                         modifier =
                             Modifier
                                 .size(52.dp)
-                                .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f))
+                                .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, artist.id))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                     )
 
@@ -615,7 +615,7 @@ fun LibraryArtistsScreen(
                                     modifier =
                                         Modifier
                                             .size(60.dp)
-                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
+                                            .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, artist.id)),
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(

@@ -1086,9 +1086,9 @@ private fun SummaryRankColumn(
     val imageModel = rememberShareSafeImageRequest(imageData)
     val imageShape =
         if (circularImage) {
-            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
+            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, title)
         } else {
-            rememberThumbnailShape(ThumbnailShapeKind.SONG, 14f)
+            rememberThumbnailShape(ThumbnailShapeKind.SONG, 14f, title)
         }
 
     Column(
@@ -1346,7 +1346,7 @@ private fun RankedArtistRow(
             modifier =
                 Modifier
                     .size(46.dp)
-                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
+                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, artist.id)),
         )
         Column(
             modifier = Modifier.weight(1f),

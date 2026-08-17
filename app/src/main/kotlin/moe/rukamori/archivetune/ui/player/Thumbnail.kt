@@ -534,7 +534,7 @@ fun Thumbnail(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 val thumbnailShape =
-                                    rememberThumbnailShape(ThumbnailShapeKind.SONG, thumbnailCornerRadius)
+                                    rememberThumbnailShape(ThumbnailShapeKind.SONG, thumbnailCornerRadius, item.mediaId)
                                 Box(
                                     modifier =
                                         Modifier

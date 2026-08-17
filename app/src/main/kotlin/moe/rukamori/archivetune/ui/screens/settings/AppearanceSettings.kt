@@ -86,6 +86,7 @@ import moe.rukamori.archivetune.constants.FontPreferenceKey
 import moe.rukamori.archivetune.constants.ForceHighRefreshRateKey
 import moe.rukamori.archivetune.constants.GridItemSize
 import moe.rukamori.archivetune.constants.GridItemsSizeKey
+import moe.rukamori.archivetune.constants.HideArtistPfpKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.LibraryFilter
@@ -325,6 +326,11 @@ fun AppearanceSettings(navController: NavController) {
     val (randomThumbnailShape, onRandomThumbnailShapeChange) =
         rememberPreference(
             RandomThumbnailShapeKey,
+            defaultValue = false,
+        )
+    val (hideArtistPfp, onHideArtistPfpChange) =
+        rememberPreference(
+            HideArtistPfpKey,
             defaultValue = false,
         )
 
@@ -959,6 +965,16 @@ fun AppearanceSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.shuffle), null) },
                         checked = randomThumbnailShape,
                         onCheckedChange = onRandomThumbnailShapeChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.hide_artist_pfp)) },
+                        description = stringResource(R.string.hide_artist_pfp_desc),
+                        icon = { Icon(painterResource(R.drawable.person), null) },
+                        checked = hideArtistPfp,
+                        onCheckedChange = onHideArtistPfpChange,
                     )
                 }
 

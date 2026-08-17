@@ -1146,9 +1146,9 @@ private fun StatsHighlightCard(
                         .size(80.dp)
                         .clip(
                             if (useCircleShape) {
-                                rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
+                                rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, imageUrl ?: title)
                             } else {
-                                rememberThumbnailShape(ThumbnailShapeKind.SONG, 10f)
+                                rememberThumbnailShape(ThumbnailShapeKind.SONG, 10f, imageUrl ?: title)
                             },
                         ),
             )

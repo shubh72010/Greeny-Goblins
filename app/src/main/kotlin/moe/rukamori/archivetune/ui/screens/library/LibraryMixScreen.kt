@@ -622,7 +622,7 @@ fun LibraryMixScreen(
                                         modifier =
                                             Modifier
                                                 .size(72.dp)
-                                                .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
+                                                .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, artist.id)),
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(

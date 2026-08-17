@@ -1439,9 +1439,9 @@ fun SimilarRecommendationsTitle(
                 {
                     val shape =
                         if (recommendation.title is Artist) {
-                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
+                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, recommendation.title.id)
                         } else {
-                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value)
+                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value, recommendation.title.id)
                         }
                     AsyncImage(
                         model = thumbnailUrl,
@@ -1491,9 +1491,9 @@ fun HomePageSectionTitle(
                 {
                     val shape =
                         if (section.endpoint?.isArtistEndpoint == true) {
-                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
+                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, section.thumbnail ?: section.title)
                         } else {
-                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value)
+                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value, section.thumbnail ?: section.title)
                         }
                     AsyncImage(
                         model = thumbnailUrl,

@@ -40,6 +40,7 @@ val CanvasSourceKey = stringPreferencesKey("canvasSource")
 val ThumbnailCornerRadiusKey = floatPreferencesKey("thumbnailCornerRadius")
 val CropThumbnailToSquareKey = booleanPreferencesKey("cropThumbnailToSquare")
 
+val HideArtistPfpKey = booleanPreferencesKey("hideArtistPfp")
 val AodThumbnailShapeKey = stringPreferencesKey("aodThumbnailShape")
 val SongThumbnailShapeKey = stringPreferencesKey("songThumbnailShape")
 val ArtistThumbnailShapeKey = stringPreferencesKey("artistThumbnailShape")

@@ -14,12 +14,16 @@ import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandIn
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -70,6 +74,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -170,22 +175,37 @@ inline fun ListItem(
             MaterialTheme.colorScheme.onSurfaceVariant
         }
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    val containerColor by animateColorAsState(
+        targetValue =
+            when {
+                focused -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                isActive -> MaterialTheme.colorScheme.secondaryContainer
+                else -> Color.Transparent
+            },
+        label = "list_item_container",
+    )
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             modifier
-                .focusable()
+                .focusable(interactionSource = interactionSource)
                 .height(ListItemHeight)
-                .padding(horizontal = 8.dp)
-                .then(
-                    if (isActive) {
-                        Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.secondaryContainer)
-                    } else {
-                        Modifier
-                    },
-                ),
+                .clip(RoundedCornerShape(12.dp))
+                .background(containerColor)
+                .border(
+                    width = if (focused) 2.dp else 0.dp,
+                    color =
+                        if (focused) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            Color.Transparent
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                )
+                .padding(horizontal = 8.dp),
     ) {
         Box(Modifier.padding(8.dp), contentAlignment = Alignment.Center) { thumbnailContent() }
         Column(
@@ -264,18 +284,61 @@ fun GridItem(
     thumbnailRatio: Float = 1f,
     fillMaxWidth: Boolean = false,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    val containerColor by animateColorAsState(
+        targetValue =
+            if (focused) {
+                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+            } else {
+                Color.Transparent
+            },
+        label = "grid_item_container",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (focused) 1.04f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "grid_item_scale",
+    )
+
     Column(
         modifier =
             if (fillMaxWidth) {
                 modifier
-                    .focusable()
+                    .focusable(interactionSource = interactionSource)
                     .padding(12.dp)
                     .fillMaxWidth()
+                    .scale(scale)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(containerColor)
+                    .border(
+                        width = if (focused) 2.dp else 0.dp,
+                        color =
+                            if (focused) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.Transparent
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                    )
             } else {
                 modifier
-                    .focusable()
+                    .focusable(interactionSource = interactionSource)
                     .padding(12.dp)
                     .width(GridThumbnailHeight * thumbnailRatio)
+                    .scale(scale)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(containerColor)
+                    .border(
+                        width = if (focused) 2.dp else 0.dp,
+                        color =
+                            if (focused) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.Transparent
+                            },
+                        shape = RoundedCornerShape(16.dp),
+                    )
             },
     ) {
         BoxWithConstraints(
@@ -468,7 +531,7 @@ fun SongGridItem(
             thumbnailUrl = song.song.thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value),
+            shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value, song.id),
             modifier = Modifier.size(GridThumbnailHeight),
         )
         if (!isActive) {
@@ -511,7 +574,7 @@ fun ArtistListItem(
             modifier =
                 Modifier
                     .size(ListThumbnailSize)
-                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, ListThumbnailSize.value / 2f)),
+                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, ListThumbnailSize.value / 2f, artist.id)),
         )
     },
     trailingContent = trailingContent,
@@ -540,7 +603,7 @@ fun ArtistGridItem(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)),
+                    .clip(rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, artist.id)),
         )
     },
     fillMaxWidth = fillMaxWidth,
@@ -1303,7 +1366,7 @@ fun MediaMetadataListItem(
                 isActive = isActive,
                 isPlaying = isPlaying,
                 shouldLoadImage = shouldLoadImage,
-                shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value),
+                shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value, mediaMetadata.id),
                 modifier = Modifier.size(ListThumbnailSize),
             )
         },
@@ -1383,9 +1446,9 @@ fun YouTubeListItem(
                     isPlaying = isPlaying,
                     shape =
                         if (item is ArtistItem) {
-                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f)
+                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, item.id)
                         } else {
-                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value)
+                            rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value, item.id)
                         },
                     modifier = Modifier.size(ListThumbnailSize),
                 )
@@ -1471,9 +1534,9 @@ fun YouTubeGridItem(
         val playerConnection = LocalPlayerConnection.current ?: return@GridItem
         val shape =
             if (item is ArtistItem) {
-                rememberThumbnailShape(ThumbnailShapeKind.ARTIST, GridThumbnailCornerRadius.value)
+                rememberThumbnailShape(ThumbnailShapeKind.ARTIST, GridThumbnailCornerRadius.value, item.id)
             } else {
-                rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value)
+                rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value, item.id)
             }
 
         ItemThumbnail(
@@ -1536,7 +1599,7 @@ fun LocalSongsGrid(
             thumbnailUrl = thumbnailUrl,
             isActive = isActive,
             isPlaying = isPlaying,
-            shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value),
+            shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value, thumbnailUrl ?: title),
             modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             showCenterPlay = true,
             playButtonVisible = false,
@@ -1565,7 +1628,7 @@ fun LocalArtistsGrid(
             thumbnailUrl = thumbnailUrl,
             isActive = false,
             isPlaying = false,
-            shape = rememberThumbnailShape(ThumbnailShapeKind.ARTIST, GridThumbnailCornerRadius.value),
+            shape = rememberThumbnailShape(ThumbnailShapeKind.ARTIST, GridThumbnailCornerRadius.value, thumbnailUrl ?: title),
             modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
             showCenterPlay = false,
             playButtonVisible = false,

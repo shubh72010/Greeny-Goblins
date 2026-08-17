@@ -315,7 +315,7 @@ private fun MiniPlayerArtwork(
     modifier: Modifier = Modifier,
     onTogglePlayPause: () -> Unit = {},
 ) {
-    val artworkShape = rememberThumbnailShape(ThumbnailShapeKind.SONG, 18.5f)
+    val artworkShape = rememberThumbnailShape(ThumbnailShapeKind.SONG, 18.5f, mediaMetadata?.id)
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier.size(47.dp),
