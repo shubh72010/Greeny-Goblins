@@ -57,15 +57,15 @@
 
 <div align="center">
 
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_1.jpg" alt="Browse" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_2.jpg" alt="Live Lyrics" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_3.jpg" alt="Theme Customization" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_4.jpg" alt="Live Statistics" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_5.jpg" alt="Artist" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_6.jpg" alt="Album" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_7.jpg" alt="Player" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_8.jpg" alt="Settings" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_9.jpg" alt="Settings" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_1.png" alt="Browse" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_2.png" alt="Live Lyrics" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_3.png" alt="Theme Customization" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_4.png" alt="Live Statistics" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_5.png" alt="Artist" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_6.png" alt="Album" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_7.png" alt="Player" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_8.png" alt="Settings" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_9.png" alt="Settings" width="30%" />
 
 </div>
 
