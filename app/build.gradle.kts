@@ -311,20 +311,28 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.kotlin.metadata.jvm)
 
-    implementation(project(":core"))
-    implementation(project(":lyrics:kugou"))
-    implementation(project(":lyrics:lrclib"))
-    implementation(project(":lyrics:simpmusic"))
-    implementation(project(":lyrics:paxsenix"))
-    implementation(project(":lyrics:betterlyrics"))
-    implementation(project(":lyrics:unison"))
-    implementation(project(":lyrics:youlyplus"))
+    if (rootProject.file("core").isDirectory) {
+        implementation(project(":core"))
+    }
+    if (rootProject.file("lyrics").isDirectory) {
+        implementation(project(":lyrics:kugou"))
+        implementation(project(":lyrics:lrclib"))
+        implementation(project(":lyrics:simpmusic"))
+        implementation(project(":lyrics:paxsenix"))
+        implementation(project(":lyrics:betterlyrics"))
+        implementation(project(":lyrics:unison"))
+        implementation(project(":lyrics:youlyplus"))
+    }
     implementation(project(":lastfm"))
     implementation(project(":canvas"))
     implementation(project(":shazamkit"))
     implementation(project(":spotifycore"))
-    implementation(project(":moriextractor"))
-    implementation(project(":morideobfuscator"))
+    if (rootProject.file("moriextractor").isDirectory) {
+        implementation(project(":moriextractor"))
+    }
+    if (rootProject.file("morideobfuscator").isDirectory) {
+        implementation(project(":morideobfuscator"))
+    }
     implementation("com.materialkolor:material-kolor:5.0.0-alpha07")
 
     implementation(libs.ktor.client.core)

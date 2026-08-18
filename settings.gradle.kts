@@ -45,21 +45,32 @@ dependencyResolutionManagement {
 // }
 
 rootProject.name = "JusPlayer"
+
+// Submodules (core, lyrics/*, moriextractor, morideobfuscator) may be absent when
+// the repo is checked out without `--recurse-submodules` (e.g. Dependabot's
+// automatic dependency submission). Only include them when their directory exists.
+fun includeIfPresent(path: String) {
+    val dir = path.removePrefix(":").replace(":", "/")
+    if (file(dir).isDirectory) {
+        include(path)
+    }
+}
+
 include(":app")
-include(":core")
-include(":lyrics:kugou")
-include(":lyrics:lrclib")
-include(":lyrics:simpmusic")
-include(":lyrics:paxsenix")
-include(":lyrics:betterlyrics")
-include(":lyrics:unison")
-include(":lyrics:youlyplus")
+includeIfPresent(":core")
+includeIfPresent(":lyrics:kugou")
+includeIfPresent(":lyrics:lrclib")
+includeIfPresent(":lyrics:simpmusic")
+includeIfPresent(":lyrics:paxsenix")
+includeIfPresent(":lyrics:betterlyrics")
+includeIfPresent(":lyrics:unison")
+includeIfPresent(":lyrics:youlyplus")
 include(":lastfm")
 include(":canvas")
 include(":shazamkit")
 include(":spotifycore")
-include(":moriextractor")
-include(":morideobfuscator")
+includeIfPresent(":moriextractor")
+includeIfPresent(":morideobfuscator")
 
 // Use a local copy of NewPipe Extractor by uncommenting the lines below.
 // We assume, that JusPlayer and NewPipe Extractor have the same parent directory.
