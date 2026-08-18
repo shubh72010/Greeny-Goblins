@@ -51,7 +51,7 @@ rootProject.name = "JusPlayer"
 // automatic dependency submission). Only include them when their directory exists.
 fun includeIfPresent(path: String) {
     val dir = path.removePrefix(":").replace(":", "/")
-    if (file(dir).isDirectory) {
+    if (file("$dir/build.gradle.kts").isFile) {
         include(path)
     }
 }

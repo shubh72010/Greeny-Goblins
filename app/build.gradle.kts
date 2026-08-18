@@ -311,26 +311,38 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.kotlin.metadata.jvm)
 
-    if (rootProject.file("core").isDirectory) {
+    if (rootProject.file("core/build.gradle.kts").isFile) {
         implementation(project(":core"))
     }
-    if (rootProject.file("lyrics").isDirectory) {
+    if (rootProject.file("lyrics/kugou/build.gradle.kts").isFile) {
         implementation(project(":lyrics:kugou"))
+    }
+    if (rootProject.file("lyrics/lrclib/build.gradle.kts").isFile) {
         implementation(project(":lyrics:lrclib"))
+    }
+    if (rootProject.file("lyrics/simpmusic/build.gradle.kts").isFile) {
         implementation(project(":lyrics:simpmusic"))
+    }
+    if (rootProject.file("lyrics/paxsenix/build.gradle.kts").isFile) {
         implementation(project(":lyrics:paxsenix"))
+    }
+    if (rootProject.file("lyrics/betterlyrics/build.gradle.kts").isFile) {
         implementation(project(":lyrics:betterlyrics"))
+    }
+    if (rootProject.file("lyrics/unison/build.gradle.kts").isFile) {
         implementation(project(":lyrics:unison"))
+    }
+    if (rootProject.file("lyrics/youlyplus/build.gradle.kts").isFile) {
         implementation(project(":lyrics:youlyplus"))
     }
     implementation(project(":lastfm"))
     implementation(project(":canvas"))
     implementation(project(":shazamkit"))
     implementation(project(":spotifycore"))
-    if (rootProject.file("moriextractor").isDirectory) {
+    if (rootProject.file("moriextractor/build.gradle.kts").isFile) {
         implementation(project(":moriextractor"))
     }
-    if (rootProject.file("morideobfuscator").isDirectory) {
+    if (rootProject.file("morideobfuscator/build.gradle.kts").isFile) {
         implementation(project(":morideobfuscator"))
     }
     implementation("com.materialkolor:material-kolor:5.0.0-alpha07")
