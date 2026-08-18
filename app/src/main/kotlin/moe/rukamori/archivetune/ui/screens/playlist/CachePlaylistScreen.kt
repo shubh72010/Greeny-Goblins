@@ -142,7 +142,7 @@ fun CachePlaylistScreen(
         )
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val (disableBlur) = rememberPreference(DisableBlurKey, true)
 
     val wrappedSongs =
         remember(cachedSongs, sortType, sortDescending) {

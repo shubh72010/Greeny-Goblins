@@ -199,7 +199,7 @@ fun ArtistScreen(
     val loadedLibraryAlbums by viewModel.libraryAlbums.collectAsStateWithLifecycle()
     val blockState by viewModel.blockState.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
-    val hideArtistPfp by rememberPreference(key = HideArtistPfpKey, defaultValue = false)
+    val hideArtistPfp by rememberPreference(key = HideArtistPfpKey, defaultValue = true)
     val isArtistBlocked = (blockState as? ArtistBlockState.Success)?.isBlocked == true
     val artistPage =
         remember(loadedArtistPage, isArtistBlocked) {

@@ -90,7 +90,7 @@ fun rememberThumbnailShape(
     val (randomShapes) =
         rememberPreference(
             RandomThumbnailShapeKey,
-            defaultValue = false,
+            defaultValue = true,
         )
     if (randomShapes) {
         LaunchedEffect(Unit) { ThumbnailShapeClock.ensureStarted() }

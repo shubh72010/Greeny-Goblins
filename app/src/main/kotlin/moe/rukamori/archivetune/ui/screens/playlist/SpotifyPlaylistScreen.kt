@@ -163,7 +163,7 @@ fun SpotifyPlaylistScreen(
             tracks.sumOf { track -> track.durationMs.toLong() }
         }
 
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val (disableBlur) = rememberPreference(DisableBlurKey, true)
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
     val surfaceColor = MaterialTheme.colorScheme.surface

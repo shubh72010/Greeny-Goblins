@@ -45,7 +45,7 @@ class HomeRepository
 
         val showTonalBackdrop: Flow<Boolean> =
             context.dataStore.data
-                .map { preferences -> preferences[DisableBlurKey] != true }
+                .map { preferences -> preferences[DisableBlurKey] == false }
                 .distinctUntilChanged()
 
         val showQuickPicks: Flow<Boolean> =

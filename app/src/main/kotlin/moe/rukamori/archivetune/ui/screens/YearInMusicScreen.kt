@@ -179,7 +179,7 @@ private fun YearInMusicRecapScreen(
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
     val content = uiState as YearInMusicUiState.Content
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val (disableBlur) = rememberPreference(DisableBlurKey, true)
 
     var isGeneratingImage by remember { mutableStateOf(false) }
     var isShareCaptureMode by remember { mutableStateOf(false) }

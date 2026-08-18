@@ -191,7 +191,7 @@ fun PlayerMenu(
 
     // Artist separators for splitting artist names
     val (artistSeparators) = rememberPreference(ArtistSeparatorsKey, defaultValue = ",;/&")
-    val (canvasSource, onCanvasSourceChange) = rememberEnumPreference(CanvasSourceKey, CanvasSource.AUTO)
+    val (canvasSource, onCanvasSourceChange) = rememberEnumPreference(CanvasSourceKey, CanvasSource.YOUTUBE)
     val (externalDownloaderEnabled) = rememberPreference(ExternalDownloaderEnabledKey, defaultValue = false)
     val (externalDownloaderPackage) = rememberPreference(ExternalDownloaderPackageKey, defaultValue = "")
     val (speedDialSongIds, onSpeedDialSongIdsChange) = rememberPreference(SpeedDialSongIdsKey, "")

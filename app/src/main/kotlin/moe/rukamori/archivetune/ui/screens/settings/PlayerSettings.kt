@@ -131,7 +131,7 @@ fun PlayerSettings(navController: NavController) {
     val (autoDownloadOnLike, onAutoDownloadOnLikeChange) =
         rememberPreference(
             AutoDownloadOnLikeKey,
-            defaultValue = false,
+            defaultValue = true,
         )
     val (autoSkipNextOnError, onAutoSkipNextOnErrorChange) =
         rememberPreference(
@@ -141,7 +141,7 @@ fun PlayerSettings(navController: NavController) {
     val (pauseOnDeviceMute, onPauseOnDeviceMuteChange) =
         rememberPreference(
             PauseOnDeviceMuteKey,
-            defaultValue = false,
+            defaultValue = true,
         )
     val (
         deviceMutePlaybackRecoveryVolume,
@@ -170,7 +170,7 @@ fun PlayerSettings(navController: NavController) {
     val (crossfadeEnabled, onCrossfadeEnabledChange) =
         rememberPreference(
             CrossfadeEnabledKey,
-            defaultValue = false,
+            defaultValue = true,
         )
     val (crossfadeDurationSeconds, onCrossfadeDurationSecondsChange) =
         rememberPreference(

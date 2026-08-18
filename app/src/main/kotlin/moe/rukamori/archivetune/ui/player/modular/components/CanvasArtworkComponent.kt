@@ -24,7 +24,7 @@ import java.util.Locale
 
 fun registerCanvasArtworkComponent() {
     PlayerComponentRegistry.register(PlayerComponentType.CANVAS_ARTWORK.id) { _, metadata, playerConnection, isPlaying, _, _, _, _, _, _, modifier, _ ->
-        val (canvasEnabled) = rememberPreference(JusPlayerCanvasKey, defaultValue = false)
+        val (canvasEnabled) = rememberPreference(JusPlayerCanvasKey, defaultValue = true)
         if (canvasEnabled) {
             CanvasArtworkComponent(metadata, playerConnection, isPlaying, modifier)
         }
@@ -44,7 +44,7 @@ fun CanvasArtworkComponent(
     var fetchInFlight by remember(metadata?.id) {
         mutableStateOf(false)
     }
-    val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.AUTO)
+    val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.YOUTUBE)
 
     val storefront = remember {
         val country = java.util.Locale.getDefault().country

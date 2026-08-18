@@ -58,7 +58,7 @@ fun registerCoverArtComponent() {
     PlayerComponentRegistry.register(PlayerComponentType.COVER_ART.id) { _, metadata, playerConnection, isPlaying, _, _, _, _, _, _, modifier, _ ->
         val (coverArtStyle) = rememberEnumPreference(ModularCoverArtStyleKey, defaultValue = ModularCoverArtStyle.NORMAL)
         val (hideThumbnail) = rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
-        val (cropToSquare) = rememberPreference(CropThumbnailToSquareKey, defaultValue = false)
+        val (cropToSquare) = rememberPreference(CropThumbnailToSquareKey, defaultValue = true)
         val cornerRadius = LocalThumbnailCornerRadius.current
         CoverArtComponent(
             metadata = metadata,

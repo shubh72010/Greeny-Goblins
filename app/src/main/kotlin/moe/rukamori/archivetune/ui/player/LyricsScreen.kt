@@ -44,6 +44,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -102,6 +103,7 @@ import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.LyricsMode
 import moe.rukamori.archivetune.constants.LyricsModeKey
 import moe.rukamori.archivetune.constants.ShowLyricsPlayerControlsKey
+import moe.rukamori.archivetune.constants.ShowLyricsProgressBarKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.LocalMenuState
@@ -163,6 +165,16 @@ fun LyricsScreen(
         remember(showPlayerControlsState) {
             { showControls: Boolean ->
                 showPlayerControlsState.value = showControls
+            }
+        }
+
+    val showProgressBarState =
+        rememberPreference(ShowLyricsProgressBarKey, true)
+    val showProgressBar by showProgressBarState
+    val onShowProgressBarChange =
+        remember(showProgressBarState) {
+            { showBar: Boolean ->
+                showProgressBarState.value = showBar
             }
         }
 
@@ -299,6 +311,8 @@ fun LyricsScreen(
                 onLyricsSyncOffsetChange = onLyricsSyncOffsetChange,
                 showPlayerControlsState = showPlayerControlsState,
                 onShowPlayerControlsChange = onShowPlayerControlsChange,
+                showProgressBarState = showProgressBarState,
+                onShowProgressBarChange = onShowProgressBarChange,
                 onDismiss = menuState::dismiss,
             )
         }
@@ -356,6 +370,9 @@ fun LyricsScreen(
                         lyricsMode = lyricsMode,
                         sliderPositionProvider = { sliderPosition },
                         lyricsSyncOffset = lyricsSyncOffset,
+                        positionProvider = { positionState.longValue },
+                        durationProvider = { durationState.longValue },
+                        showProgressBar = showProgressBar,
                         modifier =
                             Modifier
                                 .weight(1.15f)
@@ -407,6 +424,9 @@ fun LyricsScreen(
                     lyricsMode = lyricsMode,
                     sliderPositionProvider = { sliderPosition },
                     lyricsSyncOffset = lyricsSyncOffset,
+                    positionProvider = { positionState.longValue },
+                    durationProvider = { durationState.longValue },
+                    showProgressBar = showProgressBar,
                     modifier =
                         Modifier
                             .weight(1f)
@@ -667,17 +687,60 @@ private fun AppleMusicLyricsPane(
     lyricsMode: LyricsMode,
     sliderPositionProvider: () -> Long?,
     lyricsSyncOffset: Int,
+    positionProvider: () -> Long,
+    durationProvider: () -> Long,
+    showProgressBar: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    LyricsContent(
-        lyricsMode = lyricsMode,
-        sliderPositionProvider = sliderPositionProvider,
-        lyricsSyncOffset = lyricsSyncOffset,
+    Column(modifier = modifier.fillMaxSize()) {
+        LyricsContent(
+            lyricsMode = lyricsMode,
+            sliderPositionProvider = sliderPositionProvider,
+            lyricsSyncOffset = lyricsSyncOffset,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+            textColor = AppleMusicForeground,
+        )
+
+        if (showProgressBar) {
+            AppleMusicLyricsProgressBar(
+                positionProvider = positionProvider,
+                durationProvider = durationProvider,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 14.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppleMusicLyricsProgressBar(
+    positionProvider: () -> Long,
+    durationProvider: () -> Long,
+    modifier: Modifier = Modifier,
+) {
+    val position = positionProvider()
+    val duration = durationProvider()
+    val progress =
+        if (duration > 0L) {
+            (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+        } else {
+            0f
+        }
+
+    LinearProgressIndicator(
+        progress = { progress },
+        color = AppleMusicForeground.copy(alpha = 0.94f),
+        trackColor = AppleMusicForeground.copy(alpha = 0.28f),
         modifier =
             modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
-        textColor = AppleMusicForeground,
+                .height(3.dp)
+                .clip(RoundedCornerShape(1.5.dp)),
     )
 }
 

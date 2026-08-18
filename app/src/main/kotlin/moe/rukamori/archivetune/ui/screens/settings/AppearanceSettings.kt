@@ -176,7 +176,7 @@ fun AppearanceSettings(navController: NavController) {
     val (archiveTuneCanvasEnabled, onArchiveTuneCanvasEnabledChange) =
         rememberPreference(
             JusPlayerCanvasKey,
-            defaultValue = false,
+            defaultValue = true,
         )
     val (thumbnailCornerRadius, onThumbnailCornerRadiusChange) =
         rememberPreference(
@@ -186,7 +186,7 @@ fun AppearanceSettings(navController: NavController) {
     val (cropThumbnailToSquare, onCropThumbnailToSquareChange) =
         rememberPreference(
             CropThumbnailToSquareKey,
-            defaultValue = false,
+            defaultValue = true,
         )
     val (playerBackground, onPlayerBackgroundChange) =
         rememberEnumPreference(
@@ -204,7 +204,7 @@ fun AppearanceSettings(navController: NavController) {
             defaultValue = true,
         )
     val (pureBlack, onPureBlackChange) = rememberPreference(PureBlackKey, defaultValue = true)
-    val (disableBlur, onDisableBlurChange) = rememberPreference(DisableBlurKey, defaultValue = false)
+    val (disableBlur, onDisableBlurChange) = rememberPreference(DisableBlurKey, defaultValue = true)
     val (disableAnimations, onDisableAnimationsChange) =
         rememberPreference(
             DisableAnimationsKey,
@@ -326,12 +326,12 @@ fun AppearanceSettings(navController: NavController) {
     val (randomThumbnailShape, onRandomThumbnailShapeChange) =
         rememberPreference(
             RandomThumbnailShapeKey,
-            defaultValue = false,
+            defaultValue = true,
         )
     val (hideArtistPfp, onHideArtistPfpChange) =
         rememberPreference(
             HideArtistPfpKey,
-            defaultValue = false,
+            defaultValue = true,
         )
 
     val customFontPickerLauncher =
@@ -708,6 +708,7 @@ fun AppearanceSettings(navController: NavController) {
                                 PlayerDesignStyle.V7 -> stringResource(R.string.player_design_v7)
                                 PlayerDesignStyle.V8 -> stringResource(R.string.player_design_v8)
                                 PlayerDesignStyle.V9 -> stringResource(R.string.player_design_v9)
+                                PlayerDesignStyle.V10 -> stringResource(R.string.player_design_v10)
                             }
                         },
                     )

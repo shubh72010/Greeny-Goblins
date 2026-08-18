@@ -216,6 +216,7 @@
     <string name="lyrics_share_background_blur_value">%1$d px</string>
     <string name="lyrics_line_blur">Blur lyrics lines</string>
     <string name="show_lyrics_player_controls">Show player controls</string>
+    <string name="show_lyrics_progress_bar">Show progress bar</string>
     <string name="lyrics_share_background_dim">Background dim</string>
     <string name="lyrics_share_background_dim_value">%1$d%%</string>
     <string name="lyrics_share_show_cover">Show album cover</string>
@@ -317,6 +318,7 @@
     <string name="player_design_v7">Immersive</string>
     <string name="player_design_v8">Immersive Extended</string>
     <string name="player_design_v9">Material Extended</string>
+    <string name="player_design_v10">Carousel</string>
     <string name="player_background_blur">Blur</string>
     <string name="coloring">Coloring</string>
     <string name="blur_gradient">Blur Gradient</string>

@@ -138,11 +138,14 @@ fun LyricsMenu(
     onLyricsSyncOffsetChange: (Int) -> Unit,
     showPlayerControlsState: State<Boolean>,
     onShowPlayerControlsChange: (Boolean) -> Unit,
+    showProgressBarState: State<Boolean>,
+    onShowProgressBarChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     viewModel: LyricsMenuViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val showPlayerControls by showPlayerControlsState
+    val showProgressBar by showProgressBarState
 
     var showEditDialog by rememberSaveable {
         mutableStateOf(false)
@@ -784,6 +787,26 @@ fun LyricsMenu(
                     },
                     onClick = {
                         onShowPlayerControlsChange(!showPlayerControls)
+                    },
+                    modifier =
+                        Modifier.padding(
+                            start = 8.dp,
+                            end = 8.dp,
+                            bottom = 8.dp,
+                        ),
+                )
+                NewMenuItem(
+                    headlineContent = {
+                        Text(stringResource(R.string.show_lyrics_progress_bar))
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = showProgressBar,
+                            onCheckedChange = onShowProgressBarChange,
+                        )
+                    },
+                    onClick = {
+                        onShowProgressBarChange(!showProgressBar)
                     },
                     modifier =
                         Modifier.padding(

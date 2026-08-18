@@ -516,7 +516,7 @@ fun PlayerTopActions(
             }
         }
 
-        PlayerDesignStyle.V1 -> {
+        PlayerDesignStyle.V1, PlayerDesignStyle.V10 -> {
             Box(
                 modifier =
                     Modifier
@@ -1395,7 +1395,7 @@ fun PlayerPlaybackControls(
             }
         }
 
-        PlayerDesignStyle.V1, PlayerDesignStyle.V5 -> {
+        PlayerDesignStyle.V1, PlayerDesignStyle.V5, PlayerDesignStyle.V10 -> {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier =

@@ -104,7 +104,7 @@ fun SearchScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val (disableBlur) = rememberPreference(DisableBlurKey, true)
     val tonalStart = MaterialTheme.colorScheme.primaryContainer
     val tonalMiddle = MaterialTheme.colorScheme.secondaryContainer
     val lazyListState = rememberLazyListState()

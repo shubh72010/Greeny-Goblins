@@ -146,10 +146,10 @@ fun Thumbnail(
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
 
     val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
-    val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, false)
+    val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
     val canvasSource by rememberEnumPreference(
         key = CanvasSourceKey,
-        defaultValue = CanvasSource.AUTO,
+        defaultValue = CanvasSource.YOUTUBE,
     )
     val lowDataModeActive = rememberLowDataModeActive()
     val playerDesignStyle by rememberEnumPreference(
@@ -166,8 +166,8 @@ fun Thumbnail(
             key = ThumbnailCornerRadiusKey,
             defaultValue = 45f,
         )
-    val cropThumbnailToSquare by rememberPreference(CropThumbnailToSquareKey, false)
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val cropThumbnailToSquare by rememberPreference(CropThumbnailToSquareKey, true)
+    val (disableBlur) = rememberPreference(DisableBlurKey, true)
     val (backdropEnabled) = rememberPreference(BackdropEnabledKey, defaultValue = true)
     val (backdropBlurAmount) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
     val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()

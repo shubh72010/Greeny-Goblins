@@ -314,7 +314,7 @@ fun BottomSheetPlayer(
     )
     val canvasSource by rememberEnumPreference(
         key = CanvasSourceKey,
-        defaultValue = CanvasSource.AUTO,
+        defaultValue = CanvasSource.YOUTUBE,
     )
     val showPlayerVolumeBar by rememberPreference(
         key = ShowPlayerVolumeBarKey,
@@ -336,7 +336,7 @@ fun BottomSheetPlayer(
     val (playerCustomContrast) = rememberPreference(PlayerCustomContrastKey, 1f)
     val (playerCustomBrightness) = rememberPreference(PlayerCustomBrightnessKey, 1f)
 
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val (disableBlur) = rememberPreference(DisableBlurKey, true)
     val (blurRadius) = rememberPreference(BlurRadiusKey, 48f)
     val (backdropEnabled) = rememberPreference(BackdropEnabledKey, defaultValue = true)
     val (backdropBlurAmount) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
@@ -413,7 +413,7 @@ fun BottomSheetPlayer(
 
     val aodModeEnabled by playerConnection.aodModeEnabled.collectAsStateWithLifecycle()
     val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 45f)
-    val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, false)
+    val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
     val lowDataModeActive = rememberLowDataModeActive()
     val (maxCanvasCacheSize, _) =
         rememberPreference(
@@ -1704,6 +1704,38 @@ fun BottomSheetPlayer(
                             }
                         },
                     )
+                } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier =
+                            Modifier
+                                .windowInsetsPadding(
+                                    WindowInsets.systemBars.only(
+                                        WindowInsetsSides.Horizontal,
+                                    ),
+                                ).padding(bottom = queueSheetState.collapsedBound),
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            HeroCarouselPlayerContent(
+                                playerConnection = playerConnection,
+                                queueWindows = queueWindows,
+                                currentWindowIndex = currentWindowIndex,
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .nestedScroll(state.preUpPostDownNestedScrollConnection),
+                            )
+                        }
+
+                        enrichedMetadata?.let {
+                            controlsContent(it)
+                        }
+
+                        Spacer(Modifier.height(30.dp))
+                    }
                 } else {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,

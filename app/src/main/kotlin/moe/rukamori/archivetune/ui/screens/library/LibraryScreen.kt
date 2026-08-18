@@ -92,7 +92,7 @@ fun LibraryScreen(navController: NavController) {
     val allTags by database.allTags().collectAsState(initial = emptyList())
     val (showTagsInLibrary) = rememberPreference(ShowTagsInLibraryKey, defaultValue = true)
     val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, defaultValue = false)
-    val (disableBlur) = rememberPreference(DisableBlurKey, false)
+    val (disableBlur) = rememberPreference(DisableBlurKey, true)
     var showTagsManagementDialog by rememberSaveable { mutableStateOf(false) }
     val activeSelectedTagIds = if (showTagsInLibrary) selectedTagIds else emptySet()
     val libraryFilters =
