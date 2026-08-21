@@ -74,6 +74,7 @@ import kotlinx.coroutines.isActive
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.ShowStreamSourceBadgeKey
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
@@ -102,6 +103,12 @@ fun DebugSettings(navController: NavController) {
         rememberPreference(
             key = booleanPreferencesKey("show_codec_on_player"),
             defaultValue = false,
+        )
+
+    val (showStreamSourceBadge, onShowStreamSourceBadgeChange) =
+        rememberPreference(
+            key = ShowStreamSourceBadgeKey,
+            defaultValue = true,
         )
 
     val playerConnection = LocalPlayerConnection.current
@@ -168,6 +175,16 @@ fun DebugSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         checked = showCodecOnPlayer,
                         onCheckedChange = onShowCodecOnPlayerChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.show_stream_source_badge)) },
+                        description = stringResource(R.string.show_stream_source_badge_desc),
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        checked = showStreamSourceBadge,
+                        onCheckedChange = onShowStreamSourceBadgeChange,
                     )
                 }
 

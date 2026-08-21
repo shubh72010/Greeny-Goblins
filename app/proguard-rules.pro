@@ -147,5 +147,9 @@
 -dontwarn io.ktor.**
 -keep class moe.rukamori.archivetune.moriextractor.BackendExtractorResponse { *; }
 
+# JusPlayer Engine (JitPack) — keep provider API
+-keep class org.jusplayer.** { *; }
+-dontwarn org.jusplayer.**
+
 # engine HTTP Android/OkHttp Ktor
 -dontwarn kotlinx.coroutines.**

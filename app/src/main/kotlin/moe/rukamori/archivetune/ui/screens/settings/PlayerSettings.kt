@@ -46,6 +46,9 @@ import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
+import moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey
+import moe.rukamori.archivetune.constants.HapticVisualizerIntensityKey
+import moe.rukamori.archivetune.constants.HapticVisualizerModeKey
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
 import moe.rukamori.archivetune.constants.HistoryDuration
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
@@ -67,6 +70,9 @@ import moe.rukamori.archivetune.ui.component.CrossfadeSliderPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
+import moe.rukamori.archivetune.ui.component.NumberPickerPreference
+import moe.rukamori.archivetune.playback.haptic.HapticVisualizerMode
+import moe.rukamori.archivetune.ui.component.EnumSegmentedPreference
 import moe.rukamori.archivetune.ui.component.NumberPickerPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
@@ -120,6 +126,27 @@ fun PlayerSettings(navController: NavController) {
         rememberPreference(
             AudioOffload,
             defaultValue = false,
+        )
+
+    val (hapticVisualizerEnabled, onHapticVisualizerEnabledChange) =
+        rememberPreference(
+            HapticVisualizerEnabledKey,
+            defaultValue = false,
+        )
+    val (hapticVisualizerMode, onHapticVisualizerModeChange) =
+        rememberPreference(
+            HapticVisualizerModeKey,
+            defaultValue = HapticVisualizerMode.CONTINUOUS.name,
+        )
+    val hapticVisualizerModeValue =
+        remember(hapticVisualizerMode) {
+            runCatching { HapticVisualizerMode.valueOf(hapticVisualizerMode) }
+                .getOrDefault(HapticVisualizerMode.CONTINUOUS)
+        }
+    val (hapticVisualizerIntensity, onHapticVisualizerIntensityChange) =
+        rememberPreference(
+            HapticVisualizerIntensityKey,
+            defaultValue = 100,
         )
 
     val (seekExtraSeconds, onSeekExtraSeconds) =
@@ -218,6 +245,7 @@ fun PlayerSettings(navController: NavController) {
             listOf(
                 PlayerStreamClient.WEB_REMIX,
                 PlayerStreamClient.ARCHIVETUNE_EXTRACTOR,
+                PlayerStreamClient.JUSPLAYER_ENGINE,
             )
         }
     val selectedPlayerStreamClient =
@@ -350,6 +378,10 @@ fun PlayerSettings(navController: NavController) {
                                     )
                                 }
 
+                                PlayerStreamClient.JUSPLAYER_ENGINE -> {
+                                    stringResource(R.string.player_stream_client_jusplayer_engine)
+                                }
+
                                 else -> {
                                     stringResource(R.string.player_stream_client_web_remix)
                                 }
@@ -371,6 +403,10 @@ fun PlayerSettings(navController: NavController) {
                                             R.string.player_stream_client_archivetune_extractor_login_required,
                                         )
                                     }
+                                }
+
+                                PlayerStreamClient.JUSPLAYER_ENGINE -> {
+                                    stringResource(R.string.player_stream_client_jusplayer_engine_desc)
                                 }
 
                                 else -> {
@@ -530,6 +566,52 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.bluetooth), null) },
                         checked = autoStartOnBluetooth,
                         onCheckedChange = onAutoStartOnBluetoothChange,
+                    )
+                }
+            }
+
+            PreferenceGroup(title = stringResource(R.string.haptic_feedback)) {
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.haptic_visualizer)) },
+                        description = stringResource(R.string.haptic_visualizer_desc),
+                        icon = { Icon(painterResource(R.drawable.vibration), null) },
+                        checked = hapticVisualizerEnabled,
+                        onCheckedChange = onHapticVisualizerEnabledChange,
+                    )
+                }
+
+                item(visible = hapticVisualizerEnabled) {
+                    EnumSegmentedPreference(
+                        title = { Text(stringResource(R.string.haptic_visualizer_mode)) },
+                        description = stringResource(R.string.haptic_visualizer_mode_desc),
+                        icon = { Icon(painterResource(R.drawable.vibration), null) },
+                        selectedValue = hapticVisualizerModeValue,
+                        onValueSelected = { mode -> onHapticVisualizerModeChange(mode.name) },
+                        valueText = {
+                            when (it) {
+                                HapticVisualizerMode.CONTINUOUS -> {
+                                    stringResource(R.string.haptic_visualizer_mode_continuous)
+                                }
+
+                                HapticVisualizerMode.BEAT -> {
+                                    stringResource(R.string.haptic_visualizer_mode_beat)
+                                }
+                            }
+                        },
+                    )
+                }
+
+                item(visible = hapticVisualizerEnabled) {
+                    val context = LocalContext.current
+                    NumberPickerPreference(
+                        title = { Text(stringResource(R.string.haptic_visualizer_intensity)) },
+                        icon = { Icon(painterResource(R.drawable.vibration), null) },
+                        value = hapticVisualizerIntensity,
+                        onValueChange = onHapticVisualizerIntensityChange,
+                        minValue = 10,
+                        maxValue = 150,
+                        valueText = { value -> context.getString(R.string.percentage_format, value) },
                     )
                 }
             }

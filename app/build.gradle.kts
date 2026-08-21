@@ -368,6 +368,13 @@ dependencies {
     implementation(libs.accompanist.lyrics.core)
 
     implementation("org.json:json:20240303")
+
+    implementation("com.github.shubh72010.JusPlayer-Engine:engine-api:v1.6.0")
+    implementation("com.github.shubh72010.JusPlayer-Engine:engine-provider-newpipe:v1.6.0") {
+        exclude(group = "com.github.shubh72010.JusPlayer-Engine", module = "extractor")
+    }
+    implementation("com.github.shubh72010.JusPlayer-Engine:engine-provider-api:v1.6.0")
+    implementation("com.github.shubh72010.JusPlayer-Engine:engine-model:v1.6.0")
 }
 
 androidComponents {

@@ -128,6 +128,9 @@ import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
 import moe.rukamori.archivetune.constants.AudioNormalizationKey
 import moe.rukamori.archivetune.constants.AudioOffload
+import moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey
+import moe.rukamori.archivetune.constants.HapticVisualizerIntensityKey
+import moe.rukamori.archivetune.constants.HapticVisualizerModeKey
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
@@ -226,6 +229,8 @@ import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
+import moe.rukamori.archivetune.playback.haptic.HapticVisualizer
+import moe.rukamori.archivetune.playback.haptic.HapticVisualizerMode
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
@@ -235,6 +240,7 @@ import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
 import moe.rukamori.archivetune.utils.AuthScopedCacheValue
 import moe.rukamori.archivetune.utils.CoilBitmapLoader
 import moe.rukamori.archivetune.utils.NetworkConnectivityObserver
+import moe.rukamori.archivetune.engine.JusPlayerEngineResolver
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
@@ -356,7 +362,10 @@ class MusicService :
     )
     private val playbackUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
     private val extractorPlaybackUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
+    private val jusPlayerEnginePlaybackUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
     private val remotePlaybackTrackingUrlCache = ConcurrentHashMap<String, String>()
+    private val _activeStreamSource = kotlinx.coroutines.flow.MutableStateFlow("WEB_REMIX")
+    val activeStreamSource: kotlinx.coroutines.flow.StateFlow<String> = _activeStreamSource
     private val contentLengthCache = ConcurrentHashMap<String, Long>()
     private val streamingExtractionManager by lazy {
         StreamingExtractionManager(
@@ -659,6 +668,7 @@ class MusicService :
     private var bassBoost: BassBoost? = null
     private var virtualizer: Virtualizer? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private val hapticVisualizer by lazy { HapticVisualizer(this) }
     private val audioEffectPlayerListener =
         object : Player.Listener {
             override fun onEvents(
@@ -672,6 +682,12 @@ class MusicService :
                     )
                 ) {
                     reconcileAudioEffectSession()
+                }
+                if (
+                    events.contains(Player.EVENT_IS_PLAYING_CHANGED) &&
+                    !player.isPlaying
+                ) {
+                    hapticVisualizer.stop()
                 }
             }
         }
@@ -1217,6 +1233,32 @@ class MusicService :
             .collectLatest(scope) {
                 localPlayer.skipSilenceEnabled = it
                 secondaryCrossfadePlayer?.skipSilenceEnabled = it
+            }
+
+        dataStore.data
+            .map { prefs ->
+                val enabled = prefs[HapticVisualizerEnabledKey] ?: false
+                val mode =
+                    prefs[HapticVisualizerModeKey]
+                        ?.let { name -> runCatching { HapticVisualizerMode.valueOf(name) }.getOrNull() }
+                        ?: HapticVisualizerMode.CONTINUOUS
+                val intensity = (prefs[HapticVisualizerIntensityKey] ?: 100).coerceIn(10, 150) / 100f
+                Triple(enabled, mode, intensity)
+            }
+            .distinctUntilChanged()
+            .collectLatest(scope) { (enabled, mode, intensity) ->
+                hapticVisualizer.enabled = enabled
+                hapticVisualizer.mode = mode
+                hapticVisualizer.intensity = intensity
+                if (enabled) {
+                    val sessionId = localPlayer.audioSessionId
+                    if (sessionId > 0) {
+                        hapticVisualizer.attach(sessionId)
+                    }
+                } else {
+                    hapticVisualizer.detach()
+                    hapticVisualizer.stop()
+                }
             }
 
         dataStore.data
@@ -3299,8 +3341,10 @@ class MusicService :
         val requestProfile = StreamClientUtils.resolveRequestProfile(failedUrl)
         val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
         val extractorAuthFingerprint = ArchiveTuneExtractorCacheFingerprintPrefix + authFingerprint
+        val engineAuthFingerprint = JusPlayerEngineCacheFingerprintPrefix + authFingerprint
         val cachedFailedUrl = playbackUrlCache[mediaId]?.takeIf { it.url == failedUrl }
         val cachedExtractorFailedUrl = extractorPlaybackUrlCache[mediaId]?.takeIf { it.url == failedUrl }
+        val cachedEngineFailedUrl = jusPlayerEnginePlaybackUrlCache[mediaId]?.takeIf { it.url == failedUrl }
         val failedExpiredUrl =
             YTPlayerUtils.isExpiredOrNearExpiredStreamUrl(failedUrl) ||
                 (
@@ -3318,12 +3362,21 @@ class MusicService :
                             minimumRemainingMs = 0L,
                         )
                     } == true
+                ) ||
+                (
+                    cachedEngineFailedUrl?.let {
+                        !it.isValidFor(
+                            authFingerprint = engineAuthFingerprint,
+                            minimumRemainingMs = 0L,
+                        )
+                    } == true
                 )
 
         playbackUrlCache.remove(mediaId)
         extractorPlaybackUrlCache.remove(mediaId)
+        jusPlayerEnginePlaybackUrlCache.remove(mediaId)
         YTPlayerUtils.invalidateCachedStreamUrls(mediaId)
-        if (!failedExpiredUrl && cachedExtractorFailedUrl == null && requestProfile.clientKey.isNotEmpty()) {
+        if (!failedExpiredUrl && cachedExtractorFailedUrl == null && cachedEngineFailedUrl == null && requestProfile.clientKey.isNotEmpty()) {
             YTPlayerUtils.markStreamClientFailed(mediaId, requestProfile.clientKey, responseException.responseCode)
         }
 
@@ -5596,6 +5649,8 @@ class MusicService :
 
     private fun releaseAudioEffectInstances() {
         audioEffectsSessionId = null
+        hapticVisualizer.detach()
+        hapticVisualizer.stop()
         try {
             equalizer?.release()
         } catch (_: Exception) {
@@ -5653,6 +5708,7 @@ class MusicService :
         bassBoost = createAudioEffect("BassBoost", sessionId) { BassBoost(0, sessionId) }
         virtualizer = createAudioEffect("Virtualizer", sessionId) { Virtualizer(0, sessionId) }
         loudnessEnhancer = createAudioEffect("LoudnessEnhancer", sessionId) { LoudnessEnhancer(sessionId) }
+        hapticVisualizer.attach(sessionId)
 
         equalizer?.let(::updateEqCapabilitiesFromEffect)
         applyEqSettingsToEffects(desiredEqSettings.value)
@@ -6666,6 +6722,7 @@ class MusicService :
 
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
+            jusPlayerEnginePlaybackUrlCache.remove(currentMediaId)
             contentLengthCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
 
@@ -6701,6 +6758,7 @@ class MusicService :
         if (!isLocalMedia && !isFullyDownloadedMedia && YTPlayerUtils.isBotDetectionException(error)) {
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
+            jusPlayerEnginePlaybackUrlCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
             YTPlayerUtils.clearPlaybackAuthCaches()
             if (playbackStreamRecoveryTracker.registerRetryAttempt(currentMediaId)) {
@@ -6744,8 +6802,10 @@ class MusicService :
             val failedUrl =
                 playbackUrlCache[currentMediaId]?.url
                     ?: extractorPlaybackUrlCache[currentMediaId]?.url
+                    ?: jusPlayerEnginePlaybackUrlCache[currentMediaId]?.url
             playbackUrlCache.remove(currentMediaId)
             extractorPlaybackUrlCache.remove(currentMediaId)
+            jusPlayerEnginePlaybackUrlCache.remove(currentMediaId)
             contentLengthCache.remove(currentMediaId)
             YTPlayerUtils.invalidateCachedStreamUrls(currentMediaId)
             failedUrl
@@ -6974,6 +7034,12 @@ class MusicService :
                 mediaId = mediaId,
             )
         }
+        if (preferredStreamClient == PlayerStreamClient.JUSPLAYER_ENGINE) {
+            return resolveJusPlayerEngineDataSpec(
+                dataSpec = dataSpec,
+                mediaId = mediaId,
+            )
+        }
 
         val authFingerprint = YouTube.currentPlaybackAuthState().fingerprint
         playbackUrlCache[mediaId]
@@ -6984,6 +7050,7 @@ class MusicService :
                     minimumRemainingMs = YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS,
                 )
             }?.let {
+                _activeStreamSource.value = preferredStreamClient.name + " (cached)"
                 scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                 val resolvedDataSpec = dataSpec.withUri(it.url.toUri())
                 val length =
@@ -7141,6 +7208,7 @@ class MusicService :
         scope.launch(Dispatchers.IO) { recoverSong(mediaId, nonNullPlayback) }
 
         val streamUrl = nonNullPlayback.streamUrl
+        _activeStreamSource.value = preferredStreamClient.name
 
         val trackingExpiryMs = System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
 
@@ -7183,6 +7251,7 @@ class MusicService :
                     minimumRemainingMs = 0L,
                 )
             }?.let { cached ->
+                _activeStreamSource.value = "ARCHIVETUNE_EXTRACTOR (cached)"
                 scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
                 return dataSpec.withUri(cached.url.toUri())
             }
@@ -7243,6 +7312,117 @@ class MusicService :
                 expiresAtMs = System.currentTimeMillis() + ArchiveTuneExtractorCacheTtlMs,
                 authFingerprint = authFingerprint,
             )
+        _activeStreamSource.value = "ARCHIVETUNE_EXTRACTOR"
+        scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+        return dataSpec.withUri(streamUrl.toUri())
+    }
+
+    private fun resolveJusPlayerEngineDataSpec(
+        dataSpec: DataSpec,
+        mediaId: String,
+    ): DataSpec {
+        val authState = YouTube.currentPlaybackAuthState()
+        val authFingerprint = JusPlayerEngineCacheFingerprintPrefix + authState.fingerprint
+
+        jusPlayerEnginePlaybackUrlCache[mediaId]
+            ?.takeIf {
+                it.isValidFor(
+                    authFingerprint = authFingerprint,
+                    minimumRemainingMs = 0L,
+                )
+            }?.let { cached ->
+                _activeStreamSource.value = "JUSPLAYER_ENGINE (cached)"
+                scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+                return dataSpec.withUri(cached.url.toUri())
+            }
+
+        // Try JusPlayer Engine via NewPipeProvider; fall back to InnerTube on failure
+        val engineUrl = runCatching {
+            runBlocking(Dispatchers.IO) {
+                JusPlayerEngineResolver.extractAudioUrl(mediaId)
+            }
+        }.getOrNull()
+
+        if (engineUrl != null && engineUrl.isNotBlank()) {
+            jusPlayerEnginePlaybackUrlCache[mediaId] =
+                AuthScopedCacheValue(
+                    url = engineUrl,
+                    expiresAtMs = System.currentTimeMillis() + JusPlayerEngineCacheTtlMs,
+                    authFingerprint = authFingerprint,
+                )
+            _activeStreamSource.value = "JUSPLAYER_ENGINE • NewPipe"
+            scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+            return dataSpec.withUri(engineUrl.toUri())
+        }
+
+        // Engine not available or returned null — fallback to regular InnerTube playback
+        // (maps JUSPLAYER_ENGINE -> WEB_REMIX in YTPlayerUtils)
+        Timber.tag("MusicService").w("JusPlayer Engine unavailable for $mediaId, falling back to InnerTube")
+        val lowDataModeActive = isLowDataModeActive()
+        val authFingerprintFallback = YouTube.currentPlaybackAuthState().fingerprint
+        playbackUrlCache[mediaId]
+            ?.takeUnless { lowDataModeActive }
+            ?.takeIf {
+                it.isValidFor(
+                    authFingerprint = authFingerprintFallback,
+                    minimumRemainingMs = YTPlayerUtils.STREAM_URL_EXPIRY_SAFETY_MS,
+                )
+            }?.let {
+                _activeStreamSource.value = "WEB_REMIX (fallback cached)"
+                scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+                val resolvedDataSpec = dataSpec.withUri(it.url.toUri())
+                val length = resolveStreamChunkLength(
+                    requestedLength = dataSpec.length,
+                    position = dataSpec.position,
+                    knownContentLength = null,
+                    chunkLength = CHUNK_LENGTH,
+                    mimeType = null,
+                )
+                return length?.let { nonNullLength -> resolvedDataSpec.subrange(0L, nonNullLength) } ?: resolvedDataSpec
+            }
+
+        val playbackData = runBlocking(Dispatchers.IO) {
+            retryWithoutPlaybackLoginContext {
+                YTPlayerUtils.playerResponseForPlayback(
+                    mediaId,
+                    audioQuality = if (lowDataModeActive) AudioQuality.LOW else audioQuality,
+                    connectivityManager = connectivityManager,
+                    preferredStreamClient = PlayerStreamClient.JUSPLAYER_ENGINE,
+                    networkMetered = lowDataModeActive,
+                )
+            }
+        }.getOrElse { throwable ->
+            when {
+                throwable.isNetworkConnectionFailure() -> throw PlaybackException(
+                    getString(R.string.error_no_internet), throwable,
+                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+                )
+                throwable.isRequestTimeout() -> throw PlaybackException(
+                    getString(R.string.error_timeout), throwable,
+                    PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+                )
+                else -> throw PlaybackException(
+                    getString(R.string.error_no_stream), throwable,
+                    PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                )
+            }
+        }
+
+        val streamUrl = playbackData.streamUrl
+        playbackUrlCache[mediaId] =
+            AuthScopedCacheValue(
+                url = streamUrl,
+                expiresAtMs = System.currentTimeMillis() + playbackData.streamExpiresInSeconds * 1000L,
+                authFingerprint = authFingerprintFallback,
+            )
+        // Also cache under engine cache for future engine hits
+        jusPlayerEnginePlaybackUrlCache[mediaId] =
+            AuthScopedCacheValue(
+                url = streamUrl,
+                expiresAtMs = System.currentTimeMillis() + JusPlayerEngineCacheTtlMs,
+                authFingerprint = authFingerprint,
+            )
+        _activeStreamSource.value = "WEB_REMIX (fallback)"
         scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
         return dataSpec.withUri(streamUrl.toUri())
     }
@@ -7267,6 +7447,7 @@ class MusicService :
     private fun isExtractorPlaybackUri(uri: Uri): Boolean {
         val url = uri.toString()
         return extractorPlaybackUrlCache.values.any { it.url == url } ||
+            jusPlayerEnginePlaybackUrlCache.values.any { it.url == url } ||
             uri.path?.startsWith("/api/play/") == true
     }
 
@@ -8216,5 +8397,7 @@ class MusicService :
         const val AUDIBLE_PLAYBACK_VOLUME_CHECK_MS = 2_000L
         private const val ArchiveTuneExtractorCacheFingerprintPrefix = "archivetune_extractor:"
         private const val ArchiveTuneExtractorCacheTtlMs = 5 * 60 * 1000L
+        private const val JusPlayerEngineCacheFingerprintPrefix = "jusplayer_engine:"
+        private const val JusPlayerEngineCacheTtlMs = 5 * 60 * 1000L
     }
 }

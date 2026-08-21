@@ -459,6 +459,8 @@
     <string name="player_stream_client_archivetune_extractor">JusPlayer Extractor</string>
     <string name="player_stream_client_archivetune_extractor_desc">Uses the JusPlayer backend extractor for playback streams. Prefer Auto High Quality Audio.</string>
     <string name="player_stream_client_archivetune_extractor_login_required">You Must Login Using Google Account and PoToken in Settings to use this</string>
+    <string name="player_stream_client_jusplayer_engine">JusPlayer Engine</string>
+    <string name="player_stream_client_jusplayer_engine_desc">Modular engine via NewPipe provider — coroutine-first, no Android deps. Uses JusPlayer-Engine for streams.</string>
     <string name="settings_section_player_content">Player &amp; Content</string>
     <string name="settings_appearance_subtitle">Themes, layout, and visual styles</string>
     <string name="settings_playback_title">Playback</string>

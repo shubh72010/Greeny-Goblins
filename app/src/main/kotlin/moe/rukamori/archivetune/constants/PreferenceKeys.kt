@@ -241,6 +241,7 @@ val LastFMUseNowPlaying = booleanPreferencesKey("lastfmUseNowPlaying")
 val ScrobbleDelayPercentKey = floatPreferencesKey("scrobbleDelayPercent")
 val ScrobbleMinSongDurationKey = intPreferencesKey("scrobbleMinSongDuration")
 val ScrobbleDelaySecondsKey = intPreferencesKey("scrobbleDelaySeconds")
+val ShowStreamSourceBadgeKey = booleanPreferencesKey("show_stream_source_badge")
 
 enum class LastFmProvider {
     LASTFM,
@@ -266,6 +267,7 @@ enum class PlayerStreamClient {
     ANDROID_VR,
     WEB_REMIX,
     ARCHIVETUNE_EXTRACTOR,
+    JUSPLAYER_ENGINE,
     HI_RES_LOSSLESS,
     IOS,
     TVHTML5,
@@ -277,6 +279,9 @@ val PermanentShuffleKey = booleanPreferencesKey("permanentShuffle")
 val SkipSilenceKey = booleanPreferencesKey("skipSilence")
 val AudioNormalizationKey = booleanPreferencesKey("audioNormalization")
 val AudioOffload = booleanPreferencesKey("audioOffload")
+val HapticVisualizerEnabledKey = booleanPreferencesKey("hapticVisualizerEnabled")
+val HapticVisualizerModeKey = stringPreferencesKey("hapticVisualizerMode")
+val HapticVisualizerIntensityKey = intPreferencesKey("hapticVisualizerIntensity")
 val CrossfadeEnabledKey = booleanPreferencesKey("crossfadeEnabled")
 val CrossfadeDurationKey = floatPreferencesKey("crossfadeDuration")
 val CrossfadeGaplessKey = booleanPreferencesKey("crossfadeGapless")

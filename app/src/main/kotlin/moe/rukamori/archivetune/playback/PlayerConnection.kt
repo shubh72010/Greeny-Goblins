@@ -81,6 +81,7 @@ class PlayerConnection(
     val canSkipNext = MutableStateFlow(true)
 
     val aodModeEnabled = MutableStateFlow(false)
+    val activeStreamSource = service.activeStreamSource
 
     val error = MutableStateFlow<PlaybackException?>(null)
     val waitingForNetworkConnection = service.waitingForNetworkConnection

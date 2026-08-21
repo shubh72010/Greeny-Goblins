@@ -562,6 +562,11 @@ fun NewMiniPlayerContent(
             )
         } ?: Spacer(Modifier.weight(1f))
 
+        // Stream source badge — shows JPE • NewPipe vs Web Remix vs fallback
+        StreamSourceBadge(
+            modifier = Modifier.padding(horizontal = 2.dp),
+        )
+
         if (togetherSessionState.isConnectedToSession) {
             Spacer(modifier = Modifier.width(8.dp))
             Surface(

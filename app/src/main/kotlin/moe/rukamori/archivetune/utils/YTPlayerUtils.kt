@@ -386,6 +386,12 @@ object YTPlayerUtils {
                 ANDROID_MUSIC
             }
 
+            PlayerStreamClient.JUSPLAYER_ENGINE -> {
+                // JusPlayer Engine uses its own provider (NewPipe-based) — map to WEB_REMIX
+                // for InnerTube fallback; actual engine extraction is handled in MusicService.
+                WEB_REMIX
+            }
+
             else -> {
                 WEB_REMIX
             }

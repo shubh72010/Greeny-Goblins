@@ -2439,6 +2439,15 @@ private fun LittlePlayerContent(
         ) {
             Spacer(Modifier.weight(1f))
 
+            // Stream source badge — shows JPE • NewPipe vs Web Remix vs fallback
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End,
+            ) {
+                StreamSourceBadge()
+            }
+            androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,

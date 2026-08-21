@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.player.StreamSourceBadge
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentRegistry
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentType
 
@@ -123,6 +124,8 @@ fun TitleArtistCombinedComponent(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.basicMarquee(),
             )
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = 4.dp))
+            StreamSourceBadge()
         }
     }
 }

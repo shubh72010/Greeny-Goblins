@@ -536,6 +536,14 @@
     <string name="permanent_shuffle">Permanent shuffle mode</string>
     <string name="permanent_shuffle_desc">Keep shuffle enabled when you start a new song</string>
     <string name="skip_silence">Skip silence</string>
+    <string name="haptic_feedback">Haptic feedback</string>
+    <string name="haptic_visualizer">Haptic music visualizer</string>
+    <string name="haptic_visualizer_desc">Feel the beat through vibration, synced to the bass of the music</string>
+    <string name="haptic_visualizer_mode">Vibration mode</string>
+    <string name="haptic_visualizer_mode_desc">How vibration follows the music</string>
+    <string name="haptic_visualizer_mode_continuous">Continuous</string>
+    <string name="haptic_visualizer_mode_beat">On beat</string>
+    <string name="haptic_visualizer_intensity">Intensity</string>
     <string name="audio_normalization">Audio normalization</string>
     <string name="audio_offload">Audio offload</string>
     <string name="audio_offload_desc">Let supported devices play audio using low-power hardware decoding. Some audio processing features are disabled.</string>
@@ -799,6 +807,8 @@
     <string name="last_end">Last End</string>
     <string name="debug_logs">Debug Logs</string>
     <string name="view_debug_logs_description">View and filter application logs</string>
+    <string name="show_stream_source_badge">Show stream source badge</string>
+    <string name="show_stream_source_badge_desc">Show a pill on the player indicating whether the stream came from JPE • NewPipe, Web Remix, or a fallback</string>
     <string name="resume_logs">Resume logs</string>
     <string name="jump_to_latest_log">Jump to latest log</string>
     <string name="copy_log_entry">Copy log entry</string>
