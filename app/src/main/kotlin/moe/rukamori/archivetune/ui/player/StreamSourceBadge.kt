@@ -47,7 +47,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
 fun StreamSourceBadge(
     modifier: Modifier = Modifier,
 ) {
-    val (showBadge) = rememberPreference(ShowStreamSourceBadgeKey, defaultValue = true)
+    val (showBadge) = rememberPreference(ShowStreamSourceBadgeKey, defaultValue = false)
     if (!showBadge) return
     val playerConnection = LocalPlayerConnection.current ?: return
     val rawSource by playerConnection.activeStreamSource.collectAsStateWithLifecycle()

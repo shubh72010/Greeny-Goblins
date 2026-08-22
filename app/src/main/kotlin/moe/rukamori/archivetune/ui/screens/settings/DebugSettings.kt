@@ -108,7 +108,7 @@ fun DebugSettings(navController: NavController) {
     val (showStreamSourceBadge, onShowStreamSourceBadgeChange) =
         rememberPreference(
             key = ShowStreamSourceBadgeKey,
-            defaultValue = true,
+            defaultValue = false,
         )
 
     val playerConnection = LocalPlayerConnection.current
