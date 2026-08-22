@@ -29,12 +29,11 @@ object JusPlayerEngineResolver {
     private val provider: NewPipeProvider by lazy { NewPipeProvider() }
 
     /**
-     * Extract stream URL via NewPipeProvider.getStream(videoId).
-     * NewPipe's StreamInfo.getInfo expects a full watch URL; we try both forms.
-     * @return direct stream URL or null if engine failed (caller falls back to InnerTube)
+     * Extract stream via NewPipeProvider.getStream(videoId) with full metadata.
+     * Used by MAX-quality dual-engine comparison to decide best bitrate/codec.
+     * @return Stream or null if engine failed (caller falls back to InnerTube)
      */
-    suspend fun extractAudioUrl(videoId: String): String? {
-        // Prefer www.youtube.com for NewPipe (more reliable than music.youtube.com for extractor)
+    suspend fun extractStream(videoId: String): org.jusplayer.engine.model.Stream? {
         val candidates = listOf(
             "https://www.youtube.com/watch?v=$videoId",
             videoId,
@@ -43,13 +42,15 @@ object JusPlayerEngineResolver {
         for (candidate in candidates) {
             try {
                 val stream = provider.getStream(candidate)
-                val url = stream.url
-                if (url.isBlank()) {
+                if (stream.url.isBlank()) {
                     Timber.tag(TAG).w("NewPipeProvider returned blank url for $videoId (candidate=$candidate)")
                     continue
                 } else {
-                    Timber.tag(TAG).d("NewPipeProvider resolved $videoId via $candidate -> ${url.take(80)}...")
-                    return url
+                    Timber.tag(TAG).d(
+                        "NewPipeProvider resolved $videoId via $candidate -> ${stream.url.take(80)}... " +
+                            "bitrate=${stream.bitrate} mime=${stream.mimeType} codec=${stream.codec}",
+                    )
+                    return stream
                 }
             } catch (e: ProviderException.NotFound) {
                 Timber.tag(TAG).w(e, "NewPipeProvider NotFound for $videoId candidate=$candidate")
@@ -71,4 +72,11 @@ object JusPlayerEngineResolver {
         Timber.tag(TAG).w("NewPipeProvider all candidates failed for $videoId")
         return null
     }
+
+    /**
+     * Extract stream URL via NewPipeProvider.getStream(videoId).
+     * NewPipe's StreamInfo.getInfo expects a full watch URL; we try both forms.
+     * @return direct stream URL or null if engine failed (caller falls back to InnerTube)
+     */
+    suspend fun extractAudioUrl(videoId: String): String? = extractStream(videoId)?.url
 }

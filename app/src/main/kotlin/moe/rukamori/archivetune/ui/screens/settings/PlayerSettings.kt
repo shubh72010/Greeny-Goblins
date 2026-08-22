@@ -46,9 +46,22 @@ import moe.rukamori.archivetune.constants.CrossfadeGaplessKey
 import moe.rukamori.archivetune.constants.DeviceMutePlaybackRecoveryVolumeKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
+import moe.rukamori.archivetune.constants.FlashlightBeatEngineModeKey
+import moe.rukamori.archivetune.constants.FlashlightModeKey
+import moe.rukamori.archivetune.constants.FlashlightThresholdKey
+import moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey
+import moe.rukamori.archivetune.constants.GlyphBrightnessKey
+import moe.rukamori.archivetune.constants.GlyphGammaKey
+import moe.rukamori.archivetune.constants.GlyphIdleBreathingKey
+import moe.rukamori.archivetune.constants.GlyphPresetKey
+import moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey
+import moe.rukamori.archivetune.constants.GlyphVisualizerGainKey
 import moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey
 import moe.rukamori.archivetune.constants.HapticVisualizerIntensityKey
 import moe.rukamori.archivetune.constants.HapticVisualizerModeKey
+import moe.rukamori.archivetune.visualizer.BeatEngineMode
+import moe.rukamori.archivetune.visualizer.DeviceProfile
+import moe.rukamori.archivetune.visualizer.TorchMode
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
 import moe.rukamori.archivetune.constants.HistoryDuration
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
@@ -148,6 +161,18 @@ fun PlayerSettings(navController: NavController) {
             HapticVisualizerIntensityKey,
             defaultValue = 100,
         )
+
+    val (glyphEnabled, onGlyphEnabledChange) = rememberPreference(GlyphVisualizerEnabledKey, defaultValue = false)
+    val (glyphBrightness, onGlyphBrightnessChange) = rememberPreference(GlyphBrightnessKey, defaultValue = 4095)
+    val (glyphGamma, onGlyphGammaChange) = rememberPreference(GlyphGammaKey, defaultValue = 2.2f)
+    val (glyphIdle, onGlyphIdleChange) = rememberPreference(GlyphIdleBreathingKey, defaultValue = false)
+    val (glyphPreset, onGlyphPresetChange) = rememberPreference(GlyphPresetKey, defaultValue = "np1")
+    val (glyphGain, onGlyphGainChange) = rememberPreference(GlyphVisualizerGainKey, defaultValue = 1.0f)
+    val (flashlightEnabled, onFlashlightEnabledChange) = rememberPreference(FlashlightVisualizerEnabledKey, defaultValue = false)
+    val (flashlightMode, onFlashlightModeChange) = rememberPreference(FlashlightModeKey, defaultValue = TorchMode.AMPLITUDE.name)
+    val (flashlightBeatMode, onFlashlightBeatModeChange) = rememberPreference(FlashlightBeatEngineModeKey, defaultValue = BeatEngineMode.SMOOTH.name)
+    val (flashlightThreshold, onFlashlightThresholdChange) = rememberPreference(FlashlightThresholdKey, defaultValue = 0.15f)
+    val isGlyphSupported = remember { DeviceProfile.detectDevice() != DeviceProfile.DEVICE_UNKNOWN }
 
     val (seekExtraSeconds, onSeekExtraSeconds) =
         rememberPreference(
@@ -612,6 +637,123 @@ fun PlayerSettings(navController: NavController) {
                         minValue = 10,
                         maxValue = 150,
                         valueText = { value -> context.getString(R.string.percentage_format, value) },
+                    )
+                }
+            }
+
+            PreferenceGroup(title = "Glyph Visualizer — Nothing Phones") {
+                item {
+                    SwitchPreference(
+                        title = { Text("Glyph Music Visualizer") },
+                        description = if (isGlyphSupported) "Drive Nothing Glyph Interface in sync with music (Better Nothing port, 60 FPS)" else "Only available on Nothing phones — shows idle breathing on other devices",
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        checked = glyphEnabled,
+                        onCheckedChange = onGlyphEnabledChange,
+                        isEnabled = isGlyphSupported,
+                    )
+                }
+                item(visible = glyphEnabled) {
+                    NumberPickerPreference(
+                        title = { Text("Glyph Brightness") },
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        value = glyphBrightness,
+                        onValueChange = onGlyphBrightnessChange,
+                        minValue = 0,
+                        maxValue = 4095,
+                        valueText = { v -> "$v/4095" },
+                    )
+                }
+                item(visible = glyphEnabled) {
+                    NumberPickerPreference(
+                        title = { Text("Gamma") },
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        value = (glyphGamma * 100).toInt(),
+                        onValueChange = { v -> onGlyphGammaChange(v / 100f) },
+                        minValue = 50,
+                        maxValue = 400,
+                        valueText = { v -> "%.2f".format(v / 100f) },
+                    )
+                }
+                item(visible = glyphEnabled) {
+                    NumberPickerPreference(
+                        title = { Text("Visualizer Gain") },
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        value = (glyphGain * 100).toInt(),
+                        onValueChange = { v -> onGlyphGainChange(v / 100f) },
+                        minValue = 50,
+                        maxValue = 400,
+                        valueText = { v -> "%.1fx".format(v / 100f) },
+                    )
+                }
+                item(visible = glyphEnabled) {
+                    SwitchPreference(
+                        title = { Text("Idle Breathing") },
+                        description = "Gentle breathing animation when music is silent (pulse/wave)",
+                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
+                        checked = glyphIdle,
+                        onCheckedChange = onGlyphIdleChange,
+                    )
+                }
+                item(visible = glyphEnabled) {
+                    ListPreference(
+                        title = { Text("Glyph Preset") },
+                        description = "Frequency zones mapping (from zones.config)",
+                        icon = { Icon(painterResource(R.drawable.style), null) },
+                        selectedValue = glyphPreset,
+                        values = listOf("np1", "np1-bass-flash", "np1-center-bass", "np1-spectrum", "np2", "np2-bass", "np2a", "np3-circle", "np3-alternating"),
+                        onValueSelected = onGlyphPresetChange,
+                        valueText = { it },
+                    )
+                }
+            }
+
+            PreferenceGroup(title = "Flashlight Visualizer") {
+                item {
+                    SwitchPreference(
+                        title = { Text("Flashlight Visualizer") },
+                        description = "Pulse device torch to bass — works on any phone",
+                        icon = { Icon(painterResource(R.drawable.bolt), null) },
+                        checked = flashlightEnabled,
+                        onCheckedChange = onFlashlightEnabledChange,
+                    )
+                }
+                item(visible = flashlightEnabled) {
+                    EnumSegmentedPreference(
+                        title = { Text("Flashlight Mode") },
+                        icon = { Icon(painterResource(R.drawable.bolt), null) },
+                        selectedValue = runCatching { TorchMode.valueOf(flashlightMode) }.getOrDefault(TorchMode.AMPLITUDE),
+                        onValueSelected = { onFlashlightModeChange(it.name) },
+                        valueText = {
+                            when (it) {
+                                TorchMode.AMPLITUDE -> "Amplitude"
+                                TorchMode.BEAT_DETECTION -> "Beat Detect"
+                            }
+                        },
+                    )
+                }
+                item(visible = flashlightEnabled) {
+                    EnumSegmentedPreference(
+                        title = { Text("Beat Engine") },
+                        icon = { Icon(painterResource(R.drawable.bolt), null) },
+                        selectedValue = runCatching { BeatEngineMode.valueOf(flashlightBeatMode) }.getOrDefault(BeatEngineMode.SMOOTH),
+                        onValueSelected = { onFlashlightBeatModeChange(it.name) },
+                        valueText = {
+                            when (it) {
+                                BeatEngineMode.SMOOTH -> "Smooth"
+                                BeatEngineMode.SHORT_PULSE -> "Short Pulse"
+                            }
+                        },
+                    )
+                }
+                item(visible = flashlightEnabled) {
+                    NumberPickerPreference(
+                        title = { Text("Threshold") },
+                        icon = { Icon(painterResource(R.drawable.bolt), null) },
+                        value = (flashlightThreshold * 100).toInt(),
+                        onValueChange = { v -> onFlashlightThresholdChange(v / 100f) },
+                        minValue = 0,
+                        maxValue = 100,
+                        valueText = { v -> "$v%" },
                     )
                 }
             }

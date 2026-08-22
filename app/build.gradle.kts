@@ -368,6 +368,8 @@ dependencies {
     implementation(libs.accompanist.lyrics.core)
 
     implementation("org.json:json:20240303")
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
+    implementation("com.github.wendykierp:JTransforms:3.1")
 
     implementation("com.github.shubh72010.JusPlayer-Engine:engine-api:v1.6.0")
     implementation("com.github.shubh72010.JusPlayer-Engine:engine-provider-newpipe:v1.6.0") {

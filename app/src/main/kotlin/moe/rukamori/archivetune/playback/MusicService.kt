@@ -128,7 +128,10 @@ import moe.rukamori.archivetune.cast.CastPlaybackRepository
 import moe.rukamori.archivetune.cast.CastPlaybackRepositoryLocator
 import moe.rukamori.archivetune.constants.AudioNormalizationKey
 import moe.rukamori.archivetune.constants.AudioOffload
+import moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey
+import moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey
 import moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey
+import moe.rukamori.archivetune.visualizer.HapticMode
 import moe.rukamori.archivetune.constants.HapticVisualizerIntensityKey
 import moe.rukamori.archivetune.constants.HapticVisualizerModeKey
 import moe.rukamori.archivetune.constants.AudioQuality
@@ -231,6 +234,9 @@ import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
 import moe.rukamori.archivetune.playback.haptic.HapticVisualizer
 import moe.rukamori.archivetune.playback.haptic.HapticVisualizerMode
+import moe.rukamori.archivetune.visualizer.BeatEngineMode
+import moe.rukamori.archivetune.visualizer.TorchMode
+import moe.rukamori.archivetune.visualizer.VisualizerHub
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
@@ -531,6 +537,20 @@ class MusicService :
             }
         }
 
+    private data class VisualizerHubPrefs(
+        val glyphEnabled: Boolean,
+        val glyphBrightness: Int,
+        val glyphGamma: Float,
+        val glyphIdle: Boolean,
+        val glyphPreset: String,
+        val glyphGain: Float,
+        val flashEnabled: Boolean,
+        val flashMode: TorchMode,
+        val flashBeatMode: BeatEngineMode,
+        val flashThresh: Float,
+        val flashSpeed: Float,
+    )
+
     private data class CrossfadeConfig(
         val enabled: Boolean,
         val durationSeconds: Float,
@@ -669,6 +689,8 @@ class MusicService :
     private var virtualizer: Virtualizer? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private val hapticVisualizer by lazy { HapticVisualizer(this) }
+    private val visualizerHub by lazy { VisualizerHub(this) }
+    val visualizerHubFlow: VisualizerHub get() = visualizerHub
     private val audioEffectPlayerListener =
         object : Player.Listener {
             override fun onEvents(
@@ -688,6 +710,7 @@ class MusicService :
                     !player.isPlaying
                 ) {
                     hapticVisualizer.stop()
+                    visualizerHub.stopFlashlight()
                 }
             }
         }
@@ -1250,14 +1273,63 @@ class MusicService :
                 hapticVisualizer.enabled = enabled
                 hapticVisualizer.mode = mode
                 hapticVisualizer.intensity = intensity
+                // Also drive exact BNGV haptics via tee (so it doesn't die after few seconds)
+                visualizerHub.hapticEnabled = enabled
+                visualizerHub.hapticMode = if (mode == HapticVisualizerMode.CONTINUOUS) HapticMode.BASS_TO_AMPLITUDE else HapticMode.BEAT_DETECTION
+                visualizerHub.hapticIntensity = intensity
                 if (enabled) {
+                    // Tee path keeps haptics alive even when Visualizer dies; still attach Visualizer for legacy fallback
                     val sessionId = localPlayer.audioSessionId
                     if (sessionId > 0) {
                         hapticVisualizer.attach(sessionId)
                     }
+                    // Ensure audio offload disabled when haptics active (offload bypasses AudioProcessor)
+                    if (dataStore.get(AudioOffload, false)) {
+                        // Offload will be disabled via combined flow below, but force immediate
+                        updateAudioOffload(false)
+                    }
                 } else {
                     hapticVisualizer.detach()
                     hapticVisualizer.stop()
+                }
+            }
+
+        // Glyph + Flashlight visualizers via VisualizerHub (Better Nothing port)
+        dataStore.data
+            .map { prefs ->
+                val glyphEnabled = prefs[moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey] ?: false
+                val glyphBrightness = (prefs[moe.rukamori.archivetune.constants.GlyphBrightnessKey] ?: 4095).coerceIn(0, 4095)
+                val glyphGamma = (prefs[moe.rukamori.archivetune.constants.GlyphGammaKey] ?: 2.2f).coerceIn(0.5f, 4f)
+                val glyphIdle = prefs[moe.rukamori.archivetune.constants.GlyphIdleBreathingKey] ?: false
+                val glyphPreset = prefs[moe.rukamori.archivetune.constants.GlyphPresetKey] ?: "np1"
+                val glyphGain = (prefs[moe.rukamori.archivetune.constants.GlyphVisualizerGainKey] ?: 1.0f).coerceIn(0.5f, 4f)
+                val flashEnabled = prefs[moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey] ?: false
+                val flashMode = prefs[moe.rukamori.archivetune.constants.FlashlightModeKey]?.let { runCatching { TorchMode.valueOf(it) }.getOrNull() } ?: TorchMode.AMPLITUDE
+                val flashBeatMode = prefs[moe.rukamori.archivetune.constants.FlashlightBeatEngineModeKey]?.let { runCatching { BeatEngineMode.valueOf(it) }.getOrNull() } ?: BeatEngineMode.SMOOTH
+                val flashThresh = (prefs[moe.rukamori.archivetune.constants.FlashlightThresholdKey] ?: 0.15f).coerceIn(0f, 1f)
+                val flashSpeed = (prefs[moe.rukamori.archivetune.constants.FlashlightBeatSpeedKey] ?: 90f).coerceIn(20f, 700f)
+                VisualizerHubPrefs(glyphEnabled, glyphBrightness, glyphGamma, glyphIdle, glyphPreset, glyphGain, flashEnabled, flashMode, flashBeatMode, flashThresh, flashSpeed)
+            }
+            .distinctUntilChanged()
+            .collectLatest(scope) { p ->
+                visualizerHub.glyphEnabled = p.glyphEnabled
+                visualizerHub.glyphBrightness = p.glyphBrightness
+                visualizerHub.glyphGamma = p.glyphGamma
+                visualizerHub.glyphIdleBreathing = p.glyphIdle
+                if (visualizerHub.glyphPresetKey != p.glyphPreset) visualizerHub.setPreset(p.glyphPreset)
+                visualizerHub.updateManualGain(p.glyphGain)
+                visualizerHub.updateFlashlightEnabled(p.flashEnabled)
+                visualizerHub.flashlightMode = p.flashMode
+                visualizerHub.flashlightBeatMode = p.flashBeatMode
+                visualizerHub.flashlightThreshold = p.flashThresh
+                visualizerHub.updateFlashlightSpeedMs(p.flashSpeed)
+                val needHub = p.glyphEnabled || p.flashEnabled
+                if (needHub) {
+                    val sid = localPlayer.audioSessionId
+                    if (sid > 0) visualizerHub.attach(sid)
+                } else {
+                    visualizerHub.detach()
+                    visualizerHub.stopFlashlight()
                 }
             }
 
@@ -1296,11 +1368,15 @@ class MusicService :
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
             dataStore.data.map { it[CrossfadeEnabledKey] ?: true },
-        ) { offloadEnabled, crossfadeEnabled ->
-            offloadEnabled to crossfadeEnabled
+            dataStore.data.map { it[HapticVisualizerEnabledKey] ?: false },
+            dataStore.data.map { it[GlyphVisualizerEnabledKey] ?: false },
+            dataStore.data.map { it[FlashlightVisualizerEnabledKey] ?: false },
+        ) { offloadEnabled, crossfadeEnabled, hapticEnabled, glyphEnabled, flashEnabled ->
+            val visualizerActive = hapticEnabled || glyphEnabled || flashEnabled
+            Triple(offloadEnabled && !visualizerActive, crossfadeEnabled, visualizerActive)
         }.distinctUntilChanged()
-            .collectLatest(scope) { (offloadEnabled, crossfadeEnabled) ->
-                val effectiveOffload = offloadEnabled && !crossfadeEnabled
+            .collectLatest(scope) { (offloadEnabled, crossfadeEnabled, visualizerActive) ->
+                val effectiveOffload = offloadEnabled && !crossfadeEnabled && !visualizerActive
                 updateAudioOffload(effectiveOffload)
                 if (effectiveOffload) {
                     val skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
@@ -5651,6 +5727,7 @@ class MusicService :
         audioEffectsSessionId = null
         hapticVisualizer.detach()
         hapticVisualizer.stop()
+        visualizerHub.detach()
         try {
             equalizer?.release()
         } catch (_: Exception) {
@@ -5709,6 +5786,13 @@ class MusicService :
         virtualizer = createAudioEffect("Virtualizer", sessionId) { Virtualizer(0, sessionId) }
         loudnessEnhancer = createAudioEffect("LoudnessEnhancer", sessionId) { LoudnessEnhancer(sessionId) }
         hapticVisualizer.attach(sessionId)
+        // Attach visualizer hub if any visualizer feature enabled
+        runCatching {
+            val prefs = kotlinx.coroutines.runBlocking { dataStore.data.first() }
+            val needHub = (prefs[moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey] ?: false) ||
+                (prefs[moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey] ?: false)
+            if (needHub) visualizerHub.attach(sessionId)
+        }
 
         equalizer?.let(::updateEqCapabilitiesFromEffect)
         applyEqSettingsToEffects(desiredEqSettings.value)
@@ -7028,6 +7112,21 @@ class MusicService :
         }
 
         val lowDataModeActive = isLowDataModeActive()
+        // Dual-engine MAX: when HIGHEST is selected, fetch both engines and pick best bitrate.
+        // Tie (same bitrate/codec) -> prefer InnerTube (more reliable). Extractor is excluded.
+        if (!lowDataModeActive && audioQuality == AudioQuality.HIGHEST &&
+            preferredStreamClient != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR
+        ) {
+            runCatching {
+                runBlocking(Dispatchers.IO) {
+                    resolveMaxQualityDualEngineDataSpec(
+                        dataSpec = dataSpec,
+                        mediaId = mediaId,
+                    )
+                }
+            }.getOrNull()?.let { return it }
+            // If dual fetch failed (both null), fall through to normal path
+        }
         if (preferredStreamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR) {
             return resolveArchiveTuneExtractorDataSpec(
                 dataSpec = dataSpec,
@@ -7427,6 +7526,173 @@ class MusicService :
         return dataSpec.withUri(streamUrl.toUri())
     }
 
+    /**
+     * Dual-engine MAX-quality resolver.
+     * Fetches InnerTube (via YTPlayerUtils) and JusPlayer Engine (via NewPipe) in parallel,
+     * compares bitrate → codec, picks winner. Tie at same bitrate+codec prefers InnerTube
+     * as the more reliable path (poToken/visitorData, loudness metadata).
+     *
+     * Examples:
+     *  Innertube 160 kbps Opus, JPE 160 kbps Opus -> no meaningful winner -> InnerTube
+     *  Innertube 128 kbps AAC,  JPE 160 kbps Opus  -> JPE wins
+     */
+    private suspend fun resolveMaxQualityDualEngineDataSpec(
+        dataSpec: DataSpec,
+        mediaId: String,
+    ): DataSpec? = kotlinx.coroutines.coroutineScope {
+        val innerDeferred = async {
+            runCatching {
+                retryWithoutPlaybackLoginContext {
+                    YTPlayerUtils.playerResponseForPlayback(
+                        videoId = mediaId,
+                        audioQuality = AudioQuality.HIGHEST,
+                        connectivityManager = connectivityManager,
+                        preferredStreamClient = PlayerStreamClient.WEB_REMIX,
+                        networkMetered = false,
+                    )
+                }.getOrThrow()
+            }.onFailure {
+                Timber.tag(TAG).w(it, "Dual MAX: InnerTube fetch failed for $mediaId")
+            }.getOrNull()
+        }
+        val engineDeferred = async {
+            runCatching {
+                JusPlayerEngineResolver.extractStream(mediaId)
+            }.onFailure {
+                Timber.tag(TAG).w(it, "Dual MAX: JusPlayer Engine fetch failed for $mediaId")
+            }.getOrNull()
+        }
+
+        val innerData = innerDeferred.await()
+        val engineStream = engineDeferred.await()
+
+        if (innerData == null && engineStream == null) {
+            Timber.tag(TAG).w("Dual MAX: both engines failed for $mediaId")
+            return@coroutineScope null
+        }
+
+        // Extract comparison candidates
+        val innerBitrate = innerData?.format?.bitrate ?: 0
+        val innerMime = innerData?.format?.mimeType
+        val engineBitrate = engineStream?.bitrate?.toInt() ?: 0
+        val engineMime = engineStream?.mimeType
+        val engineCodec = engineStream?.codec
+
+        val innerCodecRank = codecRankForDual(innerMime, null)
+        val engineCodecRank = codecRankForDual(engineMime, engineCodec)
+
+        val chooseEngine = when {
+            engineStream == null -> false
+            innerData == null -> true
+            else -> isEngineBetter(innerBitrate, engineBitrate, innerCodecRank, engineCodecRank)
+        }
+
+        Timber.tag(TAG).i(
+            "Dual MAX decision for $mediaId: inner=${innerBitrate}bps rank=$innerCodecRank mime=$innerMime " +
+                "vs engine=${engineBitrate}bps rank=$engineCodecRank mime=$engineMime codec=$engineCodec -> " +
+                (if (chooseEngine) "JUSPLAYER_ENGINE" else "WEB_REMIX"),
+        )
+
+        if (chooseEngine) {
+            val stream = engineStream ?: return@coroutineScope null
+            val authState = YouTube.currentPlaybackAuthState()
+            val authFingerprint = JusPlayerEngineCacheFingerprintPrefix + authState.fingerprint
+            jusPlayerEnginePlaybackUrlCache[mediaId] =
+                AuthScopedCacheValue(
+                    url = stream.url,
+                    expiresAtMs = System.currentTimeMillis() + JusPlayerEngineCacheTtlMs,
+                    authFingerprint = authFingerprint,
+                )
+            _activeStreamSource.value = "JUSPLAYER_ENGINE (max • NewPipe)"
+            scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+            dataSpec.withUri(stream.url.toUri())
+        } else {
+            val playbackData = innerData ?: return@coroutineScope null
+            // Reuse innerTube success path side-effects with already-fetched data
+            playbackData.playbackTracking
+                ?.remotePlaybackTrackingUrl()
+                ?.let { remotePlaybackTrackingUrlCache[mediaId] = it }
+            val format = playbackData.format
+            val loudnessDb = playbackData.audioConfig?.loudnessDb
+            val perceptualLoudnessDb = playbackData.audioConfig?.perceptualLoudnessDb
+            val resolvedContentLength = format.contentLength ?: 0L
+            val resolvedCodecs = format.mimeType.substringAfter("codecs=", "").removeSurrounding("\"").substringBefore("\"")
+            resolvedContentLength.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
+
+            val formatEntity = FormatEntity(
+                id = mediaId,
+                itag = format.itag,
+                mimeType = format.mimeType.split(";")[0],
+                codecs = resolvedCodecs,
+                bitrate = format.bitrate,
+                sampleRate = format.audioSampleRate,
+                contentLength = resolvedContentLength,
+                loudnessDb = loudnessDb,
+                perceptualLoudnessDb = perceptualLoudnessDb,
+                playbackUrl = playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl,
+            )
+            val resolvedNormalizationFactor = calculateAudioNormalizationFactor(formatEntity, normalizeAudio = true)
+            audioNormalizationFactorCache[mediaId] = resolvedNormalizationFactor
+            scope.launch {
+                if (currentMediaMetadata.value?.id == mediaId && dataStore.get(AudioNormalizationKey, true)) {
+                    normalizeFactor.value = resolvedNormalizationFactor
+                }
+            }
+            database.query { upsert(formatEntity) }
+            scope.launch(Dispatchers.IO) { recoverSong(mediaId, playbackData) }
+
+            val streamUrl = playbackData.streamUrl
+            _activeStreamSource.value = "WEB_REMIX (max)"
+            val trackingExpiryMs = System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
+            playbackUrlCache[mediaId] =
+                AuthScopedCacheValue(
+                    url = streamUrl,
+                    expiresAtMs = trackingExpiryMs,
+                    authFingerprint = playbackData.authFingerprint,
+                )
+            val resolvedDataSpec = dataSpec.withUri(streamUrl.toUri())
+            val length = resolveStreamChunkLength(
+                requestedLength = dataSpec.length,
+                position = dataSpec.position,
+                knownContentLength = format.contentLength,
+                chunkLength = CHUNK_LENGTH,
+                mimeType = format.mimeType,
+            )
+            length?.let { resolvedDataSpec.subrange(0L, it) } ?: resolvedDataSpec
+        }
+    }
+
+    private fun isEngineBetter(
+        innerBitrate: Int,
+        engineBitrate: Int,
+        innerCodecRank: Int,
+        engineCodecRank: Int,
+    ): Boolean {
+        val bitrateDiff = engineBitrate - innerBitrate
+        // Treat diff < 8 kbps as not meaningful (tie) — compare codec rank instead
+        if (kotlin.math.abs(bitrateDiff) < 8_000) {
+            if (engineCodecRank != innerCodecRank) return engineCodecRank > innerCodecRank
+            return false // tie → prefer InnerTube (more reliable)
+        }
+        return bitrateDiff > 0
+    }
+
+    private fun codecRankForDual(mimeType: String?, codec: String?): Int {
+        val effectiveCodec = codec?.takeIf { it.isNotBlank() } ?: extractCodecForDual(mimeType)
+        return when {
+            effectiveCodec.isNullOrBlank() -> 0
+            effectiveCodec.contains("opus", ignoreCase = true) -> 3
+            effectiveCodec.contains("mp4a", ignoreCase = true) || effectiveCodec.contains("aac", ignoreCase = true) -> 2
+            else -> 1
+        }
+    }
+
+    private fun extractCodecForDual(mimeType: String?): String? {
+        if (mimeType.isNullOrBlank()) return null
+        val match = Regex("""codecs="([^"]+)"""").find(mimeType) ?: return null
+        return match.groupValues.getOrNull(1)?.split(",")?.firstOrNull()?.trim()
+    }
+
     private fun PlaybackAuthState.resolveExtractorPoToken(): String? =
         poTokenPlayer.normalizeExtractorRequestValue()
 
@@ -7699,22 +7965,30 @@ class MusicService :
                 context: Context,
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean,
-            ) = DefaultAudioSink
-                .Builder(context)
-                .setEnableFloatOutput(false)
-                .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                .setAudioProcessorChain(
-                    DefaultAudioSink.DefaultAudioProcessorChain(
-                        SilenceSkippingAudioProcessor(
-                            1_500_000L,
-                            0.35f,
-                            500_000L,
-                            10,
-                            150.toShort(),
+            ): DefaultAudioSink {
+                // BNGV exact: tap PCM directly since we control playback — no Visualizer/screen-capture needed
+                val bngvTee = moe.rukamori.archivetune.visualizer.BngvTeeAudioProcessor { hop, sr ->
+                    // Called on audio thread; VisualizerHub handles its own synchronization + pending queue
+                    try { visualizerHub.onPcm(hop, sr) } catch (_: Exception) {}
+                }
+                return DefaultAudioSink
+                    .Builder(context)
+                    .setEnableFloatOutput(false)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessorChain(
+                        DefaultAudioSink.DefaultAudioProcessorChain(
+                            SilenceSkippingAudioProcessor(
+                                1_500_000L,
+                                0.35f,
+                                500_000L,
+                                10,
+                                150.toShort(),
+                            ),
+                            SonicAudioProcessor(),
+                            bngvTee,
                         ),
-                        SonicAudioProcessor(),
-                    ),
-                ).build()
+                    ).build()
+            }
         }
 
     override fun onPlaybackStatsReady(
@@ -8126,6 +8400,7 @@ class MusicService :
             releaseAudioEffects()
         } catch (_: Exception) {
         }
+        try { visualizerHub.release() } catch (_: Exception) {}
         try {
             if (dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
                 runBlocking {

@@ -49,8 +49,9 @@ import java.util.Locale
 fun ContentSettings(navController: NavController) {
     val context = LocalContext.current
 
-    // Used only before Android 13
-    val (appLanguage, onAppLanguageChange) = rememberPreference(key = AppLanguageKey, defaultValue = SYSTEM_DEFAULT)
+    // App language — defaults to English to avoid 50/50 mixed translations on fresh install.
+    // User can change explicitly; SYSTEM_DEFAULT is kept for migration but maps to "en".
+    val (appLanguage, onAppLanguageChange) = rememberPreference(key = AppLanguageKey, defaultValue = "en")
 
     val (contentLanguage, onContentLanguageChange) = rememberPreference(key = ContentLanguageKey, defaultValue = "system")
     val (contentCountry, onContentCountryChange) = rememberPreference(key = ContentCountryKey, defaultValue = "system")
@@ -166,41 +167,32 @@ fun ContentSettings(navController: NavController) {
 
         PreferenceGroup(title = stringResource(R.string.app_language)) {
             item {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    PreferenceEntry(
-                        title = { Text(stringResource(R.string.app_language)) },
-                        icon = { Icon(painterResource(R.drawable.language), null) },
-                        onClick = {
-                            context.startActivity(
-                                Intent(
-                                    Settings.ACTION_APP_LOCALE_SETTINGS,
-                                    "package:${context.packageName}".toUri(),
-                                ),
-                            )
-                        },
-                    )
-                } else {
-                    ListPreference(
-                        title = { Text(stringResource(R.string.app_language)) },
-                        icon = { Icon(painterResource(R.drawable.language), null) },
-                        selectedValue = appLanguage,
-                        values = listOf(SYSTEM_DEFAULT) + LanguageCodeToName.keys.toList(),
-                        valueText = {
-                            LanguageCodeToName.getOrElse(it) { stringResource(R.string.system_default) }
-                        },
-                        onValueSelected = { langTag ->
-                            val newLocale =
-                                langTag
-                                    .takeUnless { it == SYSTEM_DEFAULT }
-                                    ?.let { Locale.forLanguageTag(it) }
-                                    ?: Locale.getDefault()
-
-                            onAppLanguageChange(langTag)
-                            setAppLocale(context, newLocale)
-                        },
-                    )
-                }
+                // Unified in-app selector (all Android versions). Defaults to English ("en")
+                // to avoid showing 50% English / 50% German after fresh install when
+                // translations are incomplete (de is ~70% coverage). SYSTEM_DEFAULT is
+                // treated as "en" for migration.
+                ListPreference(
+                    title = { Text(stringResource(R.string.app_language)) },
+                    icon = { Icon(painterResource(R.drawable.language), null) },
+                    selectedValue = appLanguage.takeIf { it != SYSTEM_DEFAULT } ?: "en",
+                    values = LanguageCodeToName.keys.toList(),
+                    valueText = {
+                        LanguageCodeToName.getOrElse(it) { stringResource(R.string.system_default) }
+                    },
+                    onValueSelected = { langTag ->
+                        val newLocale = Locale.forLanguageTag(langTag)
+                        onAppLanguageChange(langTag)
+                        setAppLocale(context, newLocale)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            runCatching {
+                                val localeManager = context.getSystemService(android.app.LocaleManager::class.java)
+                                localeManager?.applicationLocales = android.os.LocaleList(newLocale)
+                            }
+                        }
+                    },
+                )
             }
+
         }
 
         PreferenceGroup(title = stringResource(R.string.misc)) {

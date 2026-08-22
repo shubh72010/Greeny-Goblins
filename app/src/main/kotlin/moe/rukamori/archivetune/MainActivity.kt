@@ -498,29 +498,42 @@ class MainActivity : ComponentActivity() {
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            val initialLocale =
-                PreferenceStore
-                    .get(AppLanguageKey)
-                    ?.takeUnless { it == SYSTEM_DEFAULT }
-                    ?.let { Locale.forLanguageTag(it) }
-                    ?: Locale.getDefault()
-            setAppLocale(this, initialLocale)
+        // App language: fresh installs default to English ("en") to avoid 50/50 mixed
+        // translations (e.g. de is ~70% coverage). SYSTEM_DEFAULT is treated as "en" for migration.
+        // Applied on all OS versions; on Tiramisu+ also sets LocaleManager so per-app locale stays consistent.
+        val initialLocale =
+            PreferenceStore
+                .get(AppLanguageKey)
+                ?.takeUnless { it == SYSTEM_DEFAULT }
+                ?.let { Locale.forLanguageTag(it) }
+                ?: Locale.forLanguageTag("en")
+        setAppLocale(this, initialLocale)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            runCatching {
+                val localeManager = getSystemService(android.app.LocaleManager::class.java)
+                localeManager?.applicationLocales = android.os.LocaleList(initialLocale)
+            }
+        }
 
-            lifecycleScope.launch(Dispatchers.IO) {
-                runCatching {
-                    dataStore.data.first()[AppLanguageKey]
-                }.onSuccess { lang ->
-                    val targetLocale =
-                        lang
-                            ?.takeUnless { it == SYSTEM_DEFAULT }
-                            ?.let { Locale.forLanguageTag(it) }
-                            ?: Locale.getDefault()
-                    if (targetLocale != initialLocale) {
-                        withContext(Dispatchers.Main) {
-                            setAppLocale(this@MainActivity, targetLocale)
-                            recreate()
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                dataStore.data.first()[AppLanguageKey]
+            }.onSuccess { lang ->
+                val targetLocale =
+                    lang
+                        ?.takeUnless { it == SYSTEM_DEFAULT }
+                        ?.let { Locale.forLanguageTag(it) }
+                        ?: Locale.forLanguageTag("en")
+                if (targetLocale != initialLocale) {
+                    withContext(Dispatchers.Main) {
+                        setAppLocale(this@MainActivity, targetLocale)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            runCatching {
+                                val localeManager = getSystemService(android.app.LocaleManager::class.java)
+                                localeManager?.applicationLocales = android.os.LocaleList(targetLocale)
+                            }
                         }
+                        recreate()
                     }
                 }
             }
