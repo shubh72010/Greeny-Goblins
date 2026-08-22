@@ -653,6 +653,8 @@
     <string name="about_lead_developer">Lead Developer</string>
     <string name="about_archive_tune_team">Team</string>
     <string name="about_respecter">Respecter</string>
+    <string name="about_honourable_mentions">Honourable Mentions</string>
+    <string name="about_amazing_project">Amazing Project, also check em out!</string>
     <string name="about_contributors">Contributors</string>
     <string name="about_contributor_translation">Contributor Translation</string>
     <string name="about_license">LICENSE</string>
@@ -662,6 +664,14 @@
     <string name="about_position_yuki">dummy reze | Admin</string>
     <string name="about_position_mo_agamy">Base Framework | Metrolist</string>
     <string name="about_position_zion_huang">Creator of InnerTune · Foundation for Metrolist, JusPlayer, and other forks</string>
+    <string name="about_position_bnmv_owner">BNMV Owner</string>
+    <string name="about_position_peak_dev">Peak dev</string>
+    <string name="about_position_peak_dev2">Peak dev^2</string>
+    <string name="about_position_most_excited">Most excited guy &lt;3</string>
+    <string name="about_position_stargazer">a cool stargazer of the projekt xd</string>
+    <string name="about_position_empty"></string>
+    <string name="bnmv_integration">BNMV integration</string>
+    <string name="bnmv_integration_desc">Haptic, Glyph and Flashlight visualizers ported from Better Nothing Music Visualizer</string>
     <string name="about_content_desc_github">GitHub</string>
     <string name="about_content_desc_website">Website</string>
     <string name="about_content_desc_discord">Discord</string>

@@ -60,6 +60,8 @@ data class AboutUiModel(
     val leadDeveloper: TeamMember,
     val collaborators: TeamMemberCollection,
     val respecters: TeamMemberCollection,
+    val honourableMentions: TeamMemberCollection,
+    val amazingProjects: TeamMemberCollection,
     val contributorsState: AboutContributorsUiState,
     val contributorsReadMoreUrl: String,
     val isOverflowMenuExpanded: Boolean,
@@ -239,6 +241,13 @@ sealed interface AboutScreenEffect {
     data class OpenUri(
         val uri: String,
     ) : AboutScreenEffect
+
+    data class PlayEasterEgg(
+        val videoId: String,
+        val playlistId: String? = null,
+        val startPositionMs: Long = 0L,
+        val fallbackUri: String,
+    ) : AboutScreenEffect
 }
 
 @HiltViewModel
@@ -313,6 +322,49 @@ class AboutViewModel
         fun openUri(uri: String) {
             if (uri.isBlank()) return
             _effects.tryEmit(AboutScreenEffect.OpenUri(uri))
+        }
+
+        fun onTeamMemberClick(member: TeamMember) {
+            val easterEgg =
+                when (member.name) {
+                    "Aleks-Levet" ->
+                        AboutScreenEffect.PlayEasterEgg(
+                            videoId = "cvh0nX08nRw",
+                            fallbackUri = "https://www.youtube.com/watch?v=cvh0nX08nRw",
+                        )
+                    "somnathashwin" ->
+                        AboutScreenEffect.PlayEasterEgg(
+                            videoId = "0T4UykXuJnI",
+                            startPositionMs = 83_000L,
+                            fallbackUri = "https://www.youtube.com/watch?v=0T4UykXuJnI&t=83s",
+                        )
+                    "fenilmodh" ->
+                        AboutScreenEffect.PlayEasterEgg(
+                            videoId = "xiOPvOBd8IA",
+                            fallbackUri = "https://www.youtube.com/watch?v=xiOPvOBd8IA",
+                        )
+                    "NightBlobby" ->
+                        AboutScreenEffect.PlayEasterEgg(
+                            videoId = "M1xBYPSsDA0",
+                            fallbackUri = "https://music.youtube.com/watch?v=M1xBYPSsDA0",
+                        )
+                    "Følius" ->
+                        AboutScreenEffect.PlayEasterEgg(
+                            videoId = "T7LtL1tyomU",
+                            playlistId = "RDs3a4OQR-10M",
+                            startPositionMs = 40_000L,
+                            fallbackUri = "https://www.youtube.com/watch?v=T7LtL1tyomU&list=RDs3a4OQR-10M&index=8&t=40s",
+                        )
+                    else -> null
+                }
+            if (easterEgg != null) {
+                _effects.tryEmit(easterEgg)
+            } else {
+                val uri = member.profileUrl
+                if (!uri.isNullOrBlank()) {
+                    _effects.tryEmit(AboutScreenEffect.OpenUri(uri))
+                }
+            }
         }
 
         private fun loadContributors(force: Boolean = false) {
@@ -473,12 +525,44 @@ class AboutViewModel
                                 ),
                             ),
                     ),
-                collaborators =
+                collaborators = TeamMemberCollection.of(),
+                respecters = TeamMemberCollection.of(),
+                honourableMentions =
                     TeamMemberCollection.of(
+                        TeamMember(
+                            avatarUrl = "https://github.com/Aleks-Levet.png",
+                            name = "Aleks-Levet",
+                            positionResId = R.string.about_position_bnmv_owner,
+                            profileUrl = "https://github.com/Aleks-Levet",
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "github",
+                                        iconResId = R.drawable.github,
+                                        labelResId = R.string.about_content_desc_github,
+                                        url = "https://github.com/Aleks-Levet",
+                                    ),
+                                ),
+                        ),
+                        TeamMember(
+                            avatarUrl = "https://github.com/somnathashwin.png",
+                            name = "somnathashwin",
+                            positionResId = R.string.about_position_peak_dev,
+                            profileUrl = "https://github.com/somnathashwin",
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "github",
+                                        iconResId = R.drawable.github,
+                                        labelResId = R.string.about_content_desc_github,
+                                        url = "https://github.com/somnathashwin",
+                                    ),
+                                ),
+                        ),
                         TeamMember(
                             avatarUrl = "https://avatars.githubusercontent.com/u/209644556?v=4",
                             name = "oliver-lebaigue-2-bright-bench",
-                            positionResId = R.string.about_position_developers,
+                            positionResId = R.string.about_position_peak_dev2,
                             profileUrl = "https://github.com/oliver-lebaigue-2-bright-bench",
                             links =
                                 AboutLinkCollection.of(
@@ -490,8 +574,55 @@ class AboutViewModel
                                     ),
                                 ),
                         ),
+                        TeamMember(
+                            avatarUrl = "asset:///fenilmodh_pfp.webp",
+                            name = "fenilmodh",
+                            positionResId = R.string.about_position_most_excited,
+                            profileUrl = "https://github.com/fenilmodh",
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "github",
+                                        iconResId = R.drawable.github,
+                                        labelResId = R.string.about_content_desc_github,
+                                        url = "https://github.com/fenilmodh",
+                                    ),
+                                ),
+                        ),
+                        TeamMember(
+                            avatarUrl = "https://github.com/NightBlobby.png",
+                            name = "NightBlobby",
+                            positionResId = R.string.about_position_stargazer,
+                            profileUrl = "https://github.com/NightBlobby",
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "github",
+                                        iconResId = R.drawable.github,
+                                        labelResId = R.string.about_content_desc_github,
+                                        url = "https://github.com/NightBlobby",
+                                    ),
+                                ),
+                        ),
                     ),
-                respecters = TeamMemberCollection.of(),
+                amazingProjects =
+                    TeamMemberCollection.of(
+                        TeamMember(
+                            avatarUrl = "https://github.com/Aleks-Levet.png",
+                            name = "better-nothing-music-visualizer",
+                            positionResId = R.string.about_position_empty,
+                            profileUrl = "https://github.com/Aleks-Levet/better-nothing-music-visualizer",
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "github",
+                                        iconResId = R.drawable.github,
+                                        labelResId = R.string.about_content_desc_github,
+                                        url = "https://github.com/Aleks-Levet/better-nothing-music-visualizer",
+                                    ),
+                                ),
+                        ),
+                    ),
                 contributorsState = contributorsState,
                 contributorsReadMoreUrl = ContributorsReadMoreUrl,
                 isOverflowMenuExpanded = isOverflowMenuExpanded,

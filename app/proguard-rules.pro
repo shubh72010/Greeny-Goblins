@@ -153,3 +153,6 @@
 
 # engine HTTP Android/OkHttp Ktor
 -dontwarn kotlinx.coroutines.**
+
+# JTransforms / jlargearrays — references JDK-internal sun.misc.Cleaner (unused on Android)
+-dontwarn sun.misc.Cleaner

@@ -159,7 +159,7 @@ fun LyricsScreen(
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val lyricsMode by rememberEnumPreference(LyricsModeKey, LyricsMode.ENHANCED)
     val showPlayerControlsState =
-        rememberPreference(ShowLyricsPlayerControlsKey, true)
+        rememberPreference(ShowLyricsPlayerControlsKey, false)
     val showPlayerControls by showPlayerControlsState
     val onShowPlayerControlsChange =
         remember(showPlayerControlsState) {

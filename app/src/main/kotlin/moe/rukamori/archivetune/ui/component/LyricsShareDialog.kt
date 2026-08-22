@@ -162,7 +162,7 @@ fun LyricsShareImageDialog(
     var options by remember { mutableStateOf(LyricsShareImageOptions()) }
     var areAdvancedOptionsVisible by remember { mutableStateOf(false) }
     val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
-    val preferredStreamClient by enumPreference(context, PlayerStreamClientKey, PlayerStreamClient.WEB_REMIX)
+    val preferredStreamClient by enumPreference(context, PlayerStreamClientKey, PlayerStreamClient.JUSPLAYER_ENGINE)
 
     LaunchedEffect(mediaMetadata?.thumbnailUrl) {
         val coverUrl = mediaMetadata?.thumbnailUrl

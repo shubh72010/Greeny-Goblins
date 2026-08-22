@@ -81,8 +81,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.innertube.models.WatchEndpoint
+import moe.rukamori.archivetune.playback.queues.Queue
+import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -110,11 +116,51 @@ fun AboutScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val scrollBehavior = appBarScrollBehavior()
+    val playerConnection = LocalPlayerConnection.current
 
-    LaunchedEffect(viewModel, uriHandler) {
+    LaunchedEffect(viewModel, uriHandler, playerConnection) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 is AboutScreenEffect.OpenUri -> uriHandler.openUri(effect.uri)
+                is AboutScreenEffect.PlayEasterEgg -> {
+                    val connection = playerConnection
+                    if (connection != null) {
+                        val queue =
+                            EasterEggQueue(
+                                delegate =
+                                    YouTubeQueue(
+                                        endpoint =
+                                            WatchEndpoint(
+                                                videoId = effect.videoId,
+                                                playlistId = effect.playlistId,
+                                                // index 8 for lead developer's list position (1-based in URL, 0-based would be 7)
+                                                // keep null to let YouTube decide current index
+                                            ),
+                                    ),
+                                startPositionMs = effect.startPositionMs,
+                            )
+                        connection.playQueue(queue)
+                        if (effect.startPositionMs > 0L) {
+                            // Fallback seek in case queue position is ignored — retry after playback starts
+                            launch {
+                                // give player time to prepare media items
+                                repeat(10) {
+                                    delay(300)
+                                    val player = connection.player
+                                    if (player.mediaItemCount > 0 && player.duration > 0L) {
+                                        player.seekTo(effect.startPositionMs)
+                                        return@launch
+                                    }
+                                }
+                                // final attempt even if duration unknown
+                                delay(500)
+                                connection.player.seekTo(effect.startPositionMs)
+                            }
+                        }
+                    } else {
+                        uriHandler.openUri(effect.fallbackUri)
+                    }
+                }
             }
         }
     }
@@ -125,6 +171,7 @@ fun AboutScreen(
         onNavigateUp = navController::navigateUp,
         onNavigateHome = navController::backToMain,
         onOpenUri = viewModel::openUri,
+        onTeamMemberClick = viewModel::onTeamMemberClick,
         onRetryContributors = viewModel::retryContributors,
         onShowOverflowMenu = viewModel::showOverflowMenu,
         onDismissOverflowMenu = viewModel::dismissOverflowMenu,
@@ -136,6 +183,25 @@ fun AboutScreen(
     )
 }
 
+private class EasterEggQueue(
+    private val delegate: YouTubeQueue,
+    private val startPositionMs: Long,
+) : Queue {
+    override val preloadItem get() = delegate.preloadItem
+
+    override suspend fun getInitialStatus(): Queue.Status {
+        val status = delegate.getInitialStatus()
+        return if (startPositionMs > 0L) status.copy(position = startPositionMs) else status
+    }
+
+    override fun hasNextPage(): Boolean = delegate.hasNextPage()
+
+    override suspend fun nextPage() = delegate.nextPage()
+
+    override fun shouldExpandToFullQueueWhenAutoLoadMoreDisabled(): Boolean =
+        delegate.shouldExpandToFullQueueWhenAutoLoadMoreDisabled()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AboutScreenContent(
@@ -144,6 +210,7 @@ private fun AboutScreenContent(
     onNavigateUp: () -> Unit,
     onNavigateHome: () -> Unit,
     onOpenUri: (String) -> Unit,
+    onTeamMemberClick: (TeamMember) -> Unit,
     onRetryContributors: () -> Unit,
     onShowOverflowMenu: () -> Unit,
     onDismissOverflowMenu: () -> Unit,
@@ -234,6 +301,7 @@ private fun AboutScreenContent(
                 AboutSuccessContent(
                     model = state.model,
                     onOpenUri = onOpenUri,
+                    onTeamMemberClick = onTeamMemberClick,
                     onRetryContributors = onRetryContributors,
                     modifier =
                         Modifier
@@ -764,6 +832,7 @@ private fun segmentedListItemShape(
 private fun AboutSuccessContent(
     model: AboutUiModel,
     onOpenUri: (String) -> Unit,
+    onTeamMemberClick: (TeamMember) -> Unit,
     onRetryContributors: () -> Unit,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
@@ -790,17 +859,45 @@ private fun AboutSuccessContent(
                 LeadDeveloperSection(
                     member = model.leadDeveloper,
                     onOpenUri = onOpenUri,
+                    onMemberClick = onTeamMemberClick,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
 
-        item(key = "team", contentType = "about_team_section") {
+        if (model.collaborators.size > 0) {
+            item(key = "team", contentType = "about_team_section") {
+                AboutContentContainer {
+                    TeamMemberSection(
+                        title = stringResource(R.string.about_archive_tune_team),
+                        members = model.collaborators,
+                        onOpenUri = onOpenUri,
+                        onMemberClick = onTeamMemberClick,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+
+        item(key = "honourable_mentions", contentType = "about_honourable_mentions") {
             AboutContentContainer {
                 TeamMemberSection(
-                    title = stringResource(R.string.about_archive_tune_team),
-                    members = model.collaborators,
+                    title = stringResource(R.string.about_honourable_mentions),
+                    members = model.honourableMentions,
                     onOpenUri = onOpenUri,
+                    onMemberClick = onTeamMemberClick,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        item(key = "amazing_project", contentType = "about_amazing_project") {
+            AboutContentContainer {
+                TeamMemberSection(
+                    title = stringResource(R.string.about_amazing_project),
+                    members = model.amazingProjects,
+                    onOpenUri = onOpenUri,
+                    onMemberClick = { member -> onOpenUri(member.profileUrl ?: "") },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -980,6 +1077,7 @@ private fun LinkChipRow(
 private fun LeadDeveloperSection(
     member: TeamMember,
     onOpenUri: (String) -> Unit,
+    onMemberClick: (TeamMember) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -1000,6 +1098,7 @@ private fun LeadDeveloperSection(
             TeamMemberListItem(
                 member = member,
                 onOpenUri = onOpenUri,
+                onMemberClick = onMemberClick,
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 avatarSize = 72.dp,
                 minHeight = 104.dp,
@@ -1013,6 +1112,7 @@ private fun TeamMemberSection(
     title: String,
     members: TeamMemberCollection,
     onOpenUri: (String) -> Unit,
+    onMemberClick: (TeamMember) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -1035,6 +1135,7 @@ private fun TeamMemberSection(
                     TeamMemberListItem(
                         member = members[index],
                         onOpenUri = onOpenUri,
+                        onMemberClick = onMemberClick,
                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     )
 
@@ -1074,19 +1175,15 @@ private fun AboutSectionHeader(
 private fun TeamMemberListItem(
     member: TeamMember,
     onOpenUri: (String) -> Unit,
+    onMemberClick: (TeamMember) -> Unit = { m -> m.profileUrl?.let { onOpenUri(it) } },
     containerColor: Color,
     modifier: Modifier = Modifier,
     avatarSize: Dp = 56.dp,
     minHeight: Dp = 88.dp,
 ) {
-    val profileUrl = member.profileUrl
     val itemClickModifier =
-        remember(profileUrl, onOpenUri) {
-            if (profileUrl.isNullOrBlank()) {
-                Modifier
-            } else {
-                Modifier.clickable { onOpenUri(profileUrl) }
-            }
+        remember(member, onMemberClick) {
+            Modifier.clickable { onMemberClick(member) }
         }
 
     ListItem(
@@ -1097,15 +1194,29 @@ private fun TeamMemberListItem(
                 .then(itemClickModifier),
         colors = ListItemDefaults.colors(containerColor = containerColor),
         leadingContent = {
-            AsyncImage(
-                model = member.avatarUrl,
-                contentDescription = member.name,
-                modifier =
-                    Modifier
-                        .size(avatarSize)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-            )
+            if (member.name == "fenilmodh") {
+                Image(
+                    painter = painterResource(R.drawable.fenilmodh_pfp),
+                    contentDescription = member.name,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .size(avatarSize)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                )
+            } else {
+                AsyncImage(
+                    model = member.avatarUrl,
+                    contentDescription = member.name,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .size(avatarSize)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                )
+            }
         },
         headlineContent = {
             Text(
@@ -1117,15 +1228,22 @@ private fun TeamMemberListItem(
                 overflow = TextOverflow.Ellipsis,
             )
         },
-        supportingContent = {
-            Text(
-                text = stringResource(member.positionResId),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
+        supportingContent =
+            run {
+                val bio = stringResource(member.positionResId)
+                if (bio.isBlank()) null
+                else {
+                    {
+                        Text(
+                            text = bio,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            },
         trailingContent = {
             MemberLinkActions(
                 links = member.links,

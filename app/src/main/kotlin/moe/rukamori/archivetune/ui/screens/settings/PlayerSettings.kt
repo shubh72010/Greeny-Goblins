@@ -108,7 +108,7 @@ fun PlayerSettings(navController: NavController) {
     val (playerStreamClient, onPlayerStreamClientChange) =
         rememberEnumPreference(
             PlayerStreamClientKey,
-            defaultValue = PlayerStreamClient.WEB_REMIX,
+            defaultValue = PlayerStreamClient.JUSPLAYER_ENGINE,
         )
     val (lowDataMode, onLowDataModeChange) =
         rememberPreference(
@@ -595,7 +595,8 @@ fun PlayerSettings(navController: NavController) {
                 }
             }
 
-            PreferenceGroup(title = stringResource(R.string.haptic_feedback)) {
+            PreferenceGroup(title = stringResource(R.string.bnmv_integration)) {
+                // Haptic Visualizer
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.haptic_visualizer)) },
@@ -639,9 +640,8 @@ fun PlayerSettings(navController: NavController) {
                         valueText = { value -> context.getString(R.string.percentage_format, value) },
                     )
                 }
-            }
 
-            PreferenceGroup(title = "Glyph Visualizer — Nothing Phones") {
+                // Glyph Visualizer — Nothing Phones (BNMV port)
                 item {
                     SwitchPreference(
                         title = { Text("Glyph Music Visualizer") },
@@ -705,9 +705,8 @@ fun PlayerSettings(navController: NavController) {
                         valueText = { it },
                     )
                 }
-            }
 
-            PreferenceGroup(title = "Flashlight Visualizer") {
+                // Flashlight Visualizer
                 item {
                     SwitchPreference(
                         title = { Text("Flashlight Visualizer") },
