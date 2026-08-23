@@ -139,6 +139,11 @@ import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
 import moe.rukamori.archivetune.constants.AutoLoadMoreKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothAllowedDevicesKey
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothDelayDefault
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothDelayMax
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothDelayMin
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothDelaySecondsKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
@@ -318,6 +323,8 @@ class MusicService :
     private var lastDeviceMutePlaybackNoticeAtElapsedMs = 0L
     private var hasAudioFocus = false
     private var autoStartOnBluetoothEnabled = false
+    private var autoStartOnBluetoothDelaySeconds = AutoStartOnBluetoothDelayDefault
+    private var autoStartOnBluetoothAllowedDevices: Set<String> = emptySet()
     private var bluetoothReceiverRegistered = false
     private var wakeLock: PowerManager.WakeLock? = null
     private var wakelockEnabled = false
@@ -1361,11 +1368,17 @@ class MusicService :
                 deviceMutePlaybackRecoveryVolumePercent = percent
             }
 
-        dataStore.data
-            .map { it[AutoStartOnBluetoothKey] ?: false }
-            .distinctUntilChanged()
-            .collectLatest(scope) { enabled ->
+        combine(
+            dataStore.data.map { it[AutoStartOnBluetoothKey] ?: false }.distinctUntilChanged(),
+            dataStore.data.map { it[AutoStartOnBluetoothDelaySecondsKey] ?: AutoStartOnBluetoothDelayDefault }.distinctUntilChanged(),
+            dataStore.data.map { it[AutoStartOnBluetoothAllowedDevicesKey] ?: emptySet() }.distinctUntilChanged(),
+        ) { enabled, delaySeconds, allowedDevices ->
+            Triple(enabled, delaySeconds.coerceIn(AutoStartOnBluetoothDelayMin, AutoStartOnBluetoothDelayMax), allowedDevices)
+        }.distinctUntilChanged()
+            .collectLatest(scope) { (enabled, delaySeconds, allowedDevices) ->
                 autoStartOnBluetoothEnabled = enabled
+                autoStartOnBluetoothDelaySeconds = delaySeconds
+                autoStartOnBluetoothAllowedDevices = allowedDevices
                 if (enabled) {
                     registerBluetoothReceiver()
                 } else {
@@ -3249,8 +3262,19 @@ class MusicService :
 
                 if (!isAudioDevice) return
 
+                if (autoStartOnBluetoothAllowedDevices.isNotEmpty()) {
+                    val address = try { device.address } catch (_: SecurityException) { null }
+                    val name = try { device.name } catch (_: SecurityException) { null }
+                    val matches = address?.let { it in autoStartOnBluetoothAllowedDevices } == true ||
+                        name?.let { it in autoStartOnBluetoothAllowedDevices } == true
+                    if (!matches) return
+                }
+
+                val delayMs = autoStartOnBluetoothDelaySeconds.coerceIn(
+                    AutoStartOnBluetoothDelayMin, AutoStartOnBluetoothDelayMax
+                ) * 1000L
                 scope.launch {
-                    delay(1500)
+                    delay(delayMs)
                     handleBluetoothAutoStart()
                 }
             }

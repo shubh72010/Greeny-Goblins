@@ -355,6 +355,11 @@ class AboutViewModel
                             startPositionMs = 40_000L,
                             fallbackUri = "https://www.youtube.com/watch?v=T7LtL1tyomU&list=RDs3a4OQR-10M&index=8&t=40s",
                         )
+                    "oliver-lebaigue-bright-bench" ->
+                        AboutScreenEffect.PlayEasterEgg(
+                            videoId = "LYU-8IFcDPw",
+                            fallbackUri = "https://www.youtube.com/watch?v=LYU-8IFcDPw",
+                        )
                     else -> null
                 }
             if (easterEgg != null) {
@@ -560,17 +565,17 @@ class AboutViewModel
                                 ),
                         ),
                         TeamMember(
-                            avatarUrl = "https://avatars.githubusercontent.com/u/209644556?v=4",
-                            name = "oliver-lebaigue-2-bright-bench",
+                            avatarUrl = "https://avatars.githubusercontent.com/u/124392143?v=4",
+                            name = "oliver-lebaigue-bright-bench",
                             positionResId = R.string.about_position_peak_dev2,
-                            profileUrl = "https://github.com/oliver-lebaigue-2-bright-bench",
+                            profileUrl = "https://github.com/oliver-lebaigue-bright-bench",
                             links =
                                 AboutLinkCollection.of(
                                     AboutLinkUiModel(
                                         id = "github",
                                         iconResId = R.drawable.github,
                                         labelResId = R.string.about_content_desc_github,
-                                        url = "https://github.com/oliver-lebaigue-2-bright-bench",
+                                        url = "https://github.com/oliver-lebaigue-bright-bench",
                                     ),
                                 ),
                         ),

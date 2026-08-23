@@ -86,6 +86,7 @@ fun OnlineSearchScreen(
 
     val backgroundColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.background
     val distinctResultItems = remember(viewState.items) { viewState.items.distinctBy { it.id } }
+    val isYapperEasterEgg = remember(query) { query.trim().equals("ri", ignoreCase = true) }
 
     Box(
         modifier =
@@ -111,6 +112,92 @@ fun OnlineSearchScreen(
                     .widthIn(max = SearchContentMaxWidth)
                     .fillMaxSize(),
         ) {
+            if (isYapperEasterEgg) {
+                item(
+                    key = "easter_egg_yapper",
+                    contentType = "song_item",
+                ) {
+                    val eggSong =
+                        remember {
+                            SongItem(
+                                id = YapperEasterEggVideoId,
+                                title = "My favorite yapper's favourite song ❤️",
+                                artists = listOf(Artist(name = "Saiyaara (Movie: Saiyaara)", id = null)),
+                                duration = 248,
+                                thumbnail = "https://i.ytimg.com/vi/$YapperEasterEggVideoId/hqdefault.jpg",
+                                explicit = false,
+                                endpoint = WatchEndpoint(videoId = YapperEasterEggVideoId),
+                            )
+                        }
+                    Card(
+                        shape = RoundedCornerShape(SearchGroupOuterCorner),
+                        colors =
+                            CardDefaults.cardColors(
+                                containerColor =
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                            ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = SearchHorizontalPadding),
+                    ) {
+                        YouTubeListItem(
+                            item = eggSong,
+                            isActive = mediaMetadata?.id == eggSong.id,
+                            isPlaying = isPlaying,
+                            trailingContent = {
+                                IconButton(
+                                    onClick = {
+                                        menuState.show {
+                                            YouTubeSongMenu(
+                                                song = eggSong,
+                                                navController = navController,
+                                                onDismiss = {
+                                                    menuState.dismiss()
+                                                    onDismiss()
+                                                },
+                                            )
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.more_vert),
+                                        contentDescription = null,
+                                    )
+                                }
+                            },
+                            modifier =
+                                Modifier.combinedClickable(
+                                    onClick = {
+                                        if (eggSong.id == mediaMetadata?.id) {
+                                            playerConnection.player.togglePlayPause()
+                                        } else {
+                                            playerConnection.playQueue(
+                                                YouTubeQueue.radio(eggSong.toMediaMetadata()),
+                                            )
+                                            onDismiss()
+                                        }
+                                    },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        menuState.show {
+                                            YouTubeSongMenu(
+                                                song = eggSong,
+                                                navController = navController,
+                                                onDismiss = {
+                                                    menuState.dismiss()
+                                                    onDismiss()
+                                                },
+                                            )
+                                        }
+                                    },
+                                ),
+                        )
+                    }
+                }
+            }
+
             if (viewState.history.isNotEmpty()) {
                 item(
                     key = "history_header",
@@ -538,3 +625,5 @@ private val SearchRowMinHeight = 64.dp
 private val SearchRowSpacing = 2.dp
 private val SearchGroupOuterCorner = 24.dp
 private val SearchGroupInnerCorner = 6.dp
+
+private const val YapperEasterEggVideoId = "BSJa1UytM8w"

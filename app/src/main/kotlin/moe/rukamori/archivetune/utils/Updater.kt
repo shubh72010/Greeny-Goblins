@@ -329,17 +329,34 @@ object Updater {
 
     suspend fun getCommitHistory(
         count: Int = 20,
-        branch: String = "dev",
+        branch: String = "main",
     ): Result<List<GitCommit>> =
         runCatching {
             if (!isUpdaterDistribution) {
                 return@runCatching emptyList()
             }
 
-            val response =
-                client
-                    .get("https://api.github.com/repos/shubh72010/Greeny-Goblins/commits?sha=$branch&per_page=$count")
-                    .bodyAsText()
+            val urlPrimary = "https://api.github.com/repos/shubh72010/Greeny-Goblins/commits?sha=$branch&per_page=$count"
+            var responseText: String? = null
+            var lastError: Throwable? = null
+            for (tryBranch in listOf(branch, "main", "dev", "master").distinct()) {
+                try {
+                    val resp = client.get("https://api.github.com/repos/shubh72010/Greeny-Goblins/commits?sha=$tryBranch&per_page=$count")
+                    val text = resp.bodyAsText()
+                    // GitHub returns 404 JSON with "message":"Not Found" -> treat as failure
+                    if (text.contains("\"message\"") && text.contains("Not Found") && !text.trim().startsWith("[")) {
+                        lastError = IllegalStateException("Branch $tryBranch not found")
+                        continue
+                    }
+                    // ensure it parses as array
+                    JSONArray(text)
+                    responseText = text
+                    break
+                } catch (e: Exception) {
+                    lastError = e
+                }
+            }
+            val response = responseText ?: throw lastError ?: IllegalStateException("Failed to fetch commits")
             val jsonArray = JSONArray(response)
             val commits = mutableListOf<GitCommit>()
             for (i in 0 until jsonArray.length()) {

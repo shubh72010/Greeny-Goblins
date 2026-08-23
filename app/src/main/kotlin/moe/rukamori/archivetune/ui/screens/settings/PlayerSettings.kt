@@ -39,6 +39,11 @@ import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
 import moe.rukamori.archivetune.constants.AutoSkipNextOnErrorKey
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothAllowedDevicesKey
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothDelayDefault
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothDelayMax
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothDelayMin
+import moe.rukamori.archivetune.constants.AutoStartOnBluetoothDelaySecondsKey
 import moe.rukamori.archivetune.constants.AutoStartOnBluetoothKey
 import moe.rukamori.archivetune.constants.CrossfadeDurationKey
 import moe.rukamori.archivetune.constants.CrossfadeEnabledKey
@@ -208,6 +213,16 @@ fun PlayerSettings(navController: NavController) {
             AutoStartOnBluetoothKey,
             defaultValue = false,
         )
+    val (autoStartDelay, onAutoStartDelayChange) =
+        rememberPreference(
+            AutoStartOnBluetoothDelaySecondsKey,
+            defaultValue = AutoStartOnBluetoothDelayDefault,
+        )
+    val (autoStartAllowedDevices, onAutoStartAllowedDevicesChange) =
+        rememberPreference(
+            AutoStartOnBluetoothAllowedDevicesKey,
+            defaultValue = emptySet(),
+        )
     val (stopMusicOnTaskClear, onStopMusicOnTaskClearChange) =
         rememberPreference(
             StopMusicOnTaskClearKey,
@@ -292,6 +307,10 @@ fun PlayerSettings(navController: NavController) {
     var showTagsManagementDialog by remember { mutableStateOf(false) }
     var showExternalDownloaderPackageDialog by remember { mutableStateOf(false) }
     var showBnmvNotInstalledDialog by remember { mutableStateOf(false) }
+    var showBluetoothDevicePicker by remember { mutableStateOf(false) }
+    val bluetoothPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { _ -> }
 
     LaunchedEffect(playerStreamClient, isArchiveTuneExtractorEnabled) {
         if (
@@ -360,6 +379,22 @@ fun PlayerSettings(navController: NavController) {
             dismissButton = {
                 androidx.compose.material3.TextButton(onClick = { showBnmvNotInstalledDialog = false }) {
                     Text(stringResource(R.string.bnmv_dialog_dismiss))
+                }
+            },
+        )
+    }
+
+    if (showBluetoothDevicePicker) {
+        moe.rukamori.archivetune.ui.component.BluetoothDevicePickerDialog(
+            currentSelected = autoStartAllowedDevices,
+            onDismiss = { showBluetoothDevicePicker = false },
+            onConfirm = { selected ->
+                onAutoStartAllowedDevicesChange(selected)
+                showBluetoothDevicePicker = false
+            },
+            onRequestPermission = {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    bluetoothPermissionLauncher.launch(android.Manifest.permission.BLUETOOTH_CONNECT)
                 }
             },
         )
@@ -620,6 +655,37 @@ fun PlayerSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.bluetooth), null) },
                         checked = autoStartOnBluetooth,
                         onCheckedChange = onAutoStartOnBluetoothChange,
+                    )
+                }
+
+                item(visible = autoStartOnBluetooth) {
+                    val ctxDelay = LocalContext.current
+                    val delayValueText = remember(ctxDelay) {
+                        { v: Int -> ctxDelay.getString(R.string.auto_start_on_bluetooth_delay_seconds, v) }
+                    }
+                    NumberPickerPreference(
+                        title = { Text(stringResource(R.string.auto_start_on_bluetooth_delay)) },
+                        icon = { Icon(painterResource(R.drawable.timer), null) },
+                        value = autoStartDelay.coerceIn(AutoStartOnBluetoothDelayMin, AutoStartOnBluetoothDelayMax),
+                        onValueChange = onAutoStartDelayChange,
+                        minValue = AutoStartOnBluetoothDelayMin,
+                        maxValue = AutoStartOnBluetoothDelayMax,
+                        valueText = delayValueText,
+                        isEnabled = autoStartOnBluetooth,
+                    )
+                }
+
+                item(visible = autoStartOnBluetooth) {
+                    val desc = if (autoStartAllowedDevices.isEmpty()) {
+                        stringResource(R.string.auto_start_on_bluetooth_allowed_devices_all)
+                    } else {
+                        stringResource(R.string.auto_start_on_bluetooth_allowed_devices_count, autoStartAllowedDevices.size)
+                    }
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.auto_start_on_bluetooth_allowed_devices)) },
+                        description = desc,
+                        icon = { Icon(painterResource(R.drawable.bluetooth), null) },
+                        onClick = { showBluetoothDevicePicker = true },
                     )
                 }
             }

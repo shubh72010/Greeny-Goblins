@@ -559,6 +559,24 @@
     <string name="wakelock_desc">Prevents the system from interrupting music by holding a CPU wake lock</string>
     <string name="auto_start_on_bluetooth">Auto-start on Bluetooth connect</string>
     <string name="auto_start_on_bluetooth_desc">Automatically resume playback when a Bluetooth audio device connects</string>
+    <string name="auto_start_on_bluetooth_delay">Auto-start delay</string>
+    <string name="auto_start_on_bluetooth_delay_desc">Delay before resuming playback after Bluetooth connects</string>
+    <string name="auto_start_on_bluetooth_delay_seconds">%1$d seconds</string>
+    <string name="auto_start_on_bluetooth_allowed_devices">Allowed Bluetooth devices</string>
+    <string name="auto_start_on_bluetooth_allowed_devices_desc">Choose which devices can trigger auto-start. Empty = any audio device</string>
+    <string name="auto_start_on_bluetooth_allowed_devices_all">All audio devices</string>
+    <string name="auto_start_on_bluetooth_allowed_devices_count">%1$d device(s) selected</string>
+    <string name="auto_start_on_bluetooth_select_devices">Select Bluetooth devices</string>
+    <string name="auto_start_on_bluetooth_no_paired_devices">No paired Bluetooth audio devices found</string>
+    <string name="auto_start_on_bluetooth_no_paired_hint">Pair a device in system Bluetooth settings first</string>
+    <string name="auto_start_on_bluetooth_permission_required">Bluetooth permission required to list devices</string>
+    <string name="auto_start_on_bluetooth_grant_permission">Grant permission</string>
+    <string name="auto_start_on_bluetooth_select_all">Select all</string>
+    <string name="auto_start_on_bluetooth_clear_all">Clear all</string>
+    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_no_results">No results for “%1$s”</string>
+    <string name="settings_easteregg_found">You found a secret!</string>
+    <string name="settings_easteregg_copied">%1$s copied to clipboard</string>
     <string name="artist_separators">Symbols to split artists</string>
     <string name="external_downloader">External Downloader</string>
     <string name="external_downloader_desc">Download songs through an external app by package name</string>
