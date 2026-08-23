@@ -347,6 +347,9 @@ class MusicService :
     private var scopeJob = Job()
     private var scope = CoroutineScope(Dispatchers.Main + scopeJob)
     private var ioScope = CoroutineScope(Dispatchers.IO + scopeJob)
+    // Background thread for PCM tee → haptics/BNMV to keep audio thread non-blocking
+    private val visualizerThread by lazy { android.os.HandlerThread("VisualizerPCM").apply { start() } }
+    private val visualizerHandler by lazy { android.os.Handler(visualizerThread.looper) }
     private val binder = MusicBinder()
     private var hasBoundClients = false
     private var idleStopJob: Job? = null
@@ -689,7 +692,8 @@ class MusicService :
     private var virtualizer: Virtualizer? = null
     private var loudnessEnhancer: LoudnessEnhancer? = null
     private val hapticVisualizer by lazy { HapticVisualizer(this) }
-    private val visualizerHub by lazy { VisualizerHub(this) }
+    // Pass service scope so BNMV jobs are tied to service lifecycle (no leak after release())
+    private val visualizerHub by lazy { VisualizerHub(this, scope) }
     val visualizerHubFlow: VisualizerHub get() = visualizerHub
     private val audioEffectPlayerListener =
         object : Player.Listener {
@@ -1294,14 +1298,14 @@ class MusicService :
                 }
             }
 
-        // Glyph + Flashlight visualizers via VisualizerHub (Better Nothing port)
+        // External BNMV visualizers — hybrid: prefer external BNMV via UDP, fallback to local GlyphRenderer
         dataStore.data
             .map { prefs ->
                 val glyphEnabled = prefs[moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey] ?: false
                 val glyphBrightness = (prefs[moe.rukamori.archivetune.constants.GlyphBrightnessKey] ?: 4095).coerceIn(0, 4095)
                 val glyphGamma = (prefs[moe.rukamori.archivetune.constants.GlyphGammaKey] ?: 2.2f).coerceIn(0.5f, 4f)
                 val glyphIdle = prefs[moe.rukamori.archivetune.constants.GlyphIdleBreathingKey] ?: false
-                val glyphPreset = prefs[moe.rukamori.archivetune.constants.GlyphPresetKey] ?: "np1"
+                val glyphPreset = prefs[moe.rukamori.archivetune.constants.GlyphPresetKey] ?: "np2"
                 val glyphGain = (prefs[moe.rukamori.archivetune.constants.GlyphVisualizerGainKey] ?: 1.0f).coerceIn(0.5f, 4f)
                 val flashEnabled = prefs[moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey] ?: false
                 val flashMode = prefs[moe.rukamori.archivetune.constants.FlashlightModeKey]?.let { runCatching { TorchMode.valueOf(it) }.getOrNull() } ?: TorchMode.AMPLITUDE
@@ -1324,12 +1328,16 @@ class MusicService :
                 visualizerHub.flashlightThreshold = p.flashThresh
                 visualizerHub.updateFlashlightSpeedMs(p.flashSpeed)
                 val needHub = p.glyphEnabled || p.flashEnabled
+                // External BNMV uses NETWORK/UDP — no audio session needed; attach is just a handshake trigger
                 if (needHub) {
-                    val sid = localPlayer.audioSessionId
-                    if (sid > 0) visualizerHub.attach(sid)
+                    visualizerHub.attach(localPlayer.audioSessionId)
                 } else {
-                    visualizerHub.detach()
-                    visualizerHub.stopFlashlight()
+                    // Only detach if haptics also off (haptics path drives external haptics via same hub)
+                    val hapticsOn = dataStore.get(moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey, false)
+                    if (!hapticsOn) {
+                        visualizerHub.detach()
+                        visualizerHub.stopFlashlight()
+                    }
                 }
             }
 
@@ -5786,11 +5794,12 @@ class MusicService :
         virtualizer = createAudioEffect("Virtualizer", sessionId) { Virtualizer(0, sessionId) }
         loudnessEnhancer = createAudioEffect("LoudnessEnhancer", sessionId) { LoudnessEnhancer(sessionId) }
         hapticVisualizer.attach(sessionId)
-        // Attach visualizer hub if any visualizer feature enabled
+        // Attach external BNMV hub if any external visualizer feature enabled (UDP/network)
         runCatching {
             val prefs = kotlinx.coroutines.runBlocking { dataStore.data.first() }
             val needHub = (prefs[moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey] ?: false) ||
-                (prefs[moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey] ?: false)
+                (prefs[moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey] ?: false) ||
+                (prefs[moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey] ?: false)
             if (needHub) visualizerHub.attach(sessionId)
         }
 
@@ -7966,10 +7975,15 @@ class MusicService :
                 enableFloatOutput: Boolean,
                 enableAudioTrackPlaybackParams: Boolean,
             ): DefaultAudioSink {
-                // BNGV exact: tap PCM directly since we control playback — no Visualizer/screen-capture needed
+                // PCM tee: drives both external BNMV (UDP) and local haptics off the audio thread.
                 val bngvTee = moe.rukamori.archivetune.visualizer.BngvTeeAudioProcessor { hop, sr ->
-                    // Called on audio thread; VisualizerHub handles its own synchronization + pending queue
-                    try { visualizerHub.onPcm(hop, sr) } catch (_: Exception) {}
+                    // Called on high-priority audio thread — post to dedicated background thread
+                    // to avoid blocking audio or flooding coroutines. Hop is already a fresh copy.
+                    val hopCopy = hop.copyOf()
+                    visualizerHandler.post {
+                        try { visualizerHub.onPcm(hopCopy, sr) } catch (_: Exception) {}
+                        try { hapticVisualizer.onPcm(hopCopy, sr) } catch (_: Exception) {}
+                    }
                 }
                 return DefaultAudioSink
                     .Builder(context)
@@ -8424,6 +8438,9 @@ class MusicService :
             player.release()
         } catch (_: Exception) {
         }
+        try {
+            visualizerThread.quitSafely()
+        } catch (_: Exception) {}
         scopeJob.cancel()
     }
 

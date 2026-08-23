@@ -14,12 +14,25 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import moe.rukamori.archivetune.visualizer.bnmv.BnmvConstants
+import moe.rukamori.archivetune.visualizer.bnmv.BnmvController
+import moe.rukamori.archivetune.visualizer.bnmv.BnmvIntegrationManager
 import timber.log.Timber
 import java.util.ArrayDeque
 
-class VisualizerHub(private val context: Context) {
+class VisualizerHub(
+    private val context: Context,
+    private val externalScope: CoroutineScope? = null,
+) {
+    // External BNMV (UDP) — preferred when installed, fallback to local glyphs
+    private val bnmvScope = externalScope ?: CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val bnmv by lazy { BnmvIntegrationManager(context.applicationContext, bnmvScope) }
 
     private var visualizer: Visualizer? = null
     private var attachedSessionId: Int = -1
@@ -65,6 +78,9 @@ class VisualizerHub(private val context: Context) {
             field = value
             glyphManager.setEnabled(value)
             if (value) glyphManager.setMaxBrightness(glyphBrightness) else glyphManager.setMaxBrightness(0)
+            // Also drive external BNMV glyph toggle when installed
+            try { bnmv.setFeature(BnmvConstants.ACTION_TOGGLE_GLYPHS, value) } catch (_: Exception) {}
+            if (value) bnmv.setEnabled(true) else if (!flashlightEnabled && !hapticEnabled) bnmv.setEnabled(false)
         }
     var glyphBrightness: Int = 4095
         set(value) {
@@ -86,10 +102,21 @@ class VisualizerHub(private val context: Context) {
         set(value) {
             field = value
             reloadConfig()
+            try { bnmv.setPreset(value) } catch (_: Exception) {}
         }
 
     var flashlightEnabled: Boolean = false
+        set(value) {
+            field = value
+            try { bnmv.setFeature(BnmvConstants.ACTION_TOGGLE_TORCH, value) } catch (_: Exception) {}
+            if (value) bnmv.setEnabled(true) else if (!glyphEnabled && !hapticEnabled) bnmv.setEnabled(false)
+        }
     var hapticEnabled: Boolean = false
+        set(value) {
+            field = value
+            try { bnmv.setFeature(BnmvConstants.ACTION_TOGGLE_HAPTICS, value) } catch (_: Exception) {}
+            if (value) bnmv.setEnabled(true) else if (!glyphEnabled && !flashlightEnabled) bnmv.setEnabled(false)
+        }
     var hapticMode: HapticMode = HapticMode.BASS_TO_AMPLITUDE
     var hapticBeatMode: BeatEngineMode = BeatEngineMode.SMOOTH
     var hapticIntensity: Float = 1.0f
@@ -156,6 +183,13 @@ class VisualizerHub(private val context: Context) {
 
     @Synchronized
     fun attach(sessionId: Int) {
+        // External BNMV handshake (non-blocking) — also keep local attach for fallback
+        try {
+            if (glyphEnabled || flashlightEnabled || hapticEnabled) {
+                bnmv.setEnabled(true)
+                bnmv.refreshInstallState()
+            }
+        } catch (_: Exception) {}
         if (sessionId <= 0) return
         if (attachedSessionId == sessionId && visualizer != null) return
         // Keep existing tee even if Visualizer fails — we have direct PCM via BngvTeeAudioProcessor
@@ -215,6 +249,10 @@ class VisualizerHub(private val context: Context) {
         attachedSessionId = -1
         captureSize = 0
         synchronized(pendingFrames) { pendingFrames.clear() }
+        // External BNMV: only fully disconnect if no feature still enabled (setters already manage)
+        try {
+            if (!glyphEnabled && !flashlightEnabled && !hapticEnabled) bnmv.setEnabled(false)
+        } catch (_: Exception) {}
     }
 
     fun stop() {
@@ -223,12 +261,16 @@ class VisualizerHub(private val context: Context) {
         beatHapticEngine.stopHaptics()
         flashlightEngine.stopFlashlight()
         glyphManager.setEnabled(false)
+        try { bnmv.setEnabled(false) } catch (_: Exception) {}
+        try { BnmvController.stop(context) } catch (_: Exception) {}
     }
 
     fun release() {
         stop()
         glyphManager.release()
         stopIdleTicks()
+        try { bnmv.release() } catch (_: Exception) {}
+        if (externalScope == null) bnmvScope.cancel()
     }
 
     // Exact processVisualizerWaveform from BNGV AudioCaptureService:1397
@@ -256,9 +298,15 @@ class VisualizerHub(private val context: Context) {
 
     // Direct PCM tee from ExoPlayer — we have control of the music itself, no need for screen capture.
     // Called on audio thread from BngvTeeAudioProcessor — post to main for glyph/haptic/flash dispatch
+    // Also streams to external BNMV via UDP (non-blocking, throttled).
     fun onPcm(hop: ShortArray, sampleRate: Int) {
         if (!glyphEnabled && !flashlightEnabled && !hapticEnabled) return
-        // Copy hop to avoid mutation on audio thread
+        // External BNMV streaming — fire-and-forget, throttled inside streamer (16ms)
+        try {
+            // Hop will be copied inside bnmv if needed; pass original for efficiency
+            bnmv.onPcm(hop, sampleRate)
+        } catch (_: Exception) {}
+        // Copy hop to avoid mutation on audio thread for local pipeline
         val hopCopy = hop.copyOf()
         mainHandler.post {
             if (glyphRenderer.isDeeplySilent()) {

@@ -291,6 +291,7 @@ fun PlayerSettings(navController: NavController) {
     var showArtistSeparatorsDialog by remember { mutableStateOf(false) }
     var showTagsManagementDialog by remember { mutableStateOf(false) }
     var showExternalDownloaderPackageDialog by remember { mutableStateOf(false) }
+    var showBnmvNotInstalledDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(playerStreamClient, isArchiveTuneExtractorEnabled) {
         if (
@@ -333,6 +334,34 @@ fun PlayerSettings(navController: NavController) {
             onDismiss = { showExternalDownloaderPackageDialog = false },
             singleLine = true,
             maxLines = 1,
+        )
+    }
+
+    if (showBnmvNotInstalledDialog) {
+        val ctx = LocalContext.current
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showBnmvNotInstalledDialog = false },
+            title = { Text(stringResource(R.string.bnmv_dialog_not_installed_title)) },
+            text = { Text(stringResource(R.string.bnmv_dialog_not_installed_message)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        showBnmvNotInstalledDialog = false
+                        runCatching {
+                            val intent = android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(moe.rukamori.archivetune.visualizer.bnmv.BnmvConstants.GITHUB_RELEASES_URL),
+                            ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+                            ctx.startActivity(intent)
+                        }
+                    },
+                ) { Text(stringResource(R.string.bnmv_dialog_install)) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showBnmvNotInstalledDialog = false }) {
+                    Text(stringResource(R.string.bnmv_dialog_dismiss))
+                }
+            },
         )
     }
 
@@ -595,15 +624,61 @@ fun PlayerSettings(navController: NavController) {
                 }
             }
 
-            PreferenceGroup(title = stringResource(R.string.bnmv_integration)) {
-                // Haptic Visualizer
+            PreferenceGroup(
+                title = stringResource(R.string.bnmv_integration),
+            ) {
+                // External BNMV status + install CTA
                 item {
+                    val ctx = LocalContext.current
+                    val isInstalled = remember { moe.rukamori.archivetune.visualizer.bnmv.BnmvController.isInstalled(ctx) }
+                    if (!isInstalled) {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.bnmv_not_installed)) },
+                            description = stringResource(R.string.bnmv_not_installed_desc),
+                            icon = { Icon(painterResource(R.drawable.download), null) },
+                            onClick = {
+                                runCatching {
+                                    val intent = android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(moe.rukamori.archivetune.visualizer.bnmv.BnmvConstants.PLAY_STORE_URL),
+                                    ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                    ctx.startActivity(intent)
+                                }
+                            },
+                        )
+                    } else {
+                        PreferenceEntry(
+                            title = { Text(stringResource(R.string.bnmv_open)) },
+                            description = stringResource(R.string.bnmv_connected) + " — " + stringResource(R.string.bnmv_disconnected).substringBefore(" ("),
+                            icon = { Icon(painterResource(R.drawable.download), null) },
+                            onClick = {
+                                runCatching {
+                                    val launch = ctx.packageManager.getLaunchIntentForPackage(
+                                        moe.rukamori.archivetune.visualizer.bnmv.BnmvConstants.PACKAGE_NAME,
+                                    )
+                                    if (launch != null) ctx.startActivity(launch) else {
+                                        moe.rukamori.archivetune.visualizer.bnmv.BnmvController.start(ctx)
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+
+                // Local haptics (still in-process, not BNMV external — kept for users without BNMV)
+                item {
+                    val ctx = LocalContext.current
                     SwitchPreference(
                         title = { Text(stringResource(R.string.haptic_visualizer)) },
-                        description = stringResource(R.string.haptic_visualizer_desc),
+                        description = stringResource(R.string.haptic_visualizer_desc) + " (local, also drives external BNMV haptics via UDP when BNMV is installed)",
                         icon = { Icon(painterResource(R.drawable.vibration), null) },
                         checked = hapticVisualizerEnabled,
-                        onCheckedChange = onHapticVisualizerEnabledChange,
+                        onCheckedChange = { enabled ->
+                            onHapticVisualizerEnabledChange(enabled)
+                            if (enabled && !moe.rukamori.archivetune.visualizer.bnmv.BnmvController.isInstalled(ctx)) {
+                                showBnmvNotInstalledDialog = true
+                            }
+                        },
                     )
                 }
 
@@ -641,118 +716,62 @@ fun PlayerSettings(navController: NavController) {
                     )
                 }
 
-                // Glyph Visualizer — Nothing Phones (BNMV port)
+                // External Glyph via BNMV (broadcasts + UDP NETWORK source)
                 item {
+                    val ctx = LocalContext.current
+                    val isInstalled = remember { moe.rukamori.archivetune.visualizer.bnmv.BnmvController.isInstalled(ctx) }
                     SwitchPreference(
-                        title = { Text("Glyph Music Visualizer") },
-                        description = if (isGlyphSupported) "Drive Nothing Glyph Interface in sync with music (Better Nothing port, 60 FPS)" else "Only available on Nothing phones — shows idle breathing on other devices",
+                        title = { Text("Glyph Music Visualizer (external)") },
+                        description = if (!isInstalled) stringResource(R.string.bnmv_not_installed_desc)
+                        else if (isGlyphSupported) "Stream to external BNMV via UDP (NETWORK source, 60 FPS) — Glyph Interface for Nothing phones"
+                        else "External BNMV only — no local bundling. Install BNMV to use Glyph on Nothing phones",
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         checked = glyphEnabled,
-                        onCheckedChange = onGlyphEnabledChange,
-                        isEnabled = isGlyphSupported,
+                        onCheckedChange = { enabled ->
+                            onGlyphEnabledChange(enabled)
+                            // Drive external toggle eagerly for instant feedback
+                            moe.rukamori.archivetune.visualizer.bnmv.BnmvController.toggleFeature(
+                                ctx, moe.rukamori.archivetune.visualizer.bnmv.BnmvConstants.ACTION_TOGGLE_GLYPHS, enabled,
+                            )
+                            if (enabled && !moe.rukamori.archivetune.visualizer.bnmv.BnmvController.isInstalled(ctx)) {
+                                showBnmvNotInstalledDialog = true
+                            }
+                        },
                     )
                 }
                 item(visible = glyphEnabled) {
-                    NumberPickerPreference(
-                        title = { Text("Glyph Brightness") },
-                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
-                        value = glyphBrightness,
-                        onValueChange = onGlyphBrightnessChange,
-                        minValue = 0,
-                        maxValue = 4095,
-                        valueText = { v -> "$v/4095" },
-                    )
-                }
-                item(visible = glyphEnabled) {
-                    NumberPickerPreference(
-                        title = { Text("Gamma") },
-                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
-                        value = (glyphGamma * 100).toInt(),
-                        onValueChange = { v -> onGlyphGammaChange(v / 100f) },
-                        minValue = 50,
-                        maxValue = 400,
-                        valueText = { v -> "%.2f".format(v / 100f) },
-                    )
-                }
-                item(visible = glyphEnabled) {
-                    NumberPickerPreference(
-                        title = { Text("Visualizer Gain") },
-                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
-                        value = (glyphGain * 100).toInt(),
-                        onValueChange = { v -> onGlyphGainChange(v / 100f) },
-                        minValue = 50,
-                        maxValue = 400,
-                        valueText = { v -> "%.1fx".format(v / 100f) },
-                    )
-                }
-                item(visible = glyphEnabled) {
-                    SwitchPreference(
-                        title = { Text("Idle Breathing") },
-                        description = "Gentle breathing animation when music is silent (pulse/wave)",
-                        icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
-                        checked = glyphIdle,
-                        onCheckedChange = onGlyphIdleChange,
-                    )
-                }
-                item(visible = glyphEnabled) {
+                    val ctx = LocalContext.current
                     ListPreference(
-                        title = { Text("Glyph Preset") },
-                        description = "Frequency zones mapping (from zones.config)",
+                        title = { Text("Glyph Preset (external)") },
+                        description = "Preset key sent via ACTION_SET_PRESET to external BNMV",
                         icon = { Icon(painterResource(R.drawable.style), null) },
                         selectedValue = glyphPreset,
                         values = listOf("np1", "np1-bass-flash", "np1-center-bass", "np1-spectrum", "np2", "np2-bass", "np2a", "np3-circle", "np3-alternating"),
-                        onValueSelected = onGlyphPresetChange,
+                        onValueSelected = { key ->
+                            onGlyphPresetChange(key)
+                            moe.rukamori.archivetune.visualizer.bnmv.BnmvController.setPreset(ctx, key)
+                        },
                         valueText = { it },
                     )
                 }
 
-                // Flashlight Visualizer
+                // External Flashlight via BNMV
                 item {
+                    val ctx = LocalContext.current
                     SwitchPreference(
-                        title = { Text("Flashlight Visualizer") },
-                        description = "Pulse device torch to bass — works on any phone",
+                        title = { Text("Flashlight Visualizer (external)") },
+                        description = "Pulse device torch via external BNMV (ACTION_TOGGLE_TORCH + UDP)",
                         icon = { Icon(painterResource(R.drawable.bolt), null) },
                         checked = flashlightEnabled,
-                        onCheckedChange = onFlashlightEnabledChange,
-                    )
-                }
-                item(visible = flashlightEnabled) {
-                    EnumSegmentedPreference(
-                        title = { Text("Flashlight Mode") },
-                        icon = { Icon(painterResource(R.drawable.bolt), null) },
-                        selectedValue = runCatching { TorchMode.valueOf(flashlightMode) }.getOrDefault(TorchMode.AMPLITUDE),
-                        onValueSelected = { onFlashlightModeChange(it.name) },
-                        valueText = {
-                            when (it) {
-                                TorchMode.AMPLITUDE -> "Amplitude"
-                                TorchMode.BEAT_DETECTION -> "Beat Detect"
+                        onCheckedChange = { enabled ->
+                            onFlashlightEnabledChange(enabled)
+                            moe.rukamori.archivetune.visualizer.bnmv.BnmvController.toggleFeature(
+                                ctx, moe.rukamori.archivetune.visualizer.bnmv.BnmvConstants.ACTION_TOGGLE_TORCH, enabled,
+                            )
+                            if (enabled && !moe.rukamori.archivetune.visualizer.bnmv.BnmvController.isInstalled(ctx)) {
+                                showBnmvNotInstalledDialog = true
                             }
                         },
-                    )
-                }
-                item(visible = flashlightEnabled) {
-                    EnumSegmentedPreference(
-                        title = { Text("Beat Engine") },
-                        icon = { Icon(painterResource(R.drawable.bolt), null) },
-                        selectedValue = runCatching { BeatEngineMode.valueOf(flashlightBeatMode) }.getOrDefault(BeatEngineMode.SMOOTH),
-                        onValueSelected = { onFlashlightBeatModeChange(it.name) },
-                        valueText = {
-                            when (it) {
-                                BeatEngineMode.SMOOTH -> "Smooth"
-                                BeatEngineMode.SHORT_PULSE -> "Short Pulse"
-                            }
-                        },
-                    )
-                }
-                item(visible = flashlightEnabled) {
-                    NumberPickerPreference(
-                        title = { Text("Threshold") },
-                        icon = { Icon(painterResource(R.drawable.bolt), null) },
-                        value = (flashlightThreshold * 100).toInt(),
-                        onValueChange = { v -> onFlashlightThresholdChange(v / 100f) },
-                        minValue = 0,
-                        maxValue = 100,
-                        valueText = { v -> "$v%" },
                     )
                 }
             }

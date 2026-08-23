@@ -74,6 +74,13 @@ class HapticVisualizer(context: Context) {
     private var envelope = 0f
     private var longTermLevel = 0.001f
 
+    // PCM tee path — reliable, does not die after few seconds like Visualizer API.
+    // Uses AudioProcessor to generate 512 log bins, then drives same envelope/beat logic.
+    private val pcmAudioProcessor = moe.rukamori.archivetune.visualizer.AudioProcessor()
+    private val pcmRange = moe.rukamori.archivetune.visualizer.AudioProcessor.FrequencyRange(BASS_MIN_HZ, BASS_MAX_HZ)
+    @Volatile private var lastPcmMs = 0L
+    private val pcmLock = Any()
+
     @Synchronized
     fun attach(sessionId: Int) {
         if (sessionId <= 0) return
@@ -149,6 +156,9 @@ class HapticVisualizer(context: Context) {
 
     private fun onFftData(fft: ByteArray, reportedRate: Int) {
         if (!enabled || captureSize <= 0 || fft.size < 2) return
+        // If PCM tee is active, Visualizer path is redundant — skip to avoid double haptics.
+        // PCM lastPcmMs is updated on every tee hop; if recent (<200ms), ignore Visualizer.
+        if (SystemClock.elapsedRealtime() - lastPcmMs < 200) return
         val samplingRate = normalizeSampleRate(reportedRate)
         sampleRate = samplingRate
 
@@ -166,6 +176,53 @@ class HapticVisualizer(context: Context) {
                 if (beatDetector.detect(magnitudes)) {
                     fireBeat()
                 }
+            }
+        }
+    }
+
+    /**
+     * PCM-driven haptics — call from BngvTeeAudioProcessor. More reliable than Visualizer
+     * (Visualizer dies after ~3-5s on some devices/offload, and requires RECORD_AUDIO).
+     * Throttled to 20ms to match continuous resubmit interval and avoid flooding vibrator.
+     */
+    fun onPcm(hop: ShortArray, sampleRateHz: Int) {
+        if (!enabled) return
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastPcmMs < 16) return
+        // Also throttle to continuous interval to prevent vibrator spam
+        if (now - lastSubmitMs < CONTINUOUS_RESUBMIT_INTERVAL_MS && mode == HapticVisualizerMode.CONTINUOUS) {
+            // Still update envelope even if not yet submitting — keeps AGC responsive.
+            // So we don't return early here for envelope; only for vibrator.
+        }
+        lastPcmMs = now
+        sampleRate = sampleRateHz
+        val fft: IntArray = synchronized(pcmLock) {
+            pcmAudioProcessor.updateFFTSize(sampleRateHz)
+            val res = pcmAudioProcessor.processAudioFrame(hop, moe.rukamori.archivetune.visualizer.AudioProcessor.SourceType.INTERNAL, 0.85f)
+                ?: return
+            res.fftraw
+        }
+        // Peak in bass range from log bins 0..4095
+        var maxBin = 0
+        for (i in pcmRange.logBinLo..pcmRange.logBinHi) {
+            val v = fft[i]
+            if (v > maxBin) maxBin = v
+        }
+        val rawPeak = maxBin / 4095f
+        // For beat mode, we need linear magnitudes array in bass range for detector — synthesize from log bins
+        // Reuse rawPeak envelope path for continuous; for beat, build float array of normalized bins
+        envelope = if (rawPeak > envelope) rawPeak else envelope + (rawPeak - envelope) * ENVELOPE_RELEASE
+        longTermLevel += (envelope - longTermLevel) * LONG_TERM_RATE
+        val normalized = (envelope / maxOf(longTermLevel * AGC_FACTOR, AGC_FLOOR)).coerceIn(0f, 1f)
+
+        when (mode) {
+            HapticVisualizerMode.CONTINUOUS -> driveContinuous(normalized)
+            HapticVisualizerMode.BEAT -> {
+                // Build magnitudes for beat detector from log bins in bass range
+                val size = pcmRange.logBinHi - pcmRange.logBinLo + 1
+                if (size <= 0) return
+                val mags = FloatArray(size) { idx -> fft[pcmRange.logBinLo + idx] / 4095f }
+                if (beatDetector.detect(mags)) fireBeat()
             }
         }
     }
