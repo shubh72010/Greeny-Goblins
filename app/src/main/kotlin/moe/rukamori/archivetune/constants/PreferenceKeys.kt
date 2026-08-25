@@ -922,3 +922,11 @@ enum class UpdateChannel {
             }
     }
 }
+
+// ── Lyrics filter (censor + skip) ──
+val LyricsFilterEnabledKey = booleanPreferencesKey("lyricsFilterEnabled")
+val LyricsFilterWordsKey = stringPreferencesKey("lyricsFilterWords") // comma-separated lowercased
+val LyricsFilterUseDefaultKey = booleanPreferencesKey("lyricsFilterUseDefault")
+val LyricsFilterCensorEnabledKey = booleanPreferencesKey("lyricsFilterCensor")
+val LyricsFilterSkipEnabledKey = booleanPreferencesKey("lyricsFilterSkip")
+val LyricsFilterCensorCharKey = stringPreferencesKey("lyricsFilterCensorChar")

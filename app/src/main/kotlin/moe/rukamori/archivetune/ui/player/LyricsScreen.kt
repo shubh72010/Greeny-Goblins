@@ -106,6 +106,8 @@ import moe.rukamori.archivetune.constants.ShowLyricsPlayerControlsKey
 import moe.rukamori.archivetune.constants.ShowLyricsProgressBarKey
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.ui.component.InlineLyricsEditor
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.LyricsEnhanced
 import moe.rukamori.archivetune.ui.component.LyricsV2
@@ -116,6 +118,8 @@ import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 private val AppleMusicFallbackGradient =
     listOf(
@@ -155,6 +159,8 @@ fun LyricsScreen(
             }
         }
     val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
+    var isEditing by remember { mutableStateOf(false) }
+    val editScope = rememberCoroutineScope()
 
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val lyricsMode by rememberEnumPreference(LyricsModeKey, LyricsMode.ENHANCED)
@@ -314,6 +320,7 @@ fun LyricsScreen(
                 showProgressBarState = showProgressBarState,
                 onShowProgressBarChange = onShowProgressBarChange,
                 onDismiss = menuState::dismiss,
+                onEditRequest = { isEditing = true },
             )
         }
     }
@@ -321,7 +328,8 @@ fun LyricsScreen(
     val isLoading = playbackState == STATE_BUFFERING || sliderPosition != null
     val orientation = LocalConfiguration.current.orientation
 
-    BackHandler(enabled = backHandlerEnabled, onBack = onBackClick)
+    BackHandler(enabled = isEditing) { isEditing = false }
+    BackHandler(enabled = !isEditing && backHandlerEnabled, onBack = onBackClick)
 
     Box(
         modifier =
@@ -357,7 +365,30 @@ fun LyricsScreen(
                         .padding(horizontal = 24.dp),
             )
 
-            if (orientation == Configuration.ORIENTATION_LANDSCAPE && showPlayerControls) {
+            if (isEditing) {
+                InlineLyricsEditor(
+                    initialLyrics = currentLyrics?.lyrics,
+                    mediaMetadata = mediaMetadata,
+                    onSave = { newLyrics ->
+                        val oldLyrics = currentLyrics?.lyrics
+                        editScope.launch(Dispatchers.IO) {
+                            database.query {
+                                if (!oldLyrics.isNullOrBlank() && oldLyrics != LyricsEntity.LYRICS_NOT_FOUND) {
+                                    try { pushHistory(mediaMetadata.id, oldLyrics) } catch (_: Exception) {}
+                                }
+                                replaceLyrics(
+                                    id = mediaMetadata.id,
+                                    lyrics = if (newLyrics.isBlank()) LyricsEntity.LYRICS_NOT_FOUND else newLyrics,
+                                    source = LyricsEntity.Source.USER_EDIT.value,
+                                )
+                            }
+                        }
+                        isEditing = false
+                    },
+                    onDismiss = { isEditing = false },
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            } else if (orientation == Configuration.ORIENTATION_LANDSCAPE && showPlayerControls) {
                 Row(
                     modifier =
                         Modifier

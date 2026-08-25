@@ -12,27 +12,47 @@ package moe.rukamori.archivetune.ui.screens.settings
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.lyrics.LyricsFilter
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
@@ -64,6 +84,31 @@ fun ContentSettings(navController: NavController) {
     val (hideVideo, onHideVideoChange) = rememberPreference(key = HideVideoKey, defaultValue = false)
     val (lengthTop, onLengthTopChange) = rememberPreference(key = TopSize, defaultValue = "50")
     val (quickPicks, onQuickPicksChange) = rememberEnumPreference(key = QuickPicksKey, defaultValue = QuickPicks.QUICK_PICKS)
+
+    // ── Lyrics filter ──
+    val (filterEnabled, onFilterEnabledChange) = rememberPreference(key = LyricsFilterEnabledKey, defaultValue = false)
+    val (useDefault, onUseDefaultChange) = rememberPreference(key = LyricsFilterUseDefaultKey, defaultValue = true)
+    val (censorOn, onCensorChange) = rememberPreference(key = LyricsFilterCensorEnabledKey, defaultValue = true)
+    val (skipOn, onSkipChange) = rememberPreference(key = LyricsFilterSkipEnabledKey, defaultValue = false)
+    val (customWordsRaw, onCustomWordsRawChange) = rememberPreference(key = LyricsFilterWordsKey, defaultValue = "")
+    var showWordsDialog by remember { mutableStateOf(false) }
+    val filePickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            try {
+                val content = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() ?: ""
+                val parsed = LyricsFilter.parseWords(content)
+                if (parsed.isNotEmpty()) {
+                    onCustomWordsRawChange(LyricsFilter.wordsToString(parsed))
+                    Toast.makeText(context, "Imported ${parsed.size} words", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "No words found in file", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Import failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    val effectiveCount = LyricsFilter.effectiveWords(useDefault, customWordsRaw).size
 
     Column(
         Modifier
@@ -165,6 +210,52 @@ fun ContentSettings(navController: NavController) {
             }
         }
 
+        PreferenceGroup(title = "Lyrics filter") {
+            item {
+                SwitchPreference(
+                    title = { Text("Filter mode") },
+                    description = "Censor filtered words in lyrics, optionally skip them in audio",
+                    icon = { Icon(painterResource(R.drawable.filter_alt), null) },
+                    checked = filterEnabled,
+                    onCheckedChange = onFilterEnabledChange,
+                )
+            }
+            if (filterEnabled) {
+                item {
+                    SwitchPreference(
+                        title = { Text("Use default list ($effectiveCount words)") },
+                        icon = { Icon(painterResource(R.drawable.list), null) },
+                        checked = useDefault,
+                        onCheckedChange = onUseDefaultChange,
+                    )
+                }
+                item {
+                    SwitchPreference(
+                        title = { Text("Censor lyrics") },
+                        icon = { Icon(painterResource(R.drawable.format_align_left), null) },
+                        checked = censorOn,
+                        onCheckedChange = onCensorChange,
+                    )
+                }
+                item {
+                    SwitchPreference(
+                        title = { Text("Skip filtered parts in audio") },
+                        icon = { Icon(painterResource(R.drawable.fast_forward), null) },
+                        checked = skipOn,
+                        onCheckedChange = onSkipChange,
+                    )
+                }
+                item {
+                    PreferenceEntry(
+                        title = { Text("Custom word list") },
+                        description = if (customWordsRaw.isBlank()) "None — tap to type or import" else "${LyricsFilter.parseWords(customWordsRaw).size} custom words",
+                        icon = { Icon(painterResource(R.drawable.edit), null) },
+                        onClick = { showWordsDialog = true },
+                    )
+                }
+            }
+        }
+
         PreferenceGroup(title = stringResource(R.string.app_language)) {
             item {
                 // Unified in-app selector (all Android versions). Defaults to English ("en")
@@ -239,4 +330,50 @@ fun ContentSettings(navController: NavController) {
             }
         },
     )
+
+    if (showWordsDialog) {
+        var draft by remember { mutableStateOf(customWordsRaw) }
+        AlertDialog(
+            onDismissRequest = { showWordsDialog = false },
+            title = { Text("Custom word list") },
+            text = {
+                Column {
+                    Text(
+                        "One word per line or comma-separated. Merged with default list when enabled.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        minLines = 4,
+                        maxLines = 10,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { filePickerLauncher.launch("*/*") }) {
+                            Icon(painterResource(R.drawable.snippet_folder), null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Import file")
+                        }
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = { onCustomWordsRawChange(""); draft = "" }) { Text("Clear") }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onCustomWordsRawChange(LyricsFilter.wordsToString(LyricsFilter.parseWords(draft)))
+                        showWordsDialog = false
+                    },
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWordsDialog = false }) { Text(android.R.string.cancel.toString().let { "Cancel" }) }
+            },
+        )
+    }
 }

@@ -184,6 +184,10 @@ import moe.rukamori.archivetune.constants.PersistentQueueKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.constants.PlayerVolumeKey
+import moe.rukamori.archivetune.constants.LyricsFilterEnabledKey
+import moe.rukamori.archivetune.constants.LyricsFilterSkipEnabledKey
+import moe.rukamori.archivetune.constants.LyricsFilterUseDefaultKey
+import moe.rukamori.archivetune.constants.LyricsFilterWordsKey
 import moe.rukamori.archivetune.constants.RepeatModeKey
 import moe.rukamori.archivetune.constants.ScrobbleDelayPercentKey
 import moe.rukamori.archivetune.constants.ScrobbleDelaySecondsKey
@@ -223,8 +227,10 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.lastfm.LastFM
+import moe.rukamori.archivetune.lyrics.LyricsFilter
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
+import moe.rukamori.archivetune.lyrics.LyricsUtils
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
@@ -520,6 +526,7 @@ class MusicService :
     private var audioNormalizationEnabled = true
     var playerVolume = MutableStateFlow(1f)
     private val audioFocusVolumeFactor = MutableStateFlow(1f)
+    private val lyricsFilterMuteFactor = MutableStateFlow(1f)
     private var effectiveVolumeRampJob: Job? = null
     private var crossfadeEnabled = false
     private var crossfadeDurationMs = 0L
@@ -1218,6 +1225,78 @@ class MusicService :
             calculateEffectivePlayerVolume(playerVolume, normalizeFactor, audioFocusVolumeFactor)
         }.collectLatest(scope) { finalVolume ->
             updateEffectiveVolume(finalVolume)
+        }
+
+        // ── Lyrics filter: mute during filtered word/line windows ──
+        // Outer loop refreshes prefs/song slowly; inner loop polls position fast (40ms)
+        // so short words aren't missed. Windows are padded because currentPosition
+        // lags real playback by up to ~100ms.
+        scope.launch {
+            val padStartMs = 80L
+            val padEndMs = 150L
+            var intervals: List<Pair<Long, Long>> = emptyList()
+            while (isActive) {
+                // ── slow refresh: prefs + song + lyrics ──
+                val prefs = dataStore.data.first()
+                val enabled = prefs[LyricsFilterEnabledKey] ?: false
+                val muteOn = prefs[LyricsFilterSkipEnabledKey] ?: false
+                intervals =
+                    if (!enabled || !muteOn) {
+                        emptyList()
+                    } else {
+                        val words = LyricsFilter.effectiveWords(
+                            useDefault = prefs[LyricsFilterUseDefaultKey] ?: true,
+                            customRaw = prefs[LyricsFilterWordsKey],
+                        )
+                        val mediaId = currentMediaMetadata.value?.id
+                        if (mediaId == null || words.isEmpty()) {
+                            emptyList()
+                        } else {
+                            val lyricsText = database.lyrics(mediaId).first()?.lyrics
+                            val entries =
+                                if (lyricsText.isNullOrEmpty() || lyricsText == "LYRICS_NOT_FOUND") {
+                                    emptyList()
+                                } else {
+                                    when {
+                                        LyricsUtils.isTtml(lyricsText) -> LyricsUtils.parseTtml(lyricsText)
+                                        LyricsUtils.isLineSyncedLrc(lyricsText) -> LyricsUtils.parseLyrics(lyricsText)
+                                        else -> emptyList()
+                                    }
+                                }
+                            LyricsFilter.skipIntervals(entries, words).map { (s, e) -> (s - padStartMs) to (e + padEndMs) }
+                        }
+                    }
+
+                if (intervals.isEmpty()) {
+                    if (lyricsFilterMuteFactor.value != 1f) {
+                        lyricsFilterMuteFactor.value = 1f
+                        applyEffectiveVolumeImmediately(currentEffectivePlayerVolume())
+                    }
+                    delay(2000)
+                    continue
+                }
+
+                // ── fast poll until next slow refresh ──
+                val refreshAt = android.os.SystemClock.elapsedRealtime() + 1500L
+                while (isActive && android.os.SystemClock.elapsedRealtime() < refreshAt) {
+                    if (!player.isPlaying) {
+                        if (lyricsFilterMuteFactor.value != 1f) {
+                            lyricsFilterMuteFactor.value = 1f
+                            applyEffectiveVolumeImmediately(currentEffectivePlayerVolume())
+                        }
+                    } else {
+                        val pos = player.currentPosition.coerceAtLeast(0L)
+                        val inside = intervals.any { (s, e) -> pos >= s && pos < e }
+                        val target = if (inside) 0f else 1f
+                        if (lyricsFilterMuteFactor.value != target) {
+                            lyricsFilterMuteFactor.value = target
+                            // bypass ramp for snappy mute/unmute around the word
+                            applyEffectiveVolumeImmediately(currentEffectivePlayerVolume())
+                        }
+                    }
+                    delay(40)
+                }
+            }
         }
 
         playerVolume.debounce(1000).collect(ioScope) { volume ->
@@ -2365,7 +2444,8 @@ class MusicService :
             normalizeFactor.takeIf { it.isFinite() }?.coerceIn(MIN_AUDIO_NORMALIZATION_FACTOR, MAX_AUDIO_NORMALIZATION_FACTOR) ?: 1f
         val safeAudioFocusVolumeFactor =
             audioFocusVolumeFactor.takeIf { it.isFinite() }?.coerceIn(MIN_AUDIO_FOCUS_VOLUME_FACTOR, 1f) ?: 1f
-        return (safePlayerVolume * safeNormalizeFactor * safeAudioFocusVolumeFactor).coerceIn(0f, maxSafeGainFactor)
+        val filterMuteFactor = lyricsFilterMuteFactor.value.coerceIn(0f, 1f)
+        return (safePlayerVolume * safeNormalizeFactor * safeAudioFocusVolumeFactor * filterMuteFactor).coerceIn(0f, maxSafeGainFactor)
     }
 
     private fun currentEffectivePlayerVolume(): Float =

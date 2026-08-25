@@ -41,6 +41,7 @@ import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.ListeningBySlot
 import moe.rukamori.archivetune.db.entities.ListeningTotals
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.db.entities.LyricsHistoryEntity
 import moe.rukamori.archivetune.db.entities.PlayCountEntity
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
@@ -2094,5 +2095,27 @@ interface DatabaseDao {
         } else {
             addTagToPlaylist(playlistId, tagId)
         }
+    }
+
+    // ── Lyrics history (last 3 per song) ──
+    @Insert
+    fun insertHistory(entity: LyricsHistoryEntity): Long
+
+    @Query("SELECT * FROM lyrics_history WHERE songId = :songId ORDER BY createdAt DESC LIMIT :limit")
+    fun historyForSong(songId: String, limit: Int = 3): Flow<List<LyricsHistoryEntity>>
+
+    @Query("SELECT * FROM lyrics_history WHERE songId = :songId ORDER BY createdAt DESC LIMIT :limit")
+    suspend fun getHistoryForSong(songId: String, limit: Int = 3): List<LyricsHistoryEntity>
+
+    @Query("DELETE FROM lyrics_history WHERE songId = :songId AND id NOT IN (SELECT id FROM lyrics_history WHERE songId = :songId ORDER BY createdAt DESC LIMIT :limit)")
+    fun pruneHistory(songId: String, limit: Int = 3)
+
+    @Query("DELETE FROM lyrics_history WHERE songId = :songId")
+    fun clearHistoryForSong(songId: String)
+
+    @Transaction
+    fun pushHistory(songId: String, lyrics: String) {
+        insertHistory(LyricsHistoryEntity(songId = songId, lyrics = lyrics, createdAt = System.currentTimeMillis()))
+        pruneHistory(songId, 3)
     }
 }

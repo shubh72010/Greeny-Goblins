@@ -13,6 +13,7 @@ import android.content.res.Configuration
 import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -141,15 +142,12 @@ fun LyricsMenu(
     showProgressBarState: State<Boolean>,
     onShowProgressBarChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
+    onEditRequest: (() -> Unit)? = null,
     viewModel: LyricsMenuViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val showPlayerControls by showPlayerControlsState
     val showProgressBar by showProgressBarState
-
-    var showEditDialog by rememberSaveable {
-        mutableStateOf(false)
-    }
 
     var showTranslateDialog by rememberSaveable { mutableStateOf(false) }
     var showLyricsSyncOffsetDialog by rememberSaveable { mutableStateOf(false) }
@@ -160,19 +158,6 @@ fun LyricsMenu(
         viewModel.refetchCompletionEvents.collect {
             onDismiss()
         }
-    }
-
-    if (showEditDialog) {
-        TextFieldDialog(
-            onDismiss = { showEditDialog = false },
-            icon = { Icon(painter = painterResource(R.drawable.edit), contentDescription = null) },
-            title = { Text(text = mediaMetadataProvider().title) },
-            initialTextFieldValue = TextFieldValue(lyricsProvider()?.lyrics.orEmpty()),
-            singleLine = false,
-            onDone = {
-                viewModel.updateLyrics(mediaMetadataProvider(), it)
-            },
-        )
     }
 
     var showSearchDialog by rememberSaveable {
@@ -451,23 +436,23 @@ fun LyricsMenu(
                     .imePadding(),
         ) {
             Surface(
-                shape = AlertDialogDefaults.shape,
-                color = AlertDialogDefaults.containerColor,
-                tonalElevation = AlertDialogDefaults.TonalElevation,
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFF1E1E1E),
+                tonalElevation = 0.dp,
                 modifier = Modifier.widthIn(max = 560.dp),
             ) {
                 Column(modifier = Modifier.padding(24.dp)) {
                     Icon(
                         painter = painterResource(R.drawable.translate),
                         contentDescription = null,
-                        tint = AlertDialogDefaults.iconContentColor,
+                        tint = Color.White,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
                         text = stringResource(R.string.translate),
                         style = MaterialTheme.typography.headlineSmall,
-                        color = AlertDialogDefaults.titleContentColor,
+                        color = Color.White,
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                     )
                     Spacer(Modifier.height(16.dp))
@@ -477,11 +462,21 @@ fun LyricsMenu(
                             onValueChange = setTextFieldValue,
                             enabled = !isTranslationInProgress,
                             singleLine = false,
-                            label = { Text(stringResource(R.string.lyrics)) },
+                            label = { Text(stringResource(R.string.lyrics), color = Color.White.copy(alpha = 0.7f)) },
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
                                     .heightIn(min = 80.dp, max = 220.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.18f),
+                                cursorColor = Color.White,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                disabledTextColor = Color.White.copy(alpha = 0.5f),
+                                focusedLabelColor = Color.White.copy(alpha = 0.7f),
+                                unfocusedLabelColor = Color.White.copy(alpha = 0.5f),
+                            ),
                         )
 
                         Spacer(Modifier.height(12.dp))
@@ -489,6 +484,7 @@ fun LyricsMenu(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = stringResource(R.string.source),
+                                color = Color.White.copy(alpha = 0.8f),
                                 modifier = Modifier.width(96.dp),
                             )
 
@@ -512,6 +508,13 @@ fun LyricsMenu(
                                     trailingIcon = {
                                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded)
                                     },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.18f),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        disabledTextColor = Color.White,
+                                    ),
                                     modifier =
                                         Modifier
                                             .menuAnchor()
@@ -546,6 +549,7 @@ fun LyricsMenu(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = stringResource(R.string.language_label),
+                                color = Color.White.copy(alpha = 0.8f),
                                 modifier = Modifier.width(96.dp),
                             )
 
@@ -565,6 +569,13 @@ fun LyricsMenu(
                                     trailingIcon = {
                                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageExpanded)
                                     },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                                        unfocusedBorderColor = Color.White.copy(alpha = 0.18f),
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        disabledTextColor = Color.White,
+                                    ),
                                     modifier =
                                         Modifier
                                             .menuAnchor()
@@ -607,12 +618,19 @@ fun LyricsMenu(
                                 showTranslateDialog = false
                             },
                             shapes = ButtonDefaults.shapes(),
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
                         ) {
-                            Text(stringResource(android.R.string.cancel))
+                            Text(stringResource(android.R.string.cancel), color = Color.White)
                         }
                         Spacer(Modifier.width(8.dp))
                         FilledTonalButton(
                             enabled = !isTranslationInProgress && canUseSelectedSource,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = Color.White.copy(alpha = 0.15f),
+                                contentColor = Color.White,
+                                disabledContainerColor = Color.White.copy(alpha = 0.08f),
+                                disabledContentColor = Color.White.copy(alpha = 0.4f),
+                            ),
                             onClick = {
                                 val inputText = textFieldValue.text
                                 val languageCode = selectedLanguageCode
@@ -719,7 +737,10 @@ fun LyricsMenu(
                                     )
                                 },
                                 text = stringResource(R.string.edit),
-                                onClick = { showEditDialog = true },
+                                onClick = {
+                                    onDismiss()
+                                    onEditRequest?.invoke()
+                                },
                             ),
                             NewAction(
                                 icon = {
@@ -855,9 +876,9 @@ private fun LyricsSearchResultDialog(
                         .fillMaxWidth()
                         .widthIn(max = 640.dp)
                         .heightIn(max = maxHeight),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = AlertDialogDefaults.TonalElevation,
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFF1E1E1E),
+                tonalElevation = 0.dp,
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     LyricsSearchResultHeader(
@@ -962,8 +983,8 @@ private fun LyricsSearchResultHeader(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(24.dp),
+        color = Color.White.copy(alpha = 0.08f),
     ) {
         Row(
             modifier = Modifier.padding(start = 20.dp, top = 18.dp, end = 10.dp, bottom = 18.dp),
@@ -972,14 +993,14 @@ private fun LyricsSearchResultHeader(
         ) {
             Surface(
                 modifier = Modifier.size(56.dp),
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White.copy(alpha = 0.12f),
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Icon(
                         painter = painterResource(R.drawable.manage_search),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        tint = Color.White,
                         modifier = Modifier.size(30.dp),
                     )
                 }
@@ -988,7 +1009,7 @@ private fun LyricsSearchResultHeader(
                 Text(
                     text = stringResource(R.string.search_lyrics),
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -996,7 +1017,7 @@ private fun LyricsSearchResultHeader(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = Color.White.copy(alpha = 0.7f),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1004,7 +1025,7 @@ private fun LyricsSearchResultHeader(
             if (isSearching) {
                 LoadingIndicator(
                     modifier = Modifier.size(28.dp),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = Color.White,
                 )
             }
             if (isSearchComplete) {
@@ -1015,7 +1036,7 @@ private fun LyricsSearchResultHeader(
                     Icon(
                         painter = painterResource(R.drawable.cached),
                         contentDescription = stringResource(R.string.refetch),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        tint = Color.White,
                     )
                 }
             }
@@ -1026,7 +1047,7 @@ private fun LyricsSearchResultHeader(
                 Icon(
                     painter = painterResource(R.drawable.close),
                     contentDescription = stringResource(R.string.close),
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = Color.White,
                 )
             }
         }
@@ -1444,9 +1465,9 @@ private fun SearchLyricsInputDialog(
                 .imePadding(),
     ) {
         Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF1E1E1E),
+            tonalElevation = 0.dp,
             modifier = Modifier.widthIn(max = 520.dp),
         ) {
             Column(
@@ -1498,15 +1519,16 @@ private fun LyricsSearchInputHeader(onDismiss: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Surface(
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            shape = RoundedCornerShape(14.dp),
+            color = Color.White.copy(alpha = 0.12f),
+            contentColor = Color.White,
             modifier = Modifier.size(48.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     painter = painterResource(R.drawable.search),
                     contentDescription = null,
+                    tint = Color.White,
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -1515,7 +1537,7 @@ private fun LyricsSearchInputHeader(onDismiss: () -> Unit) {
         Text(
             text = stringResource(R.string.search_lyrics),
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = Color.White,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
@@ -1543,11 +1565,12 @@ private fun LyricsSearchTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        label = { Text(label) },
+        label = { Text(label, color = Color.White.copy(alpha = 0.7f)) },
         leadingIcon = {
             Icon(
                 painter = painterResource(iconResId),
                 contentDescription = null,
+                tint = Color.White.copy(alpha = 0.7f),
                 modifier = Modifier.size(20.dp),
             )
         },
@@ -1558,6 +1581,7 @@ private fun LyricsSearchTextField(
                         Icon(
                             painter = painterResource(R.drawable.close),
                             contentDescription = stringResource(R.string.clear),
+                            tint = Color.White.copy(alpha = 0.7f),
                         )
                     }
                 }
@@ -1565,11 +1589,18 @@ private fun LyricsSearchTextField(
                 null
             },
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
+        shape = RoundedCornerShape(16.dp),
         colors =
             OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest,
+                focusedBorderColor = Color.White.copy(alpha = 0.6f),
+                unfocusedBorderColor = Color.White.copy(alpha = 0.18f),
+                cursorColor = Color.White,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                focusedLabelColor = Color.White.copy(alpha = 0.7f),
+                unfocusedLabelColor = Color.White.copy(alpha = 0.5f),
+                focusedLeadingIconColor = Color.White.copy(alpha = 0.7f),
+                unfocusedLeadingIconColor = Color.White.copy(alpha = 0.5f),
             ),
         keyboardOptions =
             KeyboardOptions(
@@ -1601,6 +1632,7 @@ private fun LyricsSearchInputActions(
         ) {
             Button(
                 onClick = onSearch,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -1617,7 +1649,8 @@ private fun LyricsSearchInputActions(
                 onClick = onSearchOnline,
                 colors =
                     ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        containerColor = Color.White.copy(alpha = 0.12f),
+                        contentColor = Color.White,
                     ),
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth(),
@@ -1643,7 +1676,8 @@ private fun LyricsSearchInputActions(
                 onClick = onSearchOnline,
                 colors =
                     ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        containerColor = Color.White.copy(alpha = 0.12f),
+                        contentColor = Color.White,
                     ),
                 shapes =
                     ButtonDefaults.shapes(
@@ -1662,6 +1696,7 @@ private fun LyricsSearchInputActions(
 
             Button(
                 onClick = onSearch,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
                 shapes =
                     ButtonDefaults.shapes(
                         shape = ButtonGroupDefaults.connectedTrailingButtonShape,

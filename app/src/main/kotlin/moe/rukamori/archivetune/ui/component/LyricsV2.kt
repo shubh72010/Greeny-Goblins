@@ -104,6 +104,10 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.LyricsClickKey
+import moe.rukamori.archivetune.constants.LyricsFilterCensorEnabledKey
+import moe.rukamori.archivetune.constants.LyricsFilterEnabledKey
+import moe.rukamori.archivetune.constants.LyricsFilterUseDefaultKey
+import moe.rukamori.archivetune.constants.LyricsFilterWordsKey
 import moe.rukamori.archivetune.constants.LyricsLineBlurKey
 import moe.rukamori.archivetune.constants.LyricsLineSpacingKey
 import moe.rukamori.archivetune.constants.LyricsRomanizeChineseKey
@@ -122,6 +126,7 @@ import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import moe.rukamori.archivetune.lyrics.LyricsEntry
+import moe.rukamori.archivetune.lyrics.LyricsFilter
 import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
 import moe.rukamori.archivetune.lyrics.LyricsUtils.findCurrentLineIndex
 import moe.rukamori.archivetune.lyrics.LyricsUtils.insertInstrumentalBreaks
@@ -268,8 +273,18 @@ fun LyricsV2(
     val isSynced = remember(lyrics) { lyrics != null && (isLineSyncedLrc(lyrics!!) || isTtml(lyrics!!)) }
     val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics!!) }
 
+    // ── Lyrics filter (censor) ──
+    val (filterEnabledRaw) = rememberPreference(LyricsFilterEnabledKey, false)
+    val (filterUseDefault) = rememberPreference(LyricsFilterUseDefaultKey, true)
+    val (filterWordsRaw) = rememberPreference(LyricsFilterWordsKey, "")
+    val (censorOn) = rememberPreference(LyricsFilterCensorEnabledKey, true)
+    val filterWords =
+        remember(filterEnabledRaw, filterUseDefault, filterWordsRaw) {
+            if (!filterEnabledRaw || !censorOn) emptyList() else LyricsFilter.effectiveWords(filterUseDefault, filterWordsRaw)
+        }
+
     val lyricsEntries: List<LyricsEntry> =
-        remember(lyrics) {
+        remember(lyrics, filterWords) {
             if (lyrics == null || lyrics == LYRICS_NOT_FOUND) return@remember emptyList()
             val parsed =
                 when {
@@ -291,10 +306,18 @@ fun LyricsV2(
                             }
                     }
                 }
-            if (parsed.isNotEmpty() && parsed.first().time >= 0) {
-                listOf(HEAD_LYRICS_ENTRY) + parsed
+            val censored =
+                if (filterWords.isEmpty()) parsed
+                else parsed.map { e ->
+                    e.copy(
+                        text = LyricsFilter.censorText(e.text, filterWords),
+                        words = e.words?.map { w -> w.copy(text = LyricsFilter.censorText(w.text, filterWords)) },
+                    )
+                }
+            if (censored.isNotEmpty() && censored.first().time >= 0) {
+                listOf(HEAD_LYRICS_ENTRY) + censored
             } else {
-                parsed
+                censored
             }
         }
 

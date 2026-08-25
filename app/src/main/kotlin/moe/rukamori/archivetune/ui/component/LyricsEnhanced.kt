@@ -121,6 +121,7 @@ import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.LyricsEntity.Companion.LYRICS_NOT_FOUND
 import moe.rukamori.archivetune.lyrics.LyricsEntry
+import moe.rukamori.archivetune.lyrics.LyricsFilter
 import moe.rukamori.archivetune.lyrics.LyricsRomanizationPreferences
 import moe.rukamori.archivetune.lyrics.LyricsUtils.isLineSyncedLrc
 import moe.rukamori.archivetune.lyrics.LyricsUtils.isTtml
@@ -242,10 +243,20 @@ fun LyricsEnhanced(
     val isSynced = remember(lyrics) { lyrics != null && (isLineSyncedLrc(lyrics!!) || isTtml(lyrics!!)) }
     val isTtmlFormat = remember(lyrics) { lyrics != null && isTtml(lyrics!!) }
 
+    // ── Lyrics filter (censor) ──
+    val (filterEnabledRaw) = rememberPreference(moe.rukamori.archivetune.constants.LyricsFilterEnabledKey, false)
+    val (filterUseDefault) = rememberPreference(moe.rukamori.archivetune.constants.LyricsFilterUseDefaultKey, true)
+    val (filterWordsRaw) = rememberPreference(moe.rukamori.archivetune.constants.LyricsFilterWordsKey, "")
+    val (censorOn) = rememberPreference(moe.rukamori.archivetune.constants.LyricsFilterCensorEnabledKey, true)
+    val filterWords =
+        remember(filterEnabledRaw, filterUseDefault, filterWordsRaw) {
+            if (!filterEnabledRaw || !censorOn) emptyList() else LyricsFilter.effectiveWords(filterUseDefault, filterWordsRaw)
+        }
+
     val lyricsEntries: List<LyricsEntry> =
-        remember(lyrics) {
+        remember(lyrics, filterWords) {
             if (lyrics == null || lyrics == LYRICS_NOT_FOUND) return@remember emptyList()
-            when {
+            val parsed: List<LyricsEntry> = when {
                 isTtml(lyrics!!) -> {
                     parseTtml(lyrics!!)
                 }
@@ -260,6 +271,13 @@ fun LyricsEnhanced(
                         .filter { it.isNotBlank() }
                         .map { line -> LyricsEntry(time = -1L, text = line.trim()) }
                 }
+            }
+            if (filterWords.isEmpty()) parsed
+            else parsed.map { e ->
+                e.copy(
+                    text = LyricsFilter.censorText(e.text, filterWords),
+                    words = e.words?.map { w -> w.copy(text = LyricsFilter.censorText(w.text, filterWords)) },
+                )
             }
         }
 
@@ -326,6 +344,8 @@ fun LyricsEnhanced(
     }
 
     val leadMs = if (isTtmlFormat) TTML_LEAD_MS else LRC_LEAD_MS
+
+    // Audio muting for filtered words is handled centrally in MusicService
 
     val latestSliderPositionProvider = rememberUpdatedState(sliderPositionProvider)
     val latestLyricsSyncOffset = rememberUpdatedState(lyricsSyncOffset)
