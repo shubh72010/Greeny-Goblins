@@ -15,6 +15,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.bluetooth.BluetoothClass
+import android.util.Log
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -227,10 +228,15 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
 import moe.rukamori.archivetune.lastfm.LastFM
+import moe.rukamori.archivetune.lyrics.BetterLyricsProvider
+import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsFilter
 import moe.rukamori.archivetune.lyrics.LyricsHelper
 import moe.rukamori.archivetune.lyrics.LyricsPreloadManager
 import moe.rukamori.archivetune.lyrics.LyricsUtils
+import moe.rukamori.archivetune.lyrics.PaxsenixAppleMusicLyricsProvider
+import moe.rukamori.archivetune.lyrics.YouLyPlusLyricsProvider
+import moe.rukamori.archivetune.utils.GlobalLog
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.models.PersistPlayerState
 import moe.rukamori.archivetune.models.PersistQueue
@@ -1232,8 +1238,11 @@ class MusicService :
         // so short words aren't missed. Windows are padded because currentPosition
         // lags real playback by up to ~100ms.
         scope.launch {
-            val padStartMs = 80L
-            val padEndMs = 150L
+            // Position lags audible output through the audio sink, and estimates
+            // skew late when singing front-loads — so pad start hard (early mute
+            // is safe; a late mute leaks the profanity) and end lightly.
+            val padStartMs = 250L
+            val padEndMs = 100L
             var intervals: List<Pair<Long, Long>> = emptyList()
             while (isActive) {
                 // ── slow refresh: prefs + song + lyrics ──
@@ -1253,7 +1262,7 @@ class MusicService :
                             emptyList()
                         } else {
                             val lyricsText = database.lyrics(mediaId).first()?.lyrics
-                            val entries =
+                            var entries =
                                 if (lyricsText.isNullOrEmpty() || lyricsText == "LYRICS_NOT_FOUND") {
                                     emptyList()
                                 } else {
@@ -1263,6 +1272,49 @@ class MusicService :
                                         else -> emptyList()
                                     }
                                 }
+                            var source = "stored"
+                            val storedFiltered =
+                                if (source == "stored") {
+                                    entries
+                                        .flatMap { e -> e.words.orEmpty().map { w -> w.text.lowercase(Locale.ROOT) } }
+                                        .toSet()
+                                } else {
+                                    emptySet()
+                                }
+                            // Stored lyrics are line-synced/plain → muting would
+                            // rely on estimation. Try word-timed (TTML) sources
+                            // just for the muter; display lyrics stay untouched.
+                            if (entries.none { !it.words.isNullOrEmpty() }) {
+                                fetchWordTimedEntries(mediaId, currentMediaMetadata.value)?.let { rich ->
+                                    if (rich.isNotEmpty()) {
+                                        entries = rich
+                                        source = "rich-ttml"
+                                    }
+                                }
+                            }
+                            if (entries.none { !it.words.isNullOrEmpty() } && source == "stored") source = "lrc-estimate"
+                            filterDebugWords =
+                                entries
+                                    .flatMap { e ->
+                                        e.words.orEmpty().filter { w -> LyricsFilter.containsFiltered(w.text, words) }.map { w ->
+                                            (w.startTime * 1000).toLong() to w.text
+                                        }
+                                    }.sortedBy { it.first }
+                            if (filterDebugSource != "$source:${entries.size}:${filterDebugWords.size}") {
+                                filterDebugSource = "$source:${entries.size}:${filterDebugWords.size}"
+                                val srcMsg = "SOURCE=$source lines=${entries.size} filteredWords=${filterDebugWords.size}"
+                                GlobalLog.append(Log.INFO, TAG_LYRICS_FILTER_TIMING, srcMsg)
+                                Log.i(TAG_LYRICS_FILTER_TIMING, srcMsg)
+                                filterDebugWords.forEach { (startMs, text) ->
+                                    Log.i(TAG_LYRICS_FILTER_TIMING, "FW start=$startMs text='$text'")
+                                }
+                                if (source == "rich-ttml" && storedFiltered.isNotEmpty()) {
+                                    val richTexts = entries.flatMap { e -> e.words.orEmpty().map { w -> w.text.lowercase(Locale.ROOT) } }.toSet()
+                                    storedFiltered.filter { it !in richTexts && LyricsFilter.containsFiltered(it, words) }.forEach {
+                                        Log.i(TAG_LYRICS_FILTER_TIMING, "MISSING_IN_RICH '$it'")
+                                    }
+                                }
+                            }
                             LyricsFilter.skipIntervals(entries, words).map { (s, e) -> (s - padStartMs) to (e + padEndMs) }
                         }
                     }
@@ -1286,9 +1338,31 @@ class MusicService :
                         }
                     } else {
                         val pos = player.currentPosition.coerceAtLeast(0L)
-                        val inside = intervals.any { (s, e) -> pos >= s && pos < e }
-                        val target = if (inside) 0f else 1f
+                        var hitInterval: Pair<Long, Long>? = null
+                        for (interval in intervals) {
+                            if (pos >= interval.first && pos < interval.second) {
+                                hitInterval = interval
+                                break
+                            }
+                        }
+                        val target = if (hitInterval != null) 0f else 1f
                         if (lyricsFilterMuteFactor.value != target) {
+                            if (target == 0f) {
+                                val (s, _) = hitInterval!!
+                                val word =
+                                    filterDebugWords.lastOrNull { it.first <= pos + padStartMs }
+                                        ?: filterDebugWords.firstOrNull()
+                                        ?: (s to "?")
+                                val engageMsg =
+                                    "ENGAGE pos=$pos intervalStart=$s word='${word.second}' wordStart=${word.first} lateMs=${pos - word.first} interval=(${hitInterval.first},${hitInterval.second})"
+                                GlobalLog.append(Log.INFO, TAG_LYRICS_FILTER_TIMING, engageMsg)
+                                Log.i(TAG_LYRICS_FILTER_TIMING, engageMsg)
+                            } else {
+                                val prevEnd = intervals.lastOrNull { it.second <= pos }?.second ?: -1L
+                                val disengageMsg = "DISENGAGE pos=$pos prevIntervalEnd=$prevEnd overshootMs=${if (prevEnd > 0) pos - prevEnd else -1}"
+                                GlobalLog.append(Log.INFO, TAG_LYRICS_FILTER_TIMING, disengageMsg)
+                                Log.i(TAG_LYRICS_FILTER_TIMING, disengageMsg)
+                            }
                             lyricsFilterMuteFactor.value = target
                             // bypass ramp for snappy mute/unmute around the word
                             applyEffectiveVolumeImmediately(currentEffectivePlayerVolume())
@@ -2450,6 +2524,49 @@ class MusicService :
 
     private fun currentEffectivePlayerVolume(): Float =
         calculateEffectivePlayerVolume(playerVolume.value, normalizeFactor.value, audioFocusVolumeFactor.value)
+
+    // Rich-sync (TTML) fetch used only by the lyrics filter muter when stored
+    // lyrics lack word timestamps. Memoized per mediaId: one network attempt
+    // per song (misses included) so the refresh loop never hammers providers.
+    private val richSyncCache = ConcurrentHashMap<String, List<LyricsEntry>>()
+    private val richSyncAttempted = ConcurrentHashMap.newKeySet<String>()
+
+    // Timing diagnostics for the lyrics-filter mute (log tag "LyricsFilterTiming").
+    @Volatile
+    private var filterDebugWords: List<Pair<Long, String>> = emptyList()
+
+    @Volatile
+    private var filterDebugSource: String = ""
+
+    private suspend fun fetchWordTimedEntries(
+        mediaId: String,
+        metadata: moe.rukamori.archivetune.models.MediaMetadata?,
+    ): List<LyricsEntry>? {
+        richSyncCache[mediaId]?.let { return it }
+        if (!richSyncAttempted.add(mediaId)) return null
+        val title = metadata?.title ?: return null
+        val artist = metadata.artists.joinToString { it.name }
+        val album = metadata.album?.title
+        val duration = metadata.duration
+        val candidates = listOf(BetterLyricsProvider, YouLyPlusLyricsProvider, PaxsenixAppleMusicLyricsProvider)
+        for (provider in candidates) {
+            val ttml =
+                runCatching {
+                    if (!provider.isEnabled(applicationContext)) return@runCatching null
+                    provider
+                        .getLyrics(mediaId, title, artist, album, duration)
+                        .getOrNull()
+                        ?.takeIf { LyricsUtils.isTtml(it) }
+                }.getOrNull() ?: continue
+            val parsed = runCatching { LyricsUtils.parseTtml(ttml) }.getOrElse { emptyList() }
+            if (parsed.any { !it.words.isNullOrEmpty() }) {
+                richSyncCache[mediaId] = parsed
+                return parsed
+            }
+        }
+        return null
+    }
+
 
     private fun currentEffectivePlayerVolumeForMediaId(mediaId: String): Float {
         val targetNormalizeFactor =
@@ -8714,6 +8831,8 @@ class MusicService :
     }
 
     companion object {
+        private const val TAG_LYRICS_FILTER_TIMING = "LyricsFilterTiming"
+
         internal fun shouldStopServiceOnTaskRemoved(
             stopMusicOnTaskClearEnabled: Boolean,
             isHostSessionActive: Boolean,

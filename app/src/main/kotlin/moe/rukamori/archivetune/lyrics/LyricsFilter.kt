@@ -20,6 +20,11 @@ object LyricsFilter {
         // slurs
         "nigga", "nigger", "faggot", "fag", "kike", "chink", "tranny", "dyke",
         "wetback", "beaner", "retard", "retarded", "cripple",
+        // provider-censored renderings (Apple Music/Musixmatch style) — lyrics
+        // sources often ship "ni**a"/"f***" instead of the plain word; substring
+        // matching covers suffixes (ni**a → ni**as, f*** → f***ing)
+        "ni**a", "ni**er", "n!gga", "n1gga",
+        "f**k", "f***", "sh**", "s***", "b****", "b***h", "c***", "w**re",
     )
 
     fun parseWords(raw: String?): List<String> {
@@ -82,9 +87,34 @@ object LyricsFilter {
                     intervals.add(s to en)
                 }
             } else if (e.time >= 0 && containsFiltered(e.text, filterWords)) {
-                // line-level fallback: skip whole line until next line
+                // No word timestamps: distribute the line duration across words
+                // weighted by syllable count (sung duration tracks syllables far
+                // better than characters) and mute only the matched word's span.
+                // ponytail: still blind to breaths/instrumental stretches inside a
+                // line — real fix is forced alignment or preferring TTML sources;
+                // upgrade if this ever matters enough.
                 val nextTime = entries.getOrNull(idx + 1)?.time ?: (e.time + 3000)
-                if (nextTime > e.time) intervals.add(e.time to nextTime)
+                val lineDur = nextTime - e.time
+                if (lineDur > 0) {
+                    val tokens = e.text.trim().split(WHITESPACE)
+                    val weights = tokens.map(::syllableCount)
+                    val total = weights.sum()
+                    if (total > 0) {
+                        var before = 0
+                        tokens.forEachIndexed { i, tok ->
+                            val lo = tok.lowercase(Locale.ROOT)
+                            val hit = filterWords.any { w -> w.isNotBlank() && lo.contains(w) }
+                            val start = before
+                            before += weights[i]
+                            if (hit) {
+                                val s = e.time + lineDur * start / total
+                                var en = e.time + lineDur * before / total
+                                if (en <= s) en = s + 120
+                                intervals.add(s to en)
+                            }
+                        }
+                    }
+                }
             }
         }
         // merge overlapping/adjacent so consecutive filtered words mute continuously
@@ -111,5 +141,32 @@ object LyricsFilter {
 
     fun isInFilteredInterval(positionMs: Long, intervals: List<Pair<Long, Long>>): Pair<Long, Long>? {
         return intervals.firstOrNull { (s, e) -> positionMs in s until e }
+    }
+
+    private val WHITESPACE = Regex("\\s+")
+
+    // Rough syllable estimate: vowel-group counting with silent-trailing-e
+    // correction; CJK counts one syllable per character. Hangul and some
+    // abugidas fall back to 1 — fine for relative weighting.
+    private fun syllableCount(token: String): Int {
+        val w = token.lowercase(Locale.ROOT).filter { it.isLetterOrDigit() }
+        if (w.isEmpty()) return 1
+        var han = 0
+        var groups = 0
+        var prevVowel = false
+        w.forEach { c ->
+            when (Character.UnicodeScript.of(c.code)) {
+                Character.UnicodeScript.HAN -> han++
+                else -> {
+                    val isVowel = c in "aeiouy"
+                    if (isVowel && !prevVowel) groups++
+                    prevVowel = isVowel
+                }
+            }
+        }
+        if (han > 0) return han
+        var n = if (groups == 0) 1 else groups
+        if (w.length > 2 && w.endsWith("e") && n > 1) n--
+        return n.coerceAtLeast(1)
     }
 }
