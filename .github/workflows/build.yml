@@ -222,6 +222,7 @@ jobs:
           exit 1
 
       - name: Sign APK
+        if: ${{ secrets.KEYSTORE != '' }}
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
@@ -231,14 +232,24 @@ jobs:
           keyPassword: ${{ secrets.KEY_PASSWORD }}
           buildToolsVersion: 35.0.0
       
-      - name: Move signed APK
+      - name: Move APK (signed if available, else unsigned)
         shell: bash
         run: |
           set -euo pipefail
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
-          SIGNED_APK=$(find "$RELEASE_DIR" -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1)
-          mv "$SIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+          SIGNED_APK=$(find "$RELEASE_DIR" -maxdepth 1 -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1 || true)
+          if [ -n "${SIGNED_APK:-}" ] && [ -f "$SIGNED_APK" ]; then
+            mv "$SIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+            exit 0
+          fi
+          UNSIGNED_APK=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-unsigned-signed.apk" | head -n 1 || true)
+          if [ -z "${UNSIGNED_APK:-}" ] || [ ! -f "$UNSIGNED_APK" ]; then
+            echo "No APK found in $RELEASE_DIR"
+            find "$RELEASE_DIR" -maxdepth 2 -type f -print || true
+            exit 1
+          fi
+          mv "$UNSIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
   
       - name: Upload Signed APK
         uses: actions/upload-artifact@v7

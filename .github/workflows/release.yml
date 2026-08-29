@@ -393,6 +393,7 @@ jobs:
           exit 1
 
       - name: Sign APK
+        if: ${{ secrets.KEYSTORE != '' }}
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
@@ -408,16 +409,26 @@ jobs:
           set -euo pipefail
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
+          # Prefer signed APK if signing ran, otherwise fallback to unsigned
           mapfile -t SIGNED_APKS < <(
             find "$RELEASE_DIR" -maxdepth 1 -type f \
               \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \)
           )
-          if [ "${#SIGNED_APKS[@]}" -ne 1 ]; then
-            echo "Expected exactly one signed APK in $RELEASE_DIR, found ${#SIGNED_APKS[@]}"
+          if [ "${#SIGNED_APKS[@]}" -eq 1 ]; then
+            APK="${SIGNED_APKS[0]}"
+            mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+            exit 0
+          fi
+          # Fallback: unsigned APK (when KEYSTORE secret not set)
+          mapfile -t UNSIGNED_APKS < <(
+            find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-unsigned-signed.apk"
+          )
+          if [ "${#UNSIGNED_APKS[@]}" -ne 1 ]; then
+            echo "Expected one APK in $RELEASE_DIR (signed or unsigned), found signed=${#SIGNED_APKS[@]} unsigned=${#UNSIGNED_APKS[@]}"
             find "$RELEASE_DIR" -maxdepth 2 -type f -print || true
             exit 1
           fi
-          APK="${SIGNED_APKS[0]}"
+          APK="${UNSIGNED_APKS[0]}"
           mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
   
       - name: VirusTotal scan (gate release on detections)
