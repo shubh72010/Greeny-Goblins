@@ -53,6 +53,9 @@ captures/
 # Keystore files
 *.jks
 *.keystore
+*.p12
+keystore.properties
+google-services.json
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
@@ -113,3 +116,5 @@ core.*
 /SOUL.md
 /string_cleaner.py
 /.codexignore
+/trace_processor
+.env

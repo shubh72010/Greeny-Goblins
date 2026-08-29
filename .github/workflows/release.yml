@@ -223,6 +223,10 @@ jobs:
     # Removed '|| workflow_dispatch' so it respects the version check
     if: needs.check-version.outputs.version_changed == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       matrix:
         include:
@@ -412,6 +416,36 @@ jobs:
           APK="${SIGNED_APKS[0]}"
           mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
   
+      - name: VirusTotal scan (gate release on detections)
+        if: env.VIRUSTOTAL_API_KEY != ''
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}"
+          echo "VirusTotal scan for $APK"
+          SHA=$(sha256sum "$APK" | awk '{print $1}')
+          echo "SHA256: $SHA"
+          # Lookup existing report by hash
+          HTTP=$(curl -s -w "%{http_code}" -o /tmp/vt_report.json --header "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/$SHA" || true)
+          if echo "$HTTP" | grep -q "200"; then
+            DETECT=$(python3 -c "import json; d=json.load(open('/tmp/vt_report.json')); print(d.get('data',{}).get('attributes',{}).get('last_analysis_stats',{}).get('malicious',0))" 2>/dev/null || echo "?")
+            echo "VirusTotal detections: $DETECT"
+            echo "### VirusTotal — $DETECT detections" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$DETECT" != "0" ] && [ "$DETECT" != "?" ]; then echo "::error::VirusTotal flagged $DETECT detections — gating release"; exit 1; fi
+          else
+            echo "No prior report (HTTP $HTTP), uploading for scan..."
+            UPLOAD_JSON=$(curl -s --header "x-apikey: $VIRUSTOTAL_API_KEY" --form "file=@$APK" https://www.virustotal.com/api/v3/files || true)
+            echo "$UPLOAD_JSON" | head -c 500
+            echo "Uploaded to VirusTotal — check https://www.virustotal.com/gui/file/$SHA" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Attest APK provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
+
       - name: Upload APK
         uses: actions/upload-artifact@v7
         with:
