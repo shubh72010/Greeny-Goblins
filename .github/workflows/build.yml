@@ -3,7 +3,7 @@ name: Build APKs
 on:
   workflow_dispatch:
   push:
-    branches: [ 'main', 'dev' ]
+    branches: [ 'dev' ]
     paths-ignore:
       - 'README.md'
       - 'fastlane/**'
