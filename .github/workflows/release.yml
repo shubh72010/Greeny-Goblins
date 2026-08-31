@@ -100,8 +100,8 @@ jobs:
           echo "artifact_name=app-gms-mobile-universal-release" >> "$GITHUB_OUTPUT"
           echo "apk_name=app-gms-mobile-universal-release.apk" >> "$GITHUB_OUTPUT"
   
-      - name: Build Release APK
-        run: ./gradlew assembleGmsMobileUniversalRelease
+      - name: Build Release + Debug APKs
+        run: ./gradlew assembleGmsMobileUniversalRelease assembleGmsMobileUniversalDebug
         env:
           PULL_REQUEST: 'false'
           GITHUB_EVENT_NAME: ${{ github.event_name }}
@@ -210,6 +210,33 @@ jobs:
           fi
           APK="${UNSIGNED_APKS[0]}"
           mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+
+      - name: Resolve debug output directory
+        id: debug_dir
+        shell: bash
+        run: |
+          set -euo pipefail
+          # reuse variant outputs but with /debug
+          for d in "app/build/outputs/apk/gmsMobileUniversal/debug" "app/build/outputs/apk/gms/mobile/universal/debug" "app/build/outputs/apk/mobile/universal/debug"; do
+            if [ -d "$d" ]; then echo "debug_dir=$d" >> "$GITHUB_OUTPUT"; exit 0; fi
+          done
+          FOUND=$(find app/build/outputs/apk -type f -path "*/debug/*.apk" | head -n1 | xargs -r dirname || true)
+          if [ -n "$FOUND" ]; then echo "debug_dir=$FOUND" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "debug_dir=app/build/outputs/apk/gmsMobileUniversal/debug" >> "$GITHUB_OUTPUT"
+
+      - name: Move Debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEBUG_DIR="${{ steps.debug_dir.outputs.debug_dir }}"
+          # ensure release out dir exists
+          OUT_DIR="${{ steps.release_dir.outputs.release_dir }}/out"
+          mkdir -p "$OUT_DIR"
+          DEBUG_APK=$(find "$DEBUG_DIR" -maxdepth 1 -name "*.apk" | head -n 1 || true)
+          if [ -z "$DEBUG_APK" ]; then DEBUG_APK=$(find app/build/outputs/apk -path "*/debug/*.apk" | head -n 1 || true); fi
+          if [ -z "$DEBUG_APK" ] || [ ! -f "$DEBUG_APK" ]; then echo "Debug APK not found"; find app/build/outputs/apk -name "*.apk" | head -20; exit 1; fi
+          cp "$DEBUG_APK" "$OUT_DIR/app-gms-mobile-universal-debug.apk"
+          echo "Debug APK → $OUT_DIR/app-gms-mobile-universal-debug.apk"
   
       - name: VirusTotal scan (gate release on detections)
         if: env.VIRUSTOTAL_API_KEY != ''
@@ -236,16 +263,23 @@ jobs:
             echo "Uploaded to VirusTotal — check https://www.virustotal.com/gui/file/$SHA" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Attest APK provenance
+      - name: Attest APK provenance (release)
         uses: actions/attest-build-provenance@v3
         with:
           subject-path: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
 
-      - name: Upload APK
+      - name: Attest APK provenance (debug)
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: ${{ steps.release_dir.outputs.release_dir }}/out/app-gms-mobile-universal-debug.apk
+
+      - name: Upload APKs
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.variant.outputs.artifact_name }}
-          path: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
+          name: app-gms-mobile-universal
+          path: |
+            ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
+            ${{ steps.release_dir.outputs.release_dir }}/out/app-gms-mobile-universal-debug.apk
 
   create-release:
     needs: [check-version, build]
@@ -312,12 +346,26 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          APK=$(find downloaded_artifacts -name "*.apk" | head -n 1)
-          if [ -z "$APK" ]; then echo "No APK found"; find downloaded_artifacts -type f | head -20; exit 1; fi
-          echo "Releasing $APK"
+          mapfile -t APKS < <(find downloaded_artifacts -name "*.apk" | sort)
+          if [ "${#APKS[@]}" -eq 0 ]; then echo "No APK found"; find downloaded_artifacts -type f | head -20; exit 1; fi
+          printf "Found APKs:\n"; printf " - %s\n" "${APKS[@]}"
           cat > release_notes.md <<EOF
           ${{ steps.build_changelog.outputs.changelog }}
           EOF
+          # Append VirusTotal links (SHA-based, no API needed for link)
+          {
+            echo ""
+            echo "---"
+            echo "### VirusTotal"
+            for apk in "${APKS[@]}"; do
+              sha=$(sha256sum "$apk" | awk '{print $1}')
+              name=$(basename "$apk")
+              echo "- VirusTotal of $name: https://www.virustotal.com/gui/file/$sha"
+            done
+            echo ""
+            echo "_Scanned in build job via api/v3/files — link becomes live after first upload._"
+          } >> release_notes.md
+          cat release_notes.md
           TAG="${{ needs.check-version.outputs.release_tag }}"
           if [ -z "$TAG" ]; then TAG="v${{ needs.check-version.outputs.new_version }}-${GITHUB_SHA::7}"; fi
-          gh release create "$TAG" --target "${{ github.sha }}" --title "$TAG" --notes-file release_notes.md "$APK"
+          gh release create "$TAG" --target "${{ github.sha }}" --title "$TAG" --notes-file release_notes.md "${APKS[@]}"
