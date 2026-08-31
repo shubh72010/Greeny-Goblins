@@ -223,8 +223,8 @@ jobs:
 
   build:
     name: Build Release APKs
-    needs: [check-version, reproducibility]
-    # Removed '|| workflow_dispatch' so it respects the version check
+    needs: [check-version]
+    # reproducibility runs in parallel — don't block 7-variant build
     if: needs.check-version.outputs.version_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -468,7 +468,7 @@ jobs:
           path: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
 
   create-release:
-    needs: [check-version, build]
+    needs: [check-version, build, reproducibility]
     if: needs.check-version.outputs.version_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -530,7 +530,7 @@ jobs:
 
       - name: Create Release
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           MOBILE_UNIVERSAL_APK=$(find downloaded_artifacts/app-gms-mobile-universal-release -name "*.apk" | head -n 1)
           OTHER_APKS=$(find downloaded_artifacts -path "*/app-*-release/*.apk" ! -path "*/app-gms-mobile-universal-release/*")
