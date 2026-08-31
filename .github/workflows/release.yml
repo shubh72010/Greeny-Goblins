@@ -245,23 +245,65 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APK="${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}"
-          echo "VirusTotal scan for $APK"
-          SHA=$(sha256sum "$APK" | awk '{print $1}')
-          echo "SHA256: $SHA"
-          # Lookup existing report by hash
-          HTTP=$(curl -s -w "%{http_code}" -o /tmp/vt_report.json --header "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/$SHA" || true)
-          if echo "$HTTP" | grep -q "200"; then
-            DETECT=$(python3 -c "import json; d=json.load(open('/tmp/vt_report.json')); print(d.get('data',{}).get('attributes',{}).get('last_analysis_stats',{}).get('malicious',0))" 2>/dev/null || echo "?")
-            echo "VirusTotal detections: $DETECT"
-            echo "### VirusTotal — $DETECT detections" >> "$GITHUB_STEP_SUMMARY"
-            if [ "$DETECT" != "0" ] && [ "$DETECT" != "?" ]; then echo "::error::VirusTotal flagged $DETECT detections — gating release"; exit 1; fi
-          else
-            echo "No prior report (HTTP $HTTP), uploading for scan..."
-            UPLOAD_JSON=$(curl -s --header "x-apikey: $VIRUSTOTAL_API_KEY" --form "file=@$APK" https://www.virustotal.com/api/v3/files || true)
-            echo "$UPLOAD_JSON" | head -c 500
-            echo "Uploaded to VirusTotal — check https://www.virustotal.com/gui/file/$SHA" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          vt_scan() {
+            local APK="$1"
+            local NAME=$(basename "$APK")
+            local SHA=$(sha256sum "$APK" | awk '{print $1}')
+            echo "=== VirusTotal: $NAME (SHA $SHA) ==="
+            # 1. Try existing report
+            HTTP=$(curl -s -w "%{http_code}" -o /tmp/vt_report.json --header "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/$SHA" || true)
+            if echo "$HTTP" | grep -q "200"; then
+              DETECT=$(python3 -c "import json; d=json.load(open('/tmp/vt_report.json')); print(d.get('data',{}).get('attributes',{}).get('last_analysis_stats',{}).get('malicious',0))" 2>/dev/null || echo "?")
+              echo "VirusTotal detections for $NAME: $DETECT"
+              echo "- $NAME: $DETECT detections — https://www.virustotal.com/gui/file/$SHA" >> "$GITHUB_STEP_SUMMARY"
+              if [ "$DETECT" != "0" ] && [ "$DETECT" != "?" ]; then echo "::error::VirusTotal flagged $DETECT detections for $NAME — gating release"; exit 1; fi
+              return 0
+            fi
+            echo "No prior report (HTTP $HTTP), uploading $NAME for scan..."
+            # 2. Get upload URL (handles >32MB)
+            UPLOAD_URL=$(curl -s --header "x-apikey: $VIRUSTOTAL_API_KEY" https://www.virustotal.com/api/v3/files/upload_url | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('data','') or '')" 2>/dev/null || true)
+            if [ -z "$UPLOAD_URL" ]; then UPLOAD_URL="https://www.virustotal.com/api/v3/files"; fi
+            echo "Upload URL: $UPLOAD_URL"
+            UPLOAD_JSON=$(curl -s --header "x-apikey: $VIRUSTOTAL_API_KEY" --form "file=@$APK" "$UPLOAD_URL" || true)
+            echo "$UPLOAD_JSON" | head -c 800
+            echo ""
+            echo "$UPLOAD_JSON" > /tmp/vt_upload.json
+            ANALYSIS_ID=$(python3 -c "import json; d=json.load(open('/tmp/vt_upload.json')); print(d.get('data',{}).get('id',''))" 2>/dev/null || true)
+            if [ -z "$ANALYSIS_ID" ]; then
+              echo "Upload may have returned file report directly (small file), checking files endpoint..."
+              # fallback: poll files endpoint directly
+            else
+              echo "Analysis ID: $ANALYSIS_ID"
+              # 3. Poll analysis until completed (max ~5m)
+              for i in $(seq 1 20); do
+                sleep 15
+                curl -s --header "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" -o /tmp/vt_analysis.json || true
+                STATUS=$(python3 -c "import json; d=json.load(open('/tmp/vt_analysis.json')); print(d.get('data',{}).get('attributes',{}).get('status',''))" 2>/dev/null || echo "")
+                echo "Poll $i: status=$STATUS"
+                if [ "$STATUS" = "completed" ]; then break; fi
+              done
+              cat /tmp/vt_analysis.json | head -c 800; echo ""
+            fi
+            # 4. Fetch final file report (may take a bit to appear after analysis)
+            for i in $(seq 1 10); do
+              HTTP2=$(curl -s -w "%{http_code}" -o /tmp/vt_report2.json --header "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/$SHA" || true)
+              if echo "$HTTP2" | grep -q "200"; then break; fi
+              echo "File report not yet available (HTTP $HTTP2), retry $i..."
+              sleep 10
+            done
+            if [ -f /tmp/vt_report2.json ]; then
+              DETECT=$(python3 -c "import json; d=json.load(open('/tmp/vt_report2.json')); print(d.get('data',{}).get('attributes',{}).get('last_analysis_stats',{}).get('malicious',0))" 2>/dev/null || echo "?")
+              echo "VirusTotal detections after upload for $NAME: $DETECT"
+              echo "- $NAME: $DETECT detections — https://www.virustotal.com/gui/file/$SHA" >> "$GITHUB_STEP_SUMMARY"
+              if [ "$DETECT" != "0" ] && [ "$DETECT" != "?" ]; then echo "::error::VirusTotal flagged $DETECT detections for $NAME — gating release"; exit 1; fi
+            else
+              echo "Uploaded $NAME — check https://www.virustotal.com/gui/file/$SHA (analysis pending, link may take 2-5m to become live)" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "Done scanning $NAME"
+          }
+          OUT_DIR="${{ steps.release_dir.outputs.release_dir }}/out"
+          vt_scan "$OUT_DIR/${{ steps.variant.outputs.apk_name }}"
+          vt_scan "$OUT_DIR/app-gms-mobile-universal-debug.apk"
 
       - name: Attest APK provenance (release)
         uses: actions/attest-build-provenance@v3
@@ -363,7 +405,7 @@ jobs:
               echo "- VirusTotal of $name: https://www.virustotal.com/gui/file/$sha"
             done
             echo ""
-            echo "_Scanned in build job via api/v3/files — link becomes live after first upload._"
+            echo "_VirusTotal scan via api/v3/files+analyses polled in build job (up to 5m) — links live when analysis completes._"
           } >> release_notes.md
           cat release_notes.md
           TAG="${{ needs.check-version.outputs.release_tag }}"
