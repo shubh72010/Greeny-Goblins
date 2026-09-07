@@ -1089,10 +1089,16 @@ fun Queue(
                                                                         ),
                                                                     )
                                                                 } else {
-                                                                    playerConnection.player.seekToDefaultPosition(
-                                                                        window.firstPeriodIndex,
-                                                                    )
-                                                                    playerConnection.player.playWhenReady = true
+                                                                    if (!playerConnection.seekToIndexWithCrossfade(
+                                                                            window.firstPeriodIndex,
+                                                                            0L,
+                                                                        )
+                                                                    ) {
+                                                                        playerConnection.player.seekToDefaultPosition(
+                                                                            window.firstPeriodIndex,
+                                                                        )
+                                                                        playerConnection.player.playWhenReady = true
+                                                                    }
                                                                 }
                                                             }
                                                         }

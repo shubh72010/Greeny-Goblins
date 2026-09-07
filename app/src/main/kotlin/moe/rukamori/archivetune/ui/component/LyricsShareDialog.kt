@@ -17,12 +17,17 @@ import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
+import moe.rukamori.archivetune.utils.GlobalLog
+import timber.log.Timber
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -70,8 +75,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -94,6 +105,7 @@ import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.utils.ComposeToImage
 import moe.rukamori.archivetune.utils.LyricsKaraokeRenderer
 import moe.rukamori.archivetune.utils.LyricsVideoExporter
@@ -101,6 +113,7 @@ import moe.rukamori.archivetune.utils.YTPlayerUtils
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
+import java.util.Locale
 
 @Immutable
 private data class LyricsGlassStyleOptions(
@@ -149,7 +162,9 @@ fun LyricsShareImageDialog(
     onDismissRequest: () -> Unit,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    // Use lifecycleScope, not rememberCoroutineScope, to avoid ForgottenCoroutineScopeException when dialog leaves composition during export
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val scope = lifecycleOwner.lifecycleScope
     val windowSizeClass = currentWindowAdaptiveInfo().windowSizeClass
     val isCompactLayout =
         !windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
@@ -163,6 +178,46 @@ fun LyricsShareImageDialog(
     var areAdvancedOptionsVisible by remember { mutableStateOf(false) }
     val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
     val preferredStreamClient by enumPreference(context, PlayerStreamClientKey, PlayerStreamClient.JUSPLAYER_ENGINE)
+    // Movable canvas video state – only for Video mode (player-like drag)
+    var canvasPreviewUrl by remember { mutableStateOf<String?>(null) }
+    var videoPan by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var videoScale by remember { mutableStateOf(1f) }
+
+    // Fetch canvas url for preview when media or aspect changes
+    androidx.compose.runtime.LaunchedEffect(mediaMetadata?.id, options.aspectRatio) {
+        val id = mediaMetadata?.id ?: return@LaunchedEffect
+        Timber.tag("LyricsShare").d("preview fetch canvas id=$id aspect=${options.aspectRatio}")
+        GlobalLog.append(Log.DEBUG, "LyricsShare", "preview fetch canvas id=$id")
+        canvasPreviewUrl = runCatching {
+            withContext(Dispatchers.IO) {
+                val storefront = Locale.getDefault().country.takeIf { it.length == 2 }?.lowercase(Locale.ROOT) ?: "us"
+                val artwork = resolveCanvasArtworkForPlayback(
+                    mediaId = id,
+                    songTitleRaw = mediaMetadata.title,
+                    artistNameRaw = mediaMetadata.artists.firstOrNull()?.name.orEmpty(),
+                    albumId = mediaMetadata.album?.id,
+                    albumTitleRaw = mediaMetadata.album?.title,
+                    storefront = storefront,
+                    requireVertical = options.aspectRatio == LyricsShareAspectRatio.Story,
+                    allowNetwork = true,
+                    currentIsMusicVideo = mediaMetadata.isMusicVideo,
+                )
+                artwork?.let {
+                    val vertical = it.preferredVerticalAnimationUrl ?: it.videoUrlVertical
+                    val horizontal = it.preferredAnimationUrl ?: it.videoUrl
+                    when {
+                        options.aspectRatio == LyricsShareAspectRatio.Story && !vertical.isNullOrBlank() -> vertical
+                        !horizontal.isNullOrBlank() -> horizontal
+                        !vertical.isNullOrBlank() -> vertical
+                        else -> null
+                    }
+                }
+            }
+        }.getOrNull().also {
+            Timber.tag("LyricsShare").d("preview canvas result=$it")
+            GlobalLog.append(Log.DEBUG, "LyricsShare", "preview canvas result=$it")
+        }
+    }
 
     LaunchedEffect(mediaMetadata?.thumbnailUrl) {
         val coverUrl = mediaMetadata?.thumbnailUrl
@@ -202,6 +257,8 @@ fun LyricsShareImageDialog(
     }
 
     val handleShare: () -> Unit = {
+        Timber.tag("LyricsShare").d("handleShare mode=$shareMode mediaId=${mediaMetadata?.id}")
+        GlobalLog.append(Log.DEBUG, "LyricsShare", "handleShare mode=$shareMode mediaId=${mediaMetadata?.id}")
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             Toast.makeText(context, R.string.lyrics_share_export_not_supported, Toast.LENGTH_SHORT).show()
         } else {
@@ -209,6 +266,8 @@ fun LyricsShareImageDialog(
             sharingProgress = null
             scope.launch {
                 try {
+                    Timber.tag("LyricsShare").i("share start mode=$shareMode")
+                    GlobalLog.append(Log.INFO, "LyricsShare", "share start mode=$shareMode")
                     when (shareMode) {
                         LyricsShareMode.Image -> {
                             val image =
@@ -249,12 +308,19 @@ fun LyricsShareImageDialog(
                                 currentPositionMs = currentPositionMs,
                                 audioQuality = audioQuality,
                                 preferredStreamClient = preferredStreamClient,
+                                videoPanX = videoPan.x,
+                                videoPanY = videoPan.y,
+                                videoScale = videoScale,
                                 onProgress = { progress -> sharingProgress = progress },
                             )
                         }
                     }
+                    Timber.tag("LyricsShare").i("share success mode=$shareMode")
+                    GlobalLog.append(Log.INFO, "LyricsShare", "share success mode=$shareMode")
                     onDismissRequest()
                 } catch (e: Exception) {
+                    Timber.tag("LyricsShare").e(e, "share failed mode=$shareMode")
+                    GlobalLog.append(Log.ERROR, "LyricsShare", "share failed mode=$shareMode: ${e.message} ${e.stackTraceToString().take(3000)}")
                     Toast
                         .makeText(
                             context,
@@ -279,6 +345,11 @@ fun LyricsShareImageDialog(
         onStyleSelect = { selectedGlassStyle = it },
         shareMode = shareMode,
         onModeChange = { shareMode = it },
+        canvasPreviewUrl = canvasPreviewUrl,
+        videoPan = videoPan,
+        onVideoPanChange = { videoPan = it },
+        videoScale = videoScale,
+        onVideoScaleChange = { videoScale = it },
         areAdvancedOptionsVisible = !isCompactLayout || areAdvancedOptionsVisible,
         onShowAdvancedOptions = { areAdvancedOptionsVisible = true },
         isSharing = isSharing,
@@ -301,16 +372,21 @@ private suspend fun shareLyricsAsVideo(
     currentPositionMs: Long,
     audioQuality: AudioQuality,
     preferredStreamClient: PlayerStreamClient,
+    videoPanX: Float = 0f,
+    videoPanY: Float = 0f,
+    videoScale: Float = 1f,
     onProgress: (Float) -> Unit,
 ) {
     val mediaId = mediaMetadata?.id ?: error("No song id available")
     val durationMs = options.videoDuration.durationMs
     val startPositionMs = currentPositionMs.coerceAtLeast(0L)
-    val streamUrl =
+    Timber.tag("LyricsShare").i("shareLyricsAsVideo start mediaId=$mediaId durationMs=$durationMs start=$currentPositionMs pan=($videoPanX,$videoPanY) scale=$videoScale")
+    GlobalLog.append(Log.INFO, "LyricsShare", "shareLyricsAsVideo start mediaId=$mediaId durationMs=$durationMs pan=($videoPanX,$videoPanY) scale=$videoScale")
+    val (streamUrl, rawCanvasUrl) =
         withContext(Dispatchers.IO) {
             val connectivityManager =
                 context.getSystemService<ConnectivityManager>() ?: error("No connectivity service")
-            context
+            val url = context
                 .retryWithoutPlaybackLoginContext {
                     YTPlayerUtils.playerResponseForPlayback(
                         videoId = mediaId,
@@ -320,7 +396,43 @@ private suspend fun shareLyricsAsVideo(
                         networkMetered = context.isLowDataModeActive(),
                     )
                 }.getOrThrow().streamUrl
+            val canvasUrl = runCatching {
+                val storefront = Locale.getDefault().country.takeIf { it.length == 2 }?.lowercase(Locale.ROOT) ?: "us"
+                val artwork = resolveCanvasArtworkForPlayback(
+                    mediaId = mediaId,
+                    songTitleRaw = mediaMetadata.title,
+                    artistNameRaw = mediaMetadata.artists.firstOrNull()?.name.orEmpty(),
+                    albumId = mediaMetadata.album?.id,
+                    albumTitleRaw = mediaMetadata.album?.title,
+                    storefront = storefront,
+                    requireVertical = options.aspectRatio == LyricsShareAspectRatio.Story,
+                    allowNetwork = true,
+                    currentIsMusicVideo = mediaMetadata.isMusicVideo,
+                )
+                artwork?.let {
+                    val vertical = it.preferredVerticalAnimationUrl ?: it.videoUrlVertical
+                    val horizontal = it.preferredAnimationUrl ?: it.videoUrl
+                    when {
+                        options.aspectRatio == LyricsShareAspectRatio.Story && !vertical.isNullOrBlank() -> vertical
+                        !horizontal.isNullOrBlank() -> horizontal
+                        !vertical.isNullOrBlank() -> vertical
+                        else -> null
+                    }
+                }
+            }.getOrNull()
+            url to canvasUrl
         }
+    Timber.tag("LyricsShare").d("fetched streamUrl=${streamUrl.take(60)} rawCanvas=$rawCanvasUrl")
+    GlobalLog.append(Log.DEBUG, "LyricsShare", "fetched streamUrl ok rawCanvas=$rawCanvasUrl")
+    // Prefer local cached file for MediaMetadataRetriever; download remote http to temp file for reliable export
+    val canvasVideoUrl = withContext(Dispatchers.IO) {
+        val dl = downloadCanvasForExport(context, rawCanvasUrl) ?: rawCanvasUrl
+        Timber.tag("LyricsShare").d("downloadCanvas result raw=$rawCanvasUrl -> $dl")
+        GlobalLog.append(Log.DEBUG, "LyricsShare", "downloadCanvas raw=$rawCanvasUrl -> $dl")
+        dl
+    }
+    Timber.tag("LyricsShare").d("renderer create canvas=$canvasVideoUrl isCanvas=${!canvasVideoUrl.isNullOrBlank()}")
+    GlobalLog.append(Log.DEBUG, "LyricsShare", "renderer create canvas=$canvasVideoUrl")
     val renderer =
         withContext(Dispatchers.Default) {
             LyricsKaraokeRenderer(
@@ -336,9 +448,14 @@ private suspend fun shareLyricsAsVideo(
                 options = options,
                 startPositionMs = startPositionMs,
                 totalDurationMs = durationMs,
+                canvasVideoUrl = canvasVideoUrl,
+                videoPanX = videoPanX,
+                videoPanY = videoPanY,
+                videoScale = videoScale,
             )
         }
-    val result =
+    val isCanvas = !canvasVideoUrl.isNullOrBlank()
+    val result = try {
         LyricsVideoExporter.exportVideo(
             context = context,
             width = options.aspectRatio.exportWidth,
@@ -350,7 +467,11 @@ private suspend fun shareLyricsAsVideo(
                 renderer.render(canvas, startPositionMs + frameTimeUs / 1000L)
             },
             onProgress = onProgress,
+            isCanvasBackground = isCanvas,
         )
+    } finally {
+        withContext(Dispatchers.Default) { runCatching { renderer.release() } }
+    }
     val shareIntent =
         Intent(Intent.ACTION_SEND).apply {
             type = "video/mp4"
@@ -365,6 +486,54 @@ private suspend fun shareLyricsAsVideo(
     )
 }
 
+private val canvasShareClient by lazy {
+    okhttp3.OkHttpClient.Builder()
+        .proxy(moe.rukamori.archivetune.innertube.YouTube.streamOkHttpProxy)
+        .connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .addInterceptor { chain ->
+            val req = chain.request()
+            val host = req.url.host
+            val isYouTube = host.endsWith("googlevideo.com") || host.endsWith("googleusercontent.com") || host.endsWith("youtube.com")
+            if (!isYouTube) {
+                return@addInterceptor chain.proceed(req.newBuilder().header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36").build())
+            }
+            val profile = moe.rukamori.archivetune.utils.StreamClientUtils.resolveRequestProfile(req.url)
+            chain.proceed(moe.rukamori.archivetune.utils.StreamClientUtils.applyRequestProfile(req.newBuilder(), profile).build())
+        }.build()
+}
+
+private suspend fun downloadCanvasForExport(context: Context, url: String?): String? {
+    if (url.isNullOrBlank() || !url.startsWith("http")) {
+        Timber.tag("LyricsShare").d("downloadCanvas skip non-http url=$url")
+        GlobalLog.append(Log.DEBUG, "LyricsShare", "downloadCanvas skip $url")
+        return url
+    }
+    if (url.startsWith("file://") || url.startsWith("/")) return url
+    return withContext(Dispatchers.IO) {
+        runCatching {
+            val cacheFile = java.io.File(context.cacheDir, "canvas_share_${url.hashCode()}.mp4")
+            if (cacheFile.exists() && cacheFile.length() > 0) {
+                Timber.tag("LyricsShare").d("downloadCanvas reuse cache ${cacheFile.absolutePath} ${cacheFile.length()} bytes")
+                GlobalLog.append(Log.DEBUG, "LyricsShare", "downloadCanvas reuse ${cacheFile.length()} bytes")
+                return@runCatching cacheFile.absolutePath
+            }
+            Timber.tag("LyricsShare").d("downloadCanvas start $url")
+            GlobalLog.append(Log.DEBUG, "LyricsShare", "downloadCanvas start $url")
+            val request = okhttp3.Request.Builder().url(url).header("Accept", "video/mp4,video/*").build()
+            canvasShareClient.newCall(request).execute().use { resp ->
+                Timber.tag("LyricsShare").d("downloadCanvas http ${resp.code} ${resp.message} contentType=${resp.body?.contentType()}")
+                GlobalLog.append(Log.DEBUG, "LyricsShare", "downloadCanvas http ${resp.code}")
+                if (!resp.isSuccessful) return@runCatching null
+                val body = resp.body ?: return@runCatching null
+                cacheFile.parentFile?.mkdirs()
+                cacheFile.outputStream().use { out -> body.byteStream().copyTo(out) }
+                if (cacheFile.length() > 0) cacheFile.absolutePath else null
+            }
+        }.getOrNull()
+    }
+}
+
 @Composable
 private fun LyricsShareStudioDialog(
     mediaMetadata: MediaMetadata?,
@@ -376,6 +545,11 @@ private fun LyricsShareStudioDialog(
     onStyleSelect: (LyricsGlassStyle) -> Unit,
     shareMode: LyricsShareMode,
     onModeChange: (LyricsShareMode) -> Unit,
+    canvasPreviewUrl: String? = null,
+    videoPan: androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero,
+    onVideoPanChange: (androidx.compose.ui.geometry.Offset) -> Unit = {},
+    videoScale: Float = 1f,
+    onVideoScaleChange: (Float) -> Unit = {},
     areAdvancedOptionsVisible: Boolean,
     onShowAdvancedOptions: () -> Unit,
     isSharing: Boolean,
@@ -428,6 +602,11 @@ private fun LyricsShareStudioDialog(
                     onStyleSelect = onStyleSelect,
                     shareMode = shareMode,
                     onModeChange = onModeChange,
+                    canvasPreviewUrl = canvasPreviewUrl,
+                    videoPan = videoPan,
+                    onVideoPanChange = onVideoPanChange,
+                    videoScale = videoScale,
+                    onVideoScaleChange = onVideoScaleChange,
                     areAdvancedOptionsVisible = areAdvancedOptionsVisible,
                     onShowAdvancedOptions = onShowAdvancedOptions,
                     isSharing = isSharing,
@@ -495,6 +674,11 @@ private fun LyricsShareStudioScaffold(
     onStyleSelect: (LyricsGlassStyle) -> Unit,
     shareMode: LyricsShareMode,
     onModeChange: (LyricsShareMode) -> Unit,
+    canvasPreviewUrl: String? = null,
+    videoPan: androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero,
+    onVideoPanChange: (androidx.compose.ui.geometry.Offset) -> Unit = {},
+    videoScale: Float = 1f,
+    onVideoScaleChange: (Float) -> Unit = {},
     areAdvancedOptionsVisible: Boolean,
     onShowAdvancedOptions: () -> Unit,
     isSharing: Boolean,
@@ -534,6 +718,12 @@ private fun LyricsShareStudioScaffold(
                     mediaMetadata = mediaMetadata,
                     selectedGlassStyle = selectedGlassStyle,
                     options = options,
+                    shareMode = shareMode,
+                    canvasPreviewUrl = canvasPreviewUrl,
+                    videoPan = videoPan,
+                    onVideoPanChange = onVideoPanChange,
+                    videoScale = videoScale,
+                    onVideoScaleChange = onVideoScaleChange,
                     isCompactLayout = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -545,6 +735,11 @@ private fun LyricsShareStudioScaffold(
                     onStyleSelect = onStyleSelect,
                     shareMode = shareMode,
                     onModeChange = onModeChange,
+                    canvasPreviewUrl = canvasPreviewUrl,
+                    videoPan = videoPan,
+                    onVideoPanChange = onVideoPanChange,
+                    videoScale = videoScale,
+                    onVideoScaleChange = onVideoScaleChange,
                     areAdvancedOptionsVisible = areAdvancedOptionsVisible,
                     onShowAdvancedOptions = onShowAdvancedOptions,
                     isCompactLayout = true,
@@ -561,6 +756,12 @@ private fun LyricsShareStudioScaffold(
                         mediaMetadata = mediaMetadata,
                         selectedGlassStyle = selectedGlassStyle,
                         options = options,
+                        shareMode = shareMode,
+                        canvasPreviewUrl = canvasPreviewUrl,
+                        videoPan = videoPan,
+                        onVideoPanChange = onVideoPanChange,
+                        videoScale = videoScale,
+                        onVideoScaleChange = onVideoScaleChange,
                         isCompactLayout = false,
                         modifier = Modifier.weight(1.1f),
                     )
@@ -581,6 +782,11 @@ private fun LyricsShareStudioScaffold(
                             onStyleSelect = onStyleSelect,
                             shareMode = shareMode,
                             onModeChange = onModeChange,
+                            canvasPreviewUrl = canvasPreviewUrl,
+                            videoPan = videoPan,
+                            onVideoPanChange = onVideoPanChange,
+                            videoScale = videoScale,
+                            onVideoScaleChange = onVideoScaleChange,
                             areAdvancedOptionsVisible = areAdvancedOptionsVisible,
                             onShowAdvancedOptions = onShowAdvancedOptions,
                             isCompactLayout = false,
@@ -665,6 +871,12 @@ private fun PreviewContainer(
     mediaMetadata: MediaMetadata?,
     selectedGlassStyle: LyricsGlassStyle,
     options: LyricsShareImageOptions,
+    shareMode: LyricsShareMode = LyricsShareMode.Image,
+    canvasPreviewUrl: String? = null,
+    videoPan: androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero,
+    onVideoPanChange: (androidx.compose.ui.geometry.Offset) -> Unit = {},
+    videoScale: Float = 1f,
+    onVideoScaleChange: (Float) -> Unit = {},
     isCompactLayout: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -675,6 +887,7 @@ private fun PreviewContainer(
             LyricsShareAspectRatio.Story -> if (isCompactLayout) 0.44f else 0.42f
         }
     val previewMaxWidth = if (isCompactLayout) 320.dp else 420.dp
+    val useCanvasPreview = shareMode == LyricsShareMode.Video && !canvasPreviewUrl.isNullOrBlank()
 
     Surface(
         modifier = modifier,
@@ -702,14 +915,187 @@ private fun PreviewContainer(
                             ).padding(10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    LyricsImageCard(
-                        lyricText = payload.lyricsText,
-                        songTitle = payload.songTitle,
-                        artistName = payload.artists,
-                        coverArtUrl = mediaMetadata?.thumbnailUrl,
-                        glassStyle = selectedGlassStyle,
-                        shareOptions = options,
+                    if (useCanvasPreview) {
+                        MovableCanvasPreview(
+                            canvasUrl = canvasPreviewUrl!!,
+                            coverArtUrl = mediaMetadata?.thumbnailUrl,
+                            payload = payload,
+                            songTitle = payload.songTitle,
+                            artistName = payload.artists,
+                            glassStyle = selectedGlassStyle,
+                            options = options,
+                            videoPan = videoPan,
+                            onVideoPanChange = onVideoPanChange,
+                            videoScale = videoScale,
+                            onVideoScaleChange = onVideoScaleChange,
+                        )
+                    } else {
+                        LyricsImageCard(
+                            lyricText = payload.lyricsText,
+                            songTitle = payload.songTitle,
+                            artistName = payload.artists,
+                            coverArtUrl = mediaMetadata?.thumbnailUrl,
+                            glassStyle = selectedGlassStyle,
+                            shareOptions = options,
+                        )
+                    }
+                }
+                if (useCanvasPreview) {
+                    Text(
+                        text = stringResource(R.string.lyrics_share_drag_hint),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MovableCanvasPreview(
+    canvasUrl: String,
+    coverArtUrl: String?,
+    payload: LyricsSharePayload,
+    songTitle: String,
+    artistName: String,
+    glassStyle: LyricsGlassStyle,
+    options: LyricsShareImageOptions,
+    videoPan: androidx.compose.ui.geometry.Offset,
+    onVideoPanChange: (androidx.compose.ui.geometry.Offset) -> Unit,
+    videoScale: Float,
+    onVideoScaleChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var boxSize by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(androidx.compose.ui.geometry.Size.Zero) }
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clip(MaterialTheme.shapes.large)
+            .onGloballyPositioned { coordinates -> boxSize = androidx.compose.ui.geometry.Size(coordinates.size.width.toFloat(), coordinates.size.height.toFloat()) },
+        contentAlignment = Alignment.Center,
+    ) {
+        var previewBitmap by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<android.graphics.Bitmap?>(null) }
+        val previewContext = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(canvasUrl) {
+            previewBitmap = withContext(Dispatchers.IO) {
+                runCatching {
+                    // For http, download to local file first (reliable, handles googlevideo signatures) – same as export
+                    val localPath = if (canvasUrl.startsWith("http")) {
+                        downloadCanvasForExport(previewContext, canvasUrl) ?: canvasUrl
+                    } else canvasUrl
+                    Timber.tag("LyricsShare").d("preview extract localPath=$localPath")
+                    GlobalLog.append(Log.DEBUG, "LyricsShare", "preview extract $localPath")
+                    val r = android.media.MediaMetadataRetriever()
+                    try {
+                        when {
+                            localPath.startsWith("file://") -> r.setDataSource(localPath.removePrefix("file://"))
+                            localPath.startsWith("/") -> r.setDataSource(localPath)
+                            localPath.startsWith("http") -> r.setDataSource(localPath, HashMap())
+                            else -> r.setDataSource(localPath)
+                        }
+                        val bmp = r.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                        Timber.tag("LyricsShare").d("preview frame ${bmp?.width}x${bmp?.height} for $canvasUrl")
+                        GlobalLog.append(Log.DEBUG, "LyricsShare", "preview frame ${bmp?.width}x${bmp?.height}")
+                        bmp
+                    } finally { runCatching { r.release() } }
+                }.onFailure {
+                    Timber.tag("LyricsShare").e(it, "preview extract failed $canvasUrl")
+                    GlobalLog.append(Log.ERROR, "LyricsShare", "preview extract failed $canvasUrl: ${it.message}")
+                }.getOrNull()
+            }
+        }
+        androidx.compose.runtime.DisposableEffect(canvasUrl) {
+            onDispose { previewBitmap?.let { runCatching { if (!it.isRecycled) it.recycle() } }; previewBitmap = null }
+        }
+        // Canvas preview – lightweight static first frame (no extra ExoPlayer, avoids pipeline leak & play/pause interference)
+        // Video is still used for export (full motion), preview just shows first frame draggable – player-like but isolated
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    translationX = videoPan.x * (boxSize.width.takeIf { it > 0 } ?: 1f),
+                    translationY = videoPan.y * (boxSize.height.takeIf { it > 0 } ?: 1f),
+                    scaleX = videoScale,
+                    scaleY = videoScale,
+                )
+                .pointerInput(videoPan, videoScale) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        val newScale = (videoScale * zoom).coerceIn(0.85f, 2.2f)
+                        onVideoScaleChange(newScale)
+                        if (pan != Offset.Zero) {
+                            val w = boxSize.width.takeIf { it > 0 } ?: 1f
+                            val h = boxSize.height.takeIf { it > 0 } ?: 1f
+                            val dx = pan.x / w
+                            val dy = pan.y / h
+                            val next = Offset(
+                                (videoPan.x + dx).coerceIn(-0.5f, 0.5f),
+                                (videoPan.y + dy).coerceIn(-0.5f, 0.5f),
+                            )
+                            onVideoPanChange(next)
+                        }
+                    }
+                },
+        ) {
+            if (previewBitmap != null) {
+                androidx.compose.foundation.Image(
+                    bitmap = previewBitmap!!.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black)) {
+                    if (coverArtUrl != null) {
+                        coil3.compose.AsyncImage(
+                            model = coverArtUrl,
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.5f))
+                }
+            }
+        }
+        // Dim scrim + centered lyrics (middle of video, glass style)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.18f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(12.dp),
+            ) {
+                // Glass tint panel for readability – mirrors exporter
+                androidx.compose.material3.Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = glassStyle.surfaceTint.copy(alpha = glassStyle.surfaceAlpha * 0.82f),
+                    tonalElevation = 0.dp,
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = payload.lyricsText.lineSequence().firstOrNull { it.isNotBlank() } ?: songTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = glassStyle.textColor,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "$songTitle • $artistName",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = glassStyle.secondaryTextColor,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
         }
@@ -725,6 +1111,11 @@ private fun ControlsSection(
     onStyleSelect: (LyricsGlassStyle) -> Unit,
     shareMode: LyricsShareMode,
     onModeChange: (LyricsShareMode) -> Unit,
+    canvasPreviewUrl: String? = null,
+    videoPan: androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero,
+    onVideoPanChange: (androidx.compose.ui.geometry.Offset) -> Unit = {},
+    videoScale: Float = 1f,
+    onVideoScaleChange: (Float) -> Unit = {},
     areAdvancedOptionsVisible: Boolean,
     onShowAdvancedOptions: () -> Unit,
     isCompactLayout: Boolean,
@@ -795,6 +1186,23 @@ private fun ControlsSection(
                             )
                         }
                     }
+                }
+                // Movable video controls – player-like, only for this share (Video mode with canvas)
+                if (shareMode == LyricsShareMode.Video && !canvasPreviewUrl.isNullOrBlank()) {
+                    LyricsShareControlGroup(title = stringResource(R.string.lyrics_share_drag_hint)) {
+                        LyricsShareSlider(
+                            title = "Zoom",
+                            valueLabel = "${(videoScale * 100).toInt()}%",
+                            value = videoScale,
+                            onValueChange = { onVideoScaleChange(it) },
+                            valueRange = 0.85f..2.2f,
+                        )
+                        androidx.compose.material3.TextButton(onClick = {
+                            onVideoPanChange(Offset.Zero)
+                            onVideoScaleChange(1f)
+                        }) { Text("Reset position") }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

@@ -57,8 +57,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -545,6 +549,8 @@ fun SettingsSegmentedItem(
     index: Int,
     count: Int,
     modifier: Modifier = Modifier,
+    query: String = "",
+    groupLabel: String? = null,
 ) {
     val effectiveAccent =
         if (item.accentColor.isSpecified) {
@@ -637,20 +643,53 @@ fun SettingsSegmentedItem(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center,
             ) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                val primary = MaterialTheme.colorScheme.primary
+                val titleHighlighted = remember(item.title, query, primary) { highlightQuery(item.title, query, primary) }
+                if (query.isBlank()) {
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else {
+                    Text(
+                        text = titleHighlighted,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 item.subtitle?.let { subtitle ->
                     Spacer(modifier = Modifier.height(2.dp))
+                    val subHighlighted = remember(subtitle, query, primary) { highlightQuery(subtitle, query, primary) }
+                    if (query.isBlank()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    } else {
+                        Text(
+                            text = subHighlighted,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                if (query.isNotBlank() && groupLabel != null) {
                     Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = groupLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -672,6 +711,43 @@ fun SettingsSegmentedItem(
                 }
             }
         }
+    }
+}
+
+internal fun highlightQuery(text: String, query: String, highlightColor: Color): AnnotatedString {
+    if (query.isBlank()) return AnnotatedString(text)
+    val tokens = query.lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }.distinct()
+    if (tokens.isEmpty()) return AnnotatedString(text)
+    val lower = text.lowercase()
+    val ranges = mutableListOf<IntRange>()
+    tokens.forEach { token ->
+        var idx = lower.indexOf(token)
+        while (idx >= 0) {
+            ranges.add(idx until idx + token.length)
+            idx = lower.indexOf(token, idx + 1)
+        }
+    }
+    if (ranges.isEmpty()) return AnnotatedString(text)
+    ranges.sortBy { it.first }
+    // merge overlapping
+    val merged = mutableListOf<IntRange>()
+    var cur = ranges[0]
+    for (i in 1 until ranges.size) {
+        val r = ranges[i]
+        if (r.first <= cur.last + 1) cur = cur.first..maxOf(cur.last, r.last)
+        else { merged.add(cur); cur = r }
+    }
+    merged.add(cur)
+    return buildAnnotatedString {
+        var last = 0
+        merged.forEach { r ->
+            if (r.first > last) append(text.substring(last, r.first))
+            withStyle(SpanStyle(color = highlightColor, fontWeight = FontWeight.Bold)) {
+                append(text.substring(r.first, (r.last + 1).coerceAtMost(text.length)))
+            }
+            last = r.last + 1
+        }
+        if (last < text.length) append(text.substring(last))
     }
 }
 

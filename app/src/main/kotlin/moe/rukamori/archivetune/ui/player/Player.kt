@@ -338,6 +338,9 @@ fun BottomSheetPlayer(
 
     val (disableBlur) = rememberPreference(DisableBlurKey, true)
     val (blurRadius) = rememberPreference(BlurRadiusKey, 48f)
+    // ponytail: deck mixer prototype behind flag, default off
+    val (enableDeckMix) = rememberPreference(moe.rukamori.archivetune.constants.EnableDeckMixKey, false)
+    var showDeckMixer by remember { androidx.compose.runtime.mutableStateOf(false) }
     val (backdropEnabled) = rememberPreference(BackdropEnabledKey, defaultValue = true)
     val (backdropBlurAmount) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
     val (showCodecOnPlayer) = rememberPreference(booleanPreferencesKey("show_codec_on_player"), false)
@@ -399,12 +402,45 @@ fun BottomSheetPlayer(
     val queueWindows by playerConnection.queueWindows.collectAsState()
     val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
-    val onPlayerVolumeChange =
+    var pendingVolumeJump by remember { mutableStateOf<Float?>(null) }
+    var pendingVolumeOld by remember { mutableFloatStateOf(0f) }
+    val guardedVolumeChange =
         remember(deviceMusicVolumeController) {
             { volume: Float ->
-                deviceMusicVolumeController.setVolumeFraction(volume)
+                val old = deviceMusicVolumeController.volumeFraction
+                // ponytail: guard instant jump 20-35% -> ~100% can damage hearing
+                if (old in 0.15f..0.40f && volume >= 0.90f && volume - old > 0.45f) {
+                    pendingVolumeOld = old
+                    pendingVolumeJump = volume
+                } else {
+                    deviceMusicVolumeController.setVolumeFraction(volume)
+                }
             }
         }
+    val onPlayerVolumeChange = guardedVolumeChange
+    if (pendingVolumeJump != null) {
+        AlertDialog(
+            onDismissRequest = { pendingVolumeJump = null },
+            title = { Text("Loud volume warning") },
+            text = {
+                Text(
+                    "You're jumping from ${(pendingVolumeOld * 100).toInt()}% to ${(pendingVolumeJump!! * 100).toInt()}% instantly. This can be very loud — continue?",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val target = pendingVolumeJump!!
+                        pendingVolumeJump = null
+                        deviceMusicVolumeController.setVolumeFraction(target)
+                    },
+                ) { Text("Turn up") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingVolumeJump = null }) { Text("Cancel") }
+            },
+        )
+    }
 
     val repeatMode by playerConnection.repeatMode.collectAsState()
 
@@ -1843,6 +1879,20 @@ fun BottomSheetPlayer(
                     onExit = { playerConnection.aodModeEnabled.value = false },
                 )
             }
+        }
+
+        // ponytail: deck mixer entry — flag-gated, non-persistent, sheet only
+        if (enableDeckMix) {
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomEnd) {
+                androidx.compose.material3.FloatingActionButton(
+                    onClick = { showDeckMixer = true },
+                    modifier = Modifier.padding(16.dp).padding(bottom = 80.dp),
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ) { Icon(painterResource(R.drawable.mix), contentDescription = "Mixer") }
+            }
+        }
+        if (showDeckMixer) {
+            DeckMixerSheet(playerConnection = playerConnection, onDismiss = { showDeckMixer = false })
         }
     }
 }

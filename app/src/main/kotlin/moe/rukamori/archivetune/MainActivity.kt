@@ -202,6 +202,7 @@ import moe.rukamori.archivetune.constants.MiniPlayerBottomSpacing
 import moe.rukamori.archivetune.constants.MiniPlayerHeight
 import moe.rukamori.archivetune.constants.MiniPlayerLastAnchorKey
 import moe.rukamori.archivetune.constants.NavigationBarAnimationSpec
+import moe.rukamori.archivetune.constants.PauseListenHistoryKey
 import moe.rukamori.archivetune.constants.PauseSearchHistoryKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
@@ -1716,12 +1717,33 @@ class MainActivity : ComponentActivity() {
                                                     }
                                                 },
                                                 actions = {
+                                                    val (sneakyMode, onSneakyModeChange) =
+                                                        rememberPreference(PauseListenHistoryKey, false)
+                                                    val sneakyHaptic = LocalHapticFeedback.current
                                                     TranslucentTopAppBarIconButton(
                                                         onClick = { navController.navigate("history") },
                                                     ) {
                                                         Icon(
                                                             painter = painterResource(R.drawable.history),
                                                             contentDescription = stringResource(R.string.history),
+                                                        )
+                                                    }
+
+                                                    // Sneaky Mode 🥷 — incognito toggle (reuses PauseListenHistoryKey)
+                                                    TranslucentTopAppBarIconButton(
+                                                        onClick = {
+                                                            sneakyHaptic.performHapticFeedback(
+                                                                HapticFeedbackType.LongPress,
+                                                            )
+                                                            onSneakyModeChange(!sneakyMode)
+                                                        },
+                                                    ) {
+                                                        Icon(
+                                                            painter = painterResource(R.drawable.visibility_off),
+                                                            contentDescription = stringResource(R.string.pause_listen_history),
+                                                            tint =
+                                                                if (sneakyMode) MaterialTheme.colorScheme.primary
+                                                                else MaterialTheme.colorScheme.onSurfaceVariant,
                                                         )
                                                     }
 

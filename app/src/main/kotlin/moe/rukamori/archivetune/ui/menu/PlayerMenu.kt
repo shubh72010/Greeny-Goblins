@@ -110,6 +110,7 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.CanvasSourceKey
+import moe.rukamori.archivetune.constants.EnableDeckMixKey
 import moe.rukamori.archivetune.constants.EqualizerBandLevelsMbKey
 import moe.rukamori.archivetune.constants.EqualizerBassBoostEnabledKey
 import moe.rukamori.archivetune.constants.EqualizerBassBoostStrengthKey
@@ -171,10 +172,45 @@ fun PlayerMenu(
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
+    var pendingVolumeJump by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Float?>(null) }
+    var pendingVolumeOld by androidx.compose.runtime.remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
     val onPlayerVolumeChange =
         remember(deviceMusicVolumeController) {
-            { volume: Float -> deviceMusicVolumeController.setVolumeFraction(volume) }
+            { volume: Float ->
+                val old = deviceMusicVolumeController.volumeFraction
+                if (old in 0.15f..0.40f && volume >= 0.90f && volume - old > 0.45f) {
+                    pendingVolumeOld = old
+                    pendingVolumeJump = volume
+                } else {
+                    deviceMusicVolumeController.setVolumeFraction(volume)
+                }
+            }
         }
+    if (pendingVolumeJump != null) {
+        AlertDialog(
+            onDismissRequest = { pendingVolumeJump = null },
+            title = { androidx.compose.material3.Text("Loud volume warning") },
+            text = {
+                androidx.compose.material3.Text(
+                    "You're jumping from ${(pendingVolumeOld * 100).toInt()}% to ${(pendingVolumeJump!! * 100).toInt()}% instantly. This can be very loud — continue?",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        val target = pendingVolumeJump!!
+                        pendingVolumeJump = null
+                        deviceMusicVolumeController.setVolumeFraction(target)
+                    },
+                ) { androidx.compose.material3.Text("Turn up") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { pendingVolumeJump = null }) {
+                    androidx.compose.material3.Text("Cancel")
+                }
+            },
+        )
+    }
     val activityResultLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
@@ -206,6 +242,7 @@ fun PlayerMenu(
             librarySong?.song?.isLocal == true || mediaMetadata.id.isLocalMediaId()
         }
     val castPlayerMenuAction = rememberCastPlayerMenuAction()
+    val (enableDeckMix, onEnableDeckMixChange) = rememberPreference(EnableDeckMixKey, false)
 
     // Split artists by configured separators
     data class SplitArtist(
@@ -615,6 +652,22 @@ fun PlayerMenu(
                                     ),
                                 )
                             }
+                            add(
+                                NewAction(
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.mix),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(28.dp),
+                                            tint = if (enableDeckMix) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    },
+                                    text = if (enableDeckMix) "Disable Deck Mix" else "Enable Deck Mix",
+                                    onClick = {
+                                        onEnableDeckMixChange(!enableDeckMix)
+                                    },
+                                ),
+                            )
                         },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
                 )

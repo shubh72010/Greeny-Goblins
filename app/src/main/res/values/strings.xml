@@ -575,6 +575,9 @@
     <string name="auto_start_on_bluetooth_clear_all">Clear all</string>
     <string name="settings_search_hint">Search settings</string>
     <string name="settings_search_no_results">No results for “%1$s”</string>
+    <string name="settings_search_try_different">Try different keywords — e.g. “theme”, “audio”, “proxy”</string>
+    <string name="settings_search_clear_desc">Clear search</string>
+    <string name="settings_search_clear_recent">Clear</string>
     <string name="settings_easteregg_found">You found a secret!</string>
     <string name="settings_easteregg_copied">%1$s copied to clipboard</string>
     <string name="artist_separators">Symbols to split artists</string>
@@ -825,6 +828,8 @@
     <string name="last_end">Last End</string>
     <string name="debug_logs">Debug Logs</string>
     <string name="view_debug_logs_description">View and filter application logs</string>
+    <string name="lyrics_video_debug_title">Lyrics Video Pipeline</string>
+    <string name="lyrics_video_debug_desc">Verbose logs for canvas video + karaoke share (register in Debug Logs)</string>
     <string name="show_stream_source_badge">Show stream source badge</string>
     <string name="show_stream_source_badge_desc">Show a pill on the player indicating whether the stream came from JPE • NewPipe, Web Remix, or a fallback</string>
     <string name="resume_logs">Resume logs</string>

@@ -132,6 +132,7 @@ import moe.rukamori.archivetune.ui.component.ThumbnailCornerRadiusSelectorButton
 import moe.rukamori.archivetune.ui.component.ThumbnailShapePicker
 import moe.rukamori.archivetune.ui.player.StyledPlaybackSlider
 import moe.rukamori.archivetune.ui.theme.CustomFontLoader
+import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -140,7 +141,7 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppearanceSettings(navController: NavController) {
+fun AppearanceSettings(navController: NavController, highlight: String? = null) {
     val context = LocalContext.current
     val defaultDisableAnimations = remember(context) { context.isLowRamDevice() }
     val (dynamicTheme, onDynamicThemeChange) =
@@ -509,12 +510,14 @@ fun AppearanceSettings(navController: NavController) {
         ) {
             PreferenceGroup(title = stringResource(R.string.theme)) {
                 item {
+                    HighlightablePreference(highlightKey = "dynamic_theme", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.enable_dynamic_theme)) },
                         icon = { Icon(painterResource(R.drawable.palette), null) },
                         checked = dynamicTheme,
                         onCheckedChange = onDynamicThemeChange,
                     )
+                    }
                 }
 
                 item(visible = !dynamicTheme || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
@@ -562,15 +565,18 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item(visible = useDarkTheme) {
+                    HighlightablePreference(highlightKey = "pure_black", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.pure_black)) },
                         icon = { Icon(painterResource(R.drawable.contrast), null) },
                         checked = pureBlack,
                         onCheckedChange = onPureBlackChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "disable_blur", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.disable_blur)) },
                         description = stringResource(R.string.disable_blur_desc),
@@ -578,9 +584,11 @@ fun AppearanceSettings(navController: NavController) {
                         checked = disableBlur,
                         onCheckedChange = onDisableBlurChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "disable_animations", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.disable_animations)) },
                         description = stringResource(R.string.disable_animations_desc),
@@ -588,9 +596,11 @@ fun AppearanceSettings(navController: NavController) {
                         checked = disableAnimations,
                         onCheckedChange = onDisableAnimationsChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "force_high_refresh", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.force_high_refresh_rate)) },
                         description =
@@ -603,9 +613,11 @@ fun AppearanceSettings(navController: NavController) {
                         onCheckedChange = onForceHighRefreshRateChange,
                         isEnabled = isHighRefreshRateSupported,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "blur_intensity", highlight = highlight) {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.blur_intensity)) },
                         description = stringResource(R.string.blur_intensity_value, blurRadius.roundToInt()),
@@ -623,9 +635,11 @@ fun AppearanceSettings(navController: NavController) {
                             )
                         },
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "album_backdrop", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.album_backdrop)) },
                         description = stringResource(R.string.album_backdrop_desc),
@@ -633,9 +647,11 @@ fun AppearanceSettings(navController: NavController) {
                         checked = backdropEnabled,
                         onCheckedChange = onBackdropEnabledChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "backdrop_blur_amount", highlight = highlight) {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.backdrop_blur_amount)) },
                         description = stringResource(R.string.backdrop_blur_amount_value, backdropBlurAmount),
@@ -653,9 +669,11 @@ fun AppearanceSettings(navController: NavController) {
                             )
                         },
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "font_pref", highlight = highlight) {
                     EnumListPreference(
                         title = { Text(stringResource(R.string.font_preference)) },
                         description = stringResource(R.string.font_preference_desc),
@@ -670,6 +688,7 @@ fun AppearanceSettings(navController: NavController) {
                             }
                         },
                     )
+                    }
                 }
 
                 item(visible = fontPreference == AppFontPreference.CUSTOM) {
@@ -692,6 +711,7 @@ fun AppearanceSettings(navController: NavController) {
 
             PreferenceGroup(title = stringResource(R.string.player)) {
                 item {
+                    HighlightablePreference(highlightKey = "player_design", highlight = highlight) {
                     EnumListPreference(
                         title = { Text(stringResource(R.string.player_design_style)) },
                         icon = { Icon(painterResource(R.drawable.palette), null) },
@@ -712,6 +732,7 @@ fun AppearanceSettings(navController: NavController) {
                             }
                         },
                     )
+                    }
                 }
 
                 item {
@@ -803,6 +824,7 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "canvas", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.archivetune_canvas)) },
                         description = stringResource(R.string.archivetune_canvas_desc),
@@ -810,6 +832,7 @@ fun AppearanceSettings(navController: NavController) {
                         checked = archiveTuneCanvasEnabled,
                         onCheckedChange = onArchiveTuneCanvasEnabledChange,
                     )
+                    }
                 }
 
                 item {
@@ -860,6 +883,7 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "slider_style", highlight = highlight) {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.player_slider_style)) },
                         description = sliderStyleLabel(sliderStyle),
@@ -869,15 +893,18 @@ fun AppearanceSettings(navController: NavController) {
                         },
                         isEnabled = isPlayerStyleCustomizationEnabled,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "swipe_thumbnail", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.enable_swipe_thumbnail)) },
                         icon = { Icon(painterResource(R.drawable.swipe), null) },
                         checked = swipeThumbnail,
                         onCheckedChange = onSwipeThumbnailChange,
                     )
+                    }
                 }
 
                 item(visible = swipeThumbnail) {
@@ -970,6 +997,7 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "thumbnail_shape", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.hide_artist_pfp)) },
                         description = stringResource(R.string.hide_artist_pfp_desc),
@@ -977,6 +1005,7 @@ fun AppearanceSettings(navController: NavController) {
                         checked = hideArtistPfp,
                         onCheckedChange = onHideArtistPfpChange,
                     )
+                    }
                 }
 
                 item(visible = !randomThumbnailShape) {
@@ -1018,6 +1047,7 @@ fun AppearanceSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "default_tab", highlight = highlight) {
                     EnumListPreference(
                         title = { Text(stringResource(R.string.default_open_tab)) },
                         icon = { Icon(painterResource(R.drawable.nav_bar), null) },
@@ -1032,6 +1062,7 @@ fun AppearanceSettings(navController: NavController) {
                             }
                         },
                     )
+                    }
                 }
 
                 item {

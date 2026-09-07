@@ -930,3 +930,6 @@ val LyricsFilterUseDefaultKey = booleanPreferencesKey("lyricsFilterUseDefault")
 val LyricsFilterCensorEnabledKey = booleanPreferencesKey("lyricsFilterCensor")
 val LyricsFilterSkipEnabledKey = booleanPreferencesKey("lyricsFilterSkip")
 val LyricsFilterCensorCharKey = stringPreferencesKey("lyricsFilterCensorChar")
+
+// Deck mixer prototype (feature flag, no persistence)
+val EnableDeckMixKey = booleanPreferencesKey("enableDeckMix")

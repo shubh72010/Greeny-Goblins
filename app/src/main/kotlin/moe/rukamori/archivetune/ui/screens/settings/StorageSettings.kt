@@ -106,6 +106,7 @@ import moe.rukamori.archivetune.viewmodels.StorageSettingsViewModel
 fun StorageSettings(
     navController: NavController,
     viewModel: StorageSettingsViewModel = hiltViewModel(),
+    highlight: String? = null,
 ) {
     val context = LocalContext.current
     val imageDiskCache = context.imageLoader.diskCache ?: return

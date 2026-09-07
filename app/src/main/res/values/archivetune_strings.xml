@@ -234,6 +234,7 @@
     <string name="lyrics_share_mode_image">Image</string>
     <string name="lyrics_share_mode_video">Video</string>
     <string name="lyrics_share_video_duration">Duration</string>
+    <string name="lyrics_share_drag_hint">Drag to move video • Pinch to zoom • Only for this share</string>
     <string name="lyrics_share_video_duration_short">10s</string>
     <string name="lyrics_share_video_duration_medium">25s</string>
     <string name="lyrics_share_video_duration_long">35s</string>

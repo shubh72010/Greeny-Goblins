@@ -110,6 +110,10 @@ jobs:
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Resolve release output directory
         id: release_dir
@@ -172,8 +176,7 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
-      - name: Sign APK
-        continue-on-error: true
+      - name: Sign APK (real release keystore)
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
@@ -183,13 +186,12 @@ jobs:
           keyPassword: ${{ secrets.KEY_PASSWORD }}
           buildToolsVersion: 35.0.0
       
-      - name: Move and rename APK
+      - name: Move and rename APK (require signed — real keystore)
         shell: bash
         run: |
           set -euo pipefail
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
-          # Prefer signed APK if signing ran, otherwise fallback to unsigned
           mapfile -t SIGNED_APKS < <(
             find "$RELEASE_DIR" -maxdepth 1 -type f \
               \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \)
@@ -197,19 +199,22 @@ jobs:
           if [ "${#SIGNED_APKS[@]}" -eq 1 ]; then
             APK="${SIGNED_APKS[0]}"
             mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+            echo "Using ilharp-signed APK: $APK"
+            apksigner verify --print-certs "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}" | head -n 20 || true
             exit 0
           fi
-          # Fallback: unsigned APK (when KEYSTORE secret not set)
-          mapfile -t UNSIGNED_APKS < <(
-            find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-unsigned-signed.apk"
-          )
-          if [ "${#UNSIGNED_APKS[@]}" -ne 1 ]; then
-            echo "Expected one APK in $RELEASE_DIR (signed or unsigned), found signed=${#SIGNED_APKS[@]} unsigned=${#UNSIGNED_APKS[@]}"
-            find "$RELEASE_DIR" -maxdepth 2 -type f -print || true
-            exit 1
+          CANDIDATE=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" | head -n 1 || true)
+          if [ -n "${CANDIDATE:-}" ] && [ -f "$CANDIDATE" ]; then
+            if apksigner verify "$CANDIDATE" 2>/dev/null; then
+              mv "$CANDIDATE" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+              echo "Using gradle-signed APK: $CANDIDATE"
+              apksigner verify --print-certs "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}" | head -n 20 || true
+              exit 0
+            fi
           fi
-          APK="${UNSIGNED_APKS[0]}"
-          mv "$APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+          echo "::error::Release APK not signed with real keystore. Set GitHub secrets: KEYSTORE (base64 of app/keystore/release.keystore), KEY_ALIAS=jusplayer, KEYSTORE_PASSWORD/STORE_PASSWORD=maxverstappen, KEY_PASSWORD=maxverstappen"
+          find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" -print || true
+          exit 1
 
       - name: Resolve debug output directory
         id: debug_dir

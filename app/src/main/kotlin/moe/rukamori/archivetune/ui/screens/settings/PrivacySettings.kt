@@ -47,12 +47,13 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
+import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PrivacySettings(navController: NavController) {
+fun PrivacySettings(navController: NavController, highlight: String? = null) {
     val database = LocalDatabase.current
     val (pauseListenHistory, onPauseListenHistoryChange) =
         rememberPreference(
@@ -178,12 +179,14 @@ fun PrivacySettings(navController: NavController) {
         ) {
             PreferenceGroup(title = stringResource(R.string.listen_history)) {
                 item {
+                    HighlightablePreference(highlightKey = "pause_history", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.pause_listen_history)) },
                         icon = { Icon(painterResource(R.drawable.history), null) },
                         checked = pauseListenHistory,
                         onCheckedChange = onPauseListenHistoryChange,
                     )
+                    }
                 }
 
                 item {
@@ -197,12 +200,14 @@ fun PrivacySettings(navController: NavController) {
 
             PreferenceGroup(title = stringResource(R.string.search_history)) {
                 item {
+                    HighlightablePreference(highlightKey = "pause_search", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.pause_search_history)) },
                         icon = { Icon(painterResource(R.drawable.search_off), null) },
                         checked = pauseSearchHistory,
                         onCheckedChange = onPauseSearchHistoryChange,
                     )
+                    }
                 }
 
                 item {
@@ -216,6 +221,7 @@ fun PrivacySettings(navController: NavController) {
 
             PreferenceGroup(title = stringResource(R.string.misc)) {
                 item {
+                    HighlightablePreference(highlightKey = "haptics", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.haptics)) },
                         description = stringResource(R.string.haptics_desc),
@@ -223,9 +229,11 @@ fun PrivacySettings(navController: NavController) {
                         checked = enableHapticFeedback,
                         onCheckedChange = onEnableHapticFeedbackChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "screenshot", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.disable_screenshot)) },
                         description = stringResource(R.string.disable_screenshot_desc),
@@ -233,6 +241,7 @@ fun PrivacySettings(navController: NavController) {
                         checked = disableScreenshot,
                         onCheckedChange = onDisableScreenshotChange,
                     )
+                    }
                 }
             }
         }

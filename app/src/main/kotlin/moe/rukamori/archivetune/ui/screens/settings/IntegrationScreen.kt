@@ -36,12 +36,13 @@ import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
+import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IntegrationScreen(navController: NavController) {
+fun IntegrationScreen(navController: NavController, highlight: String? = null) {
     val (listenBrainzEnabled, onListenBrainzEnabledChange) = rememberPreference(ListenBrainzEnabledKey, false)
     val (listenBrainzToken, onListenBrainzTokenChange) = rememberPreference(ListenBrainzTokenKey, "")
 
@@ -98,6 +99,7 @@ fun IntegrationScreen(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "listenbrainz", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.listenbrainz_scrobbling)) },
                         description = stringResource(R.string.listenbrainz_scrobbling_description),
@@ -105,6 +107,7 @@ fun IntegrationScreen(navController: NavController) {
                         checked = listenBrainzEnabled,
                         onCheckedChange = onListenBrainzEnabledChange,
                     )
+                    }
                 }
 
                 item {

@@ -79,6 +79,10 @@ jobs:
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
           NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Resolve release output directory
         id: release_dir
@@ -138,8 +142,8 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
-      - name: Sign APK
-        continue-on-error: true
+      - name: Sign APK (real release keystore)
+        # Real keystore: app/keystore/release.keystore (alias jusplayer). Fail fast if secrets missing so unsigned builds don't slip through.
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
@@ -149,24 +153,35 @@ jobs:
           keyPassword: ${{ secrets.KEY_PASSWORD }}
           buildToolsVersion: 35.0.0
       
-      - name: Move APK (signed if available, else unsigned)
+      - name: Move APK (require signed — real keystore)
         shell: bash
         run: |
           set -euo pipefail
           RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
           mkdir -p "$RELEASE_DIR/out"
+          # Gradle may have signed directly via STORE_PASSWORD/KEY_* env (build.gradle.kts). Prefer that.
           SIGNED_APK=$(find "$RELEASE_DIR" -maxdepth 1 -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1 || true)
           if [ -n "${SIGNED_APK:-}" ] && [ -f "$SIGNED_APK" ]; then
             mv "$SIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+            echo "Using ilharp-signed APK: $SIGNED_APK"
+            # Verify signature
+            apksigner verify --print-certs "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}" | head -n 20 || true
             exit 0
           fi
-          UNSIGNED_APK=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" ! -name "*-unsigned-signed.apk" | head -n 1 || true)
-          if [ -z "${UNSIGNED_APK:-}" ] || [ ! -f "$UNSIGNED_APK" ]; then
-            echo "No APK found in $RELEASE_DIR"
-            find "$RELEASE_DIR" -maxdepth 2 -type f -print || true
-            exit 1
+          # Fallback: gradle-signed APK (already signed, no -signed suffix)
+          CANDIDATE=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" | head -n 1 || true)
+          if [ -n "${CANDIDATE:-}" ] && [ -f "$CANDIDATE" ]; then
+            if apksigner verify "$CANDIDATE" 2>/dev/null; then
+              mv "$CANDIDATE" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+              echo "Using gradle-signed APK: $CANDIDATE"
+              apksigner verify --print-certs "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}" | head -n 20 || true
+              exit 0
+            fi
           fi
-          mv "$UNSIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
+          echo "::error::Release APK not signed with real keystore. Set GitHub secrets: KEYSTORE (base64 of app/keystore/release.keystore), KEY_ALIAS=jusplayer, KEYSTORE_PASSWORD/STORE_PASSWORD=maxverstappen, KEY_PASSWORD=maxverstappen"
+          echo "Unsigned APKs in $RELEASE_DIR:"
+          find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" -print || true
+          exit 1
   
       - name: Upload Signed APK
         uses: actions/upload-artifact@v7

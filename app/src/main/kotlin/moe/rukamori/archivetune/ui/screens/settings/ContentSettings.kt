@@ -59,6 +59,7 @@ import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
+import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -66,7 +67,7 @@ import moe.rukamori.archivetune.utils.setAppLocale
 import java.util.Locale
 
 @Composable
-fun ContentSettings(navController: NavController) {
+fun ContentSettings(navController: NavController, highlight: String? = null) {
     val context = LocalContext.current
 
     // App language — defaults to English to avoid 50/50 mixed translations on fresh install.
@@ -118,6 +119,7 @@ fun ContentSettings(navController: NavController) {
     ) {
         PreferenceGroup(title = stringResource(R.string.general)) {
             item {
+                    HighlightablePreference(highlightKey = "content_lang", highlight = highlight) {
                 ListPreference(
                     title = { Text(stringResource(R.string.content_language)) },
                     icon = { Icon(painterResource(R.drawable.language), null) },
@@ -145,6 +147,7 @@ fun ContentSettings(navController: NavController) {
             }
 
             item {
+                    HighlightablePreference(highlightKey = "content_country", highlight = highlight) {
                 ListPreference(
                     title = { Text(stringResource(R.string.content_country)) },
                     icon = { Icon(painterResource(R.drawable.location_on), null) },
@@ -192,6 +195,7 @@ fun ContentSettings(navController: NavController) {
             }
 
             item {
+                    HighlightablePreference(highlightKey = "hide_explicit", highlight = highlight) {
                 SwitchPreference(
                     title = { Text(stringResource(R.string.hide_explicit)) },
                     icon = { Icon(painterResource(R.drawable.explicit), null) },
@@ -201,6 +205,7 @@ fun ContentSettings(navController: NavController) {
             }
 
             item {
+                    HighlightablePreference(highlightKey = "hide_video", highlight = highlight) {
                 SwitchPreference(
                     title = { Text(stringResource(R.string.hide_video)) },
                     icon = { Icon(painterResource(R.drawable.slow_motion_video), null) },
@@ -228,6 +233,10 @@ fun ContentSettings(navController: NavController) {
                         checked = useDefault,
                         onCheckedChange = onUseDefaultChange,
                     )
+                    }
+                    }
+                    }
+                    }
                 }
                 item {
                     SwitchPreference(

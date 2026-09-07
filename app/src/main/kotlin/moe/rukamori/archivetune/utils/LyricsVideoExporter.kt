@@ -8,6 +8,9 @@
 package moe.rukamori.archivetune.utils
 
 import android.content.ContentValues
+import android.util.Log
+import moe.rukamori.archivetune.utils.GlobalLog
+import timber.log.Timber
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -48,6 +51,8 @@ object LyricsVideoExporter {
     private const val IFRAME_INTERVAL = 2
     private const val AAC_BIT_RATE = 192_000
     private const val AAC_SAMPLES_PER_FRAME = 1024
+    // Faster for canvas video – treated separately, lyrics overlay only
+    private const val CANVAS_FRAME_RATE = 15
 
     private const val MODE_FLEXIBLE = 0
     private const val MODE_PLANAR = 1
@@ -67,22 +72,38 @@ object LyricsVideoExporter {
         audioStartUs: Long,
         renderFrame: (Canvas, Long) -> Unit,
         onProgress: (Float) -> Unit,
+        isCanvasBackground: Boolean = false,
     ): ExportResult =
         withContext(Dispatchers.Default) {
+            Timber.tag("LyricsVideo").i("exportVideo start ${width}x$height durationUs=$durationUs isCanvas=$isCanvasBackground")
+            GlobalLog.append(Log.INFO, "LyricsVideo", "exportVideo start ${width}x$height durationUs=$durationUs isCanvas=$isCanvasBackground")
             val safeWidth = width.coerceAtLeast(2)
             val safeHeight = height.coerceAtLeast(2)
-            val frameDurationUs = 1_000_000L / FRAME_RATE
+            val frameRate = if (isCanvasBackground) CANVAS_FRAME_RATE else FRAME_RATE
+            val frameDurationUs = 1_000_000L / frameRate
             val totalFrames = ((durationUs + frameDurationUs - 1) / frameDurationUs).toInt().coerceAtLeast(1)
+            Timber.tag("LyricsVideo").d("frameRate=$frameRate totalFrames=$totalFrames frameDurationUs=$frameDurationUs")
+            GlobalLog.append(Log.DEBUG, "LyricsVideo", "frameRate=$frameRate totalFrames=$totalFrames")
             val safeStartUs = audioStartUs.coerceAtLeast(0L)
             val endUs = safeStartUs + durationUs
 
+            Timber.tag("LyricsVideo").d("decodeAudio startUrl=${audioStreamUrl.take(80)} startUs=$safeStartUs endUs=$endUs")
+            GlobalLog.append(Log.DEBUG, "LyricsVideo", "decodeAudio startUs=$safeStartUs endUs=$endUs")
             val (pcmBytes, sampleRate, channelCount) = decodeAudioToPcm(audioStreamUrl, safeStartUs, endUs)
+            Timber.tag("LyricsVideo").d("decodeAudio done bytes=${pcmBytes.size} sr=$sampleRate ch=$channelCount")
+            GlobalLog.append(Log.DEBUG, "LyricsVideo", "decodeAudio done bytes=${pcmBytes.size} sr=$sampleRate ch=$channelCount")
             if (pcmBytes.isEmpty()) {
+                Timber.tag("LyricsVideo").e("decodeAudio empty")
+                GlobalLog.append(Log.ERROR, "LyricsVideo", "decodeAudio empty")
                 error("Audio stream contained no samples in the requested clip")
             }
 
             val fileName = "lyrics_video_${System.currentTimeMillis()}"
+            Timber.tag("LyricsVideo").d("openOutput $fileName isCanvas=$isCanvasBackground")
+            GlobalLog.append(Log.DEBUG, "LyricsVideo", "openOutput $fileName")
             val (outputUri, outputStream) = openOutput(context, fileName)
+            Timber.tag("LyricsVideo").d("outputUri=$outputUri")
+            GlobalLog.append(Log.DEBUG, "LyricsVideo", "outputUri=$outputUri")
             var muxer: MediaMuxer? = null
             var videoEncoder: MediaCodec? = null
             var audioEncoder: MediaCodec? = null
@@ -91,7 +112,7 @@ object LyricsVideoExporter {
                 val muxerRef = MediaMuxer(outputStream.fd, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
                 muxer = muxerRef
 
-                val videoSetup = createVideoEncoder(safeWidth, safeHeight)
+                val videoSetup = createVideoEncoder(safeWidth, safeHeight, frameRate)
                 videoEncoder = videoSetup.encoder
                 val videoMode = videoSetup.mode
                 val videoSurface = videoSetup.inputSurface
@@ -122,10 +143,12 @@ object LyricsVideoExporter {
                 val videoTrackIndex = muxerRef.addTrack(videoEncoder!!.outputFormat)
                 val audioTrackIndex = muxerRef.addTrack(audioEncoderRef.outputFormat)
                 muxerRef.start()
+                Timber.tag("LyricsVideo").i("muxer start videoMode=$videoMode videoTrack=$videoTrackIndex audioTrack=$audioTrackIndex frameRate=$frameRate")
+                GlobalLog.append(Log.INFO, "LyricsVideo", "muxer start mode=$videoMode frameRate=$frameRate")
 
                 val pcmArray = pcmBytes
                 val pcmChunkSize = AAC_SAMPLES_PER_FRAME * channelCount * 2
-                val yuvScratch = ByteArray(max(safeWidth, (safeWidth + 1) / 2) * 2)
+                val yuvScratch = ByteArray(safeWidth * 4)
                 val yBytes = ByteArray(safeWidth * safeHeight)
                 val uvBytes = ByteArray(((safeWidth + 1) / 2) * ((safeHeight + 1) / 2) * 2)
                 val frameBitmap =
@@ -203,8 +226,9 @@ object LyricsVideoExporter {
                             if (pcmPosition < pcmArray.size) {
                                 val buffer = audioEncoderRef.getInputBuffer(inputIndex)!!
                                 buffer.clear()
-                                val bytes = minOf(pcmChunkSize, pcmArray.size - pcmPosition)
-                                buffer.put(pcmArray, pcmPosition, bytes)
+                                val rawBytes = minOf(pcmChunkSize, pcmArray.size - pcmPosition)
+                                val bytes = minOf(rawBytes, buffer.remaining())
+                                if (bytes > 0) buffer.put(pcmArray, pcmPosition, bytes)
                                 val ptsUs = audioChunkIndex * AAC_SAMPLES_PER_FRAME * 1_000_000L / sampleRate
                                 lastAudioPtsUs = ptsUs
                                 audioEncoderRef.queueInputBuffer(inputIndex, 0, bytes, ptsUs, 0)
@@ -226,6 +250,12 @@ object LyricsVideoExporter {
                 }
 
                 onProgress(1f)
+                Timber.tag("LyricsVideo").i("export done uri=$outputUri frames=$totalFrames")
+                GlobalLog.append(Log.INFO, "LyricsVideo", "export done uri=$outputUri frames=$totalFrames")
+            } catch (e: Exception) {
+                Timber.tag("LyricsVideo").e(e, "export failed isCanvas=$isCanvasBackground")
+                GlobalLog.append(Log.ERROR, "LyricsVideo", "export failed isCanvas=$isCanvasBackground: ${e.message} ${e.stackTraceToString().take(2000)}")
+                throw e
             } finally {
                 runCatching { muxer?.stop() }
                 runCatching { muxer?.release() }
@@ -234,6 +264,7 @@ object LyricsVideoExporter {
                 runCatching { audioEncoder?.stop() }
                 runCatching { audioEncoder?.release() }
                 runCatching { outputStream.close() }
+                Timber.tag("LyricsVideo").d("export resources released")
             }
 
             ExportResult(uri = outputUri)
@@ -274,6 +305,7 @@ object LyricsVideoExporter {
     private fun createVideoEncoder(
         width: Int,
         height: Int,
+        frameRate: Int = FRAME_RATE,
     ): VideoEncoderSetup {
         val baseFormat =
             MediaFormat
@@ -281,8 +313,9 @@ object LyricsVideoExporter {
                 .apply {
                     setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
                     setInteger(MediaFormat.KEY_BIT_RATE, VIDEO_BIT_RATE)
-                    setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE)
+                    setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
                     setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, IFRAME_INTERVAL)
+                    setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, planarSize(width, height))
                 }
         val encoderName = MediaCodecList(MediaCodecList.REGULAR_CODECS).findEncoderForFormat(baseFormat)
         require(encoderName.isNotBlank()) { "No H.264 encoder available" }
@@ -309,6 +342,7 @@ object LyricsVideoExporter {
                 else -> MODE_FLEXIBLE to MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
             }
 
+        var surface: android.view.Surface? = null
         val encoder =
             MediaCodec
                 .createByCodecName(encoderName)
@@ -319,10 +353,12 @@ object LyricsVideoExporter {
                         null,
                         MediaCodec.CONFIGURE_FLAG_ENCODE,
                     )
+                    if (mode == MODE_SURFACE) {
+                        surface = createInputSurface()
+                    }
                     start()
                 }
 
-        val surface = if (mode == MODE_SURFACE) encoder.createInputSurface() else null
         return VideoEncoderSetup(encoder, mode, surface)
     }
 
@@ -510,7 +546,7 @@ object LyricsVideoExporter {
     ) {
         val buffer = plane.buffer
         val rowStride = plane.rowStride
-        val pixelStride = plane.pixelStride
+        val pixelStride = plane.pixelStride.coerceAtLeast(1)
         if (isChroma) {
             val halfW = (width + 1) / 2
             val halfH = (height + 1) / 2
@@ -518,22 +554,28 @@ object LyricsVideoExporter {
                 val srcRow = row * 2
                 var out = 0
                 for (col in 0 until halfW) {
-                    scratch[out] = rgbToU(pixels[srcRow * width + col * 2]).toByte()
+                    if (out < scratch.size) scratch[out] = rgbToU(pixels[srcRow * width + col * 2]).toByte()
                     out += pixelStride
+                    if (out >= scratch.size) break
                 }
-                buffer.position(row * rowStride)
-                buffer.put(scratch, 0, halfW * pixelStride)
+                val bytesToPut = (halfW * pixelStride).coerceAtMost(scratch.size).coerceAtMost(buffer.remaining().coerceAtLeast(0))
+                if (bytesToPut <= 0) continue
+                buffer.position((row * rowStride).coerceAtMost(buffer.capacity() - bytesToPut))
+                buffer.put(scratch, 0, bytesToPut)
             }
         } else {
             for (row in 0 until height) {
                 val srcRow = row * width
                 var out = 0
                 for (col in 0 until width) {
-                    scratch[out] = rgbToY(pixels[srcRow + col]).toByte()
+                    if (out < scratch.size) scratch[out] = rgbToY(pixels[srcRow + col]).toByte()
                     out += pixelStride
+                    if (out >= scratch.size) break
                 }
-                buffer.position(row * rowStride)
-                buffer.put(scratch, 0, width * pixelStride)
+                val bytesToPut = (width * pixelStride).coerceAtMost(scratch.size).coerceAtMost(buffer.remaining().coerceAtLeast(0))
+                if (bytesToPut <= 0) continue
+                buffer.position((row * rowStride).coerceAtMost(buffer.capacity() - bytesToPut))
+                buffer.put(scratch, 0, bytesToPut)
             }
         }
     }
@@ -553,12 +595,15 @@ object LyricsVideoExporter {
             val srcRow = row * 2
             var out = 0
             for (col in 0 until halfW) {
+                if (out + 1 >= scratch.size) break
                 val pixel = pixels[srcRow * width + col * 2]
                 scratch[out++] = rgbToU(pixel).toByte()
                 scratch[out++] = rgbToV(pixel).toByte()
             }
-            buffer.position(row * rowStride)
-            buffer.put(scratch, 0, halfW * 2)
+            val bytesToPut = (halfW * 2).coerceAtMost(scratch.size).coerceAtMost(buffer.remaining().coerceAtLeast(0))
+            if (bytesToPut <= 0) continue
+            buffer.position((row * rowStride).coerceAtMost(buffer.capacity() - bytesToPut))
+            buffer.put(scratch, 0, bytesToPut)
         }
     }
 

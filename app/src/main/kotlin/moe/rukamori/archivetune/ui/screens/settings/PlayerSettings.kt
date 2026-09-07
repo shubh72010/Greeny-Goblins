@@ -98,13 +98,14 @@ import moe.rukamori.archivetune.ui.component.SliderPreference
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.TagsManagementDialog
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
+import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerSettings(navController: NavController) {
+fun PlayerSettings(navController: NavController, highlight: String? = null) {
     val (audioQuality, onAudioQualityChange) =
         rememberEnumPreference(
             AudioQualityKey,
@@ -429,6 +430,7 @@ fun PlayerSettings(navController: NavController) {
         ) {
             PreferenceGroup(title = stringResource(R.string.player)) {
                 item {
+                    HighlightablePreference(highlightKey = "audio_quality", highlight = highlight) {
                     EnumListPreference(
                         title = { Text(stringResource(R.string.audio_quality)) },
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
@@ -444,9 +446,11 @@ fun PlayerSettings(navController: NavController) {
                             }
                         },
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "stream_client", highlight = highlight) {
                     ListPreference(
                         title = { Text(stringResource(R.string.player_stream_client)) },
                         description = stringResource(R.string.player_stream_client_desc),
@@ -504,6 +508,7 @@ fun PlayerSettings(navController: NavController) {
                             }
                         },
                     )
+                    }
                 }
 
                 item {
@@ -516,6 +521,7 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "low_data", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.low_data_mode_title)) },
                         description = stringResource(R.string.low_data_mode_description),
@@ -523,6 +529,7 @@ fun PlayerSettings(navController: NavController) {
                         checked = lowDataMode,
                         onCheckedChange = onLowDataModeChange,
                     )
+                    }
                 }
 
                 item {
@@ -535,6 +542,7 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "crossfade", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.audio_crossfade_title)) },
                         description = stringResource(R.string.audio_crossfade_description),
@@ -547,6 +555,7 @@ fun PlayerSettings(navController: NavController) {
                             onCrossfadeEnabledChange(enabled)
                         },
                     )
+                    }
                 }
 
                 item {
@@ -569,6 +578,7 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "skip_silence", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.skip_silence)) },
                         icon = { Icon(painterResource(R.drawable.fast_forward), null) },
@@ -576,18 +586,22 @@ fun PlayerSettings(navController: NavController) {
                         onCheckedChange = onSkipSilenceChange,
                         isEnabled = !audioOffload,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "normalization", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.audio_normalization)) },
                         icon = { Icon(painterResource(R.drawable.volume_up), null) },
                         checked = audioNormalization,
                         onCheckedChange = onAudioNormalizationChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "offload", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.audio_offload)) },
                         description = stringResource(R.string.audio_offload_desc),
@@ -601,6 +615,7 @@ fun PlayerSettings(navController: NavController) {
                             }
                         },
                     )
+                    }
                 }
 
                 item {
@@ -614,6 +629,7 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "pause_on_mute", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.pause_on_device_mute)) },
                         description = stringResource(R.string.pause_on_device_mute_desc),
@@ -621,6 +637,7 @@ fun PlayerSettings(navController: NavController) {
                         checked = pauseOnDeviceMute,
                         onCheckedChange = onPauseOnDeviceMuteChange,
                     )
+                    }
                 }
 
                 item(visible = pauseOnDeviceMute) {
@@ -649,6 +666,7 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "bluetooth_autostart", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.auto_start_on_bluetooth)) },
                         description = stringResource(R.string.auto_start_on_bluetooth_desc),
@@ -656,6 +674,7 @@ fun PlayerSettings(navController: NavController) {
                         checked = autoStartOnBluetooth,
                         onCheckedChange = onAutoStartOnBluetoothChange,
                     )
+                    }
                 }
 
                 item(visible = autoStartOnBluetooth) {
@@ -733,6 +752,7 @@ fun PlayerSettings(navController: NavController) {
 
                 // Local haptics (still in-process, not BNMV external — kept for users without BNMV)
                 item {
+                    HighlightablePreference(highlightKey = "haptic", highlight = highlight) {
                     val ctx = LocalContext.current
                     SwitchPreference(
                         title = { Text(stringResource(R.string.haptic_visualizer)) },
@@ -746,6 +766,7 @@ fun PlayerSettings(navController: NavController) {
                             }
                         },
                     )
+                    }
                 }
 
                 item(visible = hapticVisualizerEnabled) {
@@ -844,6 +865,7 @@ fun PlayerSettings(navController: NavController) {
 
             PreferenceGroup(title = stringResource(R.string.queue)) {
                 item {
+                    HighlightablePreference(highlightKey = "persistent_queue", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.persistent_queue)) },
                         description = stringResource(R.string.persistent_queue_desc),
@@ -851,9 +873,11 @@ fun PlayerSettings(navController: NavController) {
                         checked = persistentQueue,
                         onCheckedChange = onPersistentQueueChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "permanent_shuffle", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.permanent_shuffle)) },
                         description = stringResource(R.string.permanent_shuffle_desc),
@@ -861,9 +885,11 @@ fun PlayerSettings(navController: NavController) {
                         checked = permanentShuffle,
                         onCheckedChange = onPermanentShuffleChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "auto_download_like", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.auto_download_on_like)) },
                         description = stringResource(R.string.auto_download_on_like_desc),
@@ -871,9 +897,11 @@ fun PlayerSettings(navController: NavController) {
                         checked = autoDownloadOnLike,
                         onCheckedChange = onAutoDownloadOnLikeChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "auto_skip_error", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.auto_skip_next_on_error)) },
                         description = stringResource(R.string.auto_skip_next_on_error_desc),
@@ -881,20 +909,24 @@ fun PlayerSettings(navController: NavController) {
                         checked = autoSkipNextOnError,
                         onCheckedChange = onAutoSkipNextOnErrorChange,
                     )
+                    }
                 }
             }
 
             PreferenceGroup(title = stringResource(R.string.misc)) {
                 item {
+                    HighlightablePreference(highlightKey = "stop_on_clear", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.stop_music_on_task_clear)) },
                         icon = { Icon(painterResource(R.drawable.clear_all), null) },
                         checked = stopMusicOnTaskClear,
                         onCheckedChange = onStopMusicOnTaskClearChange,
                     )
+                    }
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "wakelock", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.wakelock)) },
                         description = stringResource(R.string.wakelock_desc),
@@ -902,6 +934,7 @@ fun PlayerSettings(navController: NavController) {
                         checked = wakelockEnabled,
                         onCheckedChange = onWakelockChange,
                     )
+                    }
                 }
 
                 item {
@@ -923,6 +956,7 @@ fun PlayerSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "external_downloader", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.external_downloader)) },
                         description = stringResource(R.string.external_downloader_desc),
@@ -930,6 +964,7 @@ fun PlayerSettings(navController: NavController) {
                         checked = externalDownloaderEnabled,
                         onCheckedChange = onExternalDownloaderEnabledChange,
                     )
+                    }
                 }
 
                 item {

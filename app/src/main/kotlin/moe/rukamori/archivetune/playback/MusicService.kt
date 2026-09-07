@@ -549,6 +549,19 @@ class MusicService :
     private var crossfadePlaybackRequested = false
     private var lyricsPreloadManager: LyricsPreloadManager? = null
 
+    // ponytail: deck mixer prototype shares no state with crossfade/queue; separate ExoPlayer until UX validated
+    private var deckMixerPlayer: ExoPlayer? = null
+    private val deckMixerStateFlow = MutableStateFlow<DeckMixerState?>(null)
+    val deckMixerState = deckMixerStateFlow
+    val deckCrossfader = MutableStateFlow(0.5f)
+    val deckAVolume = MutableStateFlow(1f)
+    val deckBVolume = MutableStateFlow(1f)
+
+    data class DeckMixerState(
+        val mediaItem: MediaItem,
+        val isPlaying: Boolean = false,
+    )
+
     private val secondaryCrossfadeListener =
         object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
@@ -2640,6 +2653,12 @@ class MusicService :
             applyCrossfadeVolumes(crossfadeProgress, finalVolume, incomingBaseVolume, localPlayer, incomingPlayer)
             return
         }
+        // deck mixer overrides single-player volume
+        if (deckMixerStateFlow.value != null && deckMixerPlayer != null) {
+            applyDeckMixerVolumes()
+            incomingPlayer?.volume = 0f
+            return
+        }
         if (::player.isInitialized) {
             player.volume = finalVolume
         }
@@ -3132,6 +3151,263 @@ class MusicService :
         runCatching { playerToRelease.stop() }
         runCatching { playerToRelease.clearMediaItems() }
         runCatching { playerToRelease.release() }
+    }
+
+    // ── Global crossfade (manual seek / queue tap) ───────────────────
+    private fun canUseGlobalCrossfade(): Boolean =
+        crossfadeEnabled &&
+            crossfadeDurationMs >= MIN_CROSSFADE_DURATION_MS &&
+            ::player.isInitialized &&
+            player.playWhenReady &&
+            player.playbackState == Player.STATE_READY &&
+            player.mediaItemCount > 0 &&
+            togetherSessionState.value is moe.rukamori.archivetune.together.TogetherSessionState.Idle &&
+            !isCrossfading &&
+            !crossfadeHandoffInProgress &&
+            deckMixerPlayer == null
+
+    private fun globalCrossfadeDuration(): Long = crossfadeDurationMs.coerceIn(MIN_CROSSFADE_DURATION_MS, 6000L)
+
+    fun tryGlobalCrossfadeToIndex(
+        targetIndex: Int,
+        positionMs: Long = 0L,
+    ): Boolean {
+        if (!canUseGlobalCrossfade()) return false
+        if (targetIndex !in 0 until player.mediaItemCount) return false
+        if (targetIndex == player.currentMediaItemIndex && positionMs == player.currentPosition) return false
+        val targetItem = runCatching { player.getMediaItemAt(targetIndex) }.getOrNull() ?: return false
+        val target = CrossfadeTarget(index = targetIndex, mediaId = targetItem.mediaId)
+        startGlobalCrossfade(target, globalCrossfadeDuration(), positionMs)
+        return true
+    }
+
+    fun tryGlobalCrossfadeToNext(): Boolean {
+        if (!canUseGlobalCrossfade()) return false
+        val nextIndex = player.nextMediaItemIndex
+        if (nextIndex == C.INDEX_UNSET || nextIndex !in 0 until player.mediaItemCount) return false
+        return tryGlobalCrossfadeToIndex(nextIndex, 0L)
+    }
+
+    fun tryGlobalCrossfadeToPrevious(): Boolean {
+        if (!canUseGlobalCrossfade()) return false
+        val prevIndex = player.previousMediaItemIndex
+        if (prevIndex == C.INDEX_UNSET || prevIndex !in 0 until player.mediaItemCount) return false
+        return tryGlobalCrossfadeToIndex(prevIndex, 0L)
+    }
+
+    private fun startGlobalCrossfade(
+        target: CrossfadeTarget,
+        durationMs: Long,
+        startPositionMs: Long,
+    ) {
+        if (isCrossfading) return
+        if (!crossfadeEnabled) {
+            scope.launch { volumeFadeSeek(target.index, startPositionMs, durationMs) }
+            return
+        }
+        val incomingPlayer = prepareSecondaryCrossfadePlayer(target)
+        if (incomingPlayer == null) {
+            scope.launch { volumeFadeSeek(target.index, startPositionMs, durationMs) }
+            return
+        }
+        if (startPositionMs != 0L) {
+            runCatching { incomingPlayer.seekTo(startPositionMs) }
+        }
+        crossfadeTriggerJob?.cancel()
+        crossfadeTriggerJob = null
+        crossfadeJob?.cancel()
+        crossfadeJob =
+            scope.launch {
+                isCrossfading = true
+                crossfadeProgress = 0f
+                crossfadeBaseVolume = currentEffectivePlayerVolume()
+                crossfadeIncomingBaseVolume = currentEffectivePlayerVolumeForMediaId(target.mediaId)
+                crossfadePlaybackRequested = true
+                localPlayer.pauseAtEndOfMediaItems = true
+                try {
+                    val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)
+                    if (!awaitCrossfadePlayerReady(incomingPlayer, CROSSFADE_READY_TIMEOUT_MS, requiredBufferedMs)) {
+                        cancelCrossfade(resetVolume = false, resetPauseAtEnd = true)
+                        volumeFadeSeek(target.index, startPositionMs, durationMs.coerceAtMost(600L))
+                        return@launch
+                    }
+                    incomingPlayer.playbackParameters = player.playbackParameters
+                    incomingPlayer.playWhenReady = true
+                    incomingPlayer.play()
+                    var elapsedMs = 0L
+                    var lastTickMs = android.os.SystemClock.elapsedRealtime()
+                    while (isActive && elapsedMs < durationMs) {
+                        val nowMs = android.os.SystemClock.elapsedRealtime()
+                        elapsedMs = (elapsedMs + (nowMs - lastTickMs)).coerceAtMost(durationMs)
+                        crossfadeProgress = (elapsedMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                        applyCrossfadeVolumes(
+                            crossfadeProgress,
+                            crossfadeBaseVolume,
+                            crossfadeIncomingBaseVolume,
+                            localPlayer,
+                            incomingPlayer,
+                        )
+                        lastTickMs = nowMs
+                        delay(CROSSFADE_FRAME_MS)
+                    }
+                    finishCrossfade(target, incomingPlayer)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Global crossfade failed")
+                    cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                }
+            }
+    }
+
+    private suspend fun volumeFadeSeek(
+        targetIndex: Int,
+        positionMs: Long,
+        durationMs: Long,
+    ) {
+        val half = (durationMs / 2).coerceAtLeast(120L)
+        val base = currentEffectivePlayerVolume()
+        val start = android.os.SystemClock.elapsedRealtime()
+        while (true) {
+            val elapsed = android.os.SystemClock.elapsedRealtime() - start
+            if (elapsed >= half) break
+            val p = elapsed.toFloat() / half.toFloat()
+            val vol = base * cos(p * PI / 2).toFloat()
+            if (::player.isInitialized) player.volume = vol.coerceIn(0f, maxSafeGainFactor)
+            delay(16L)
+        }
+        if (::player.isInitialized) player.volume = 0f
+        withContext(Dispatchers.Main) {
+            if (targetIndex in 0 until player.mediaItemCount) {
+                player.seekTo(targetIndex, positionMs)
+                player.playWhenReady = true
+                player.prepare()
+            }
+        }
+        delay(80L)
+        val fadeInStart = android.os.SystemClock.elapsedRealtime()
+        val targetVol = currentEffectivePlayerVolume()
+        while (true) {
+            val elapsed = android.os.SystemClock.elapsedRealtime() - fadeInStart
+            if (elapsed >= half) break
+            val p = elapsed.toFloat() / half.toFloat()
+            val vol = targetVol * sin(p * PI / 2).toFloat()
+            if (::player.isInitialized) player.volume = vol.coerceIn(0f, maxSafeGainFactor)
+            delay(16L)
+        }
+        if (::player.isInitialized) player.volume = targetVol
+    }
+
+    private suspend fun volumeFadeSwap(
+        durationMs: Long,
+        block: suspend () -> Unit,
+    ) {
+        if (!::player.isInitialized || player.mediaItemCount == 0 || !player.playWhenReady || player.playbackState != Player.STATE_READY) {
+            block()
+            return
+        }
+        val half = (durationMs / 2).coerceAtLeast(120L)
+        val base = currentEffectivePlayerVolume()
+        val start = android.os.SystemClock.elapsedRealtime()
+        while (true) {
+            val elapsed = android.os.SystemClock.elapsedRealtime() - start
+            if (elapsed >= half) break
+            val p = elapsed.toFloat() / half.toFloat()
+            val vol = base * cos(p * PI / 2).toFloat()
+            player.volume = vol.coerceIn(0f, maxSafeGainFactor)
+            delay(16L)
+        }
+        player.volume = 0f
+        block()
+        delay(80L)
+        val fadeInStart = android.os.SystemClock.elapsedRealtime()
+        val targetVol = currentEffectivePlayerVolume()
+        while (true) {
+            val elapsed = android.os.SystemClock.elapsedRealtime() - fadeInStart
+            if (elapsed >= half) break
+            val p = elapsed.toFloat() / half.toFloat()
+            val vol = targetVol * sin(p * PI / 2).toFloat()
+            player.volume = vol.coerceIn(0f, maxSafeGainFactor)
+            delay(16L)
+        }
+        player.volume = targetVol
+    }
+
+    // ── Deck mixer prototype ──────────────────────────────────────────
+    private val deckMixerListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            deckMixerStateFlow.value = deckMixerStateFlow.value?.copy(isPlaying = isPlaying)
+        }
+        override fun onPlayerError(error: PlaybackException) {
+            Timber.tag(TAG).w(error, "Deck B player failed")
+        }
+    }
+
+    private fun ensureDeckMixerPlayer(): ExoPlayer {
+        deckMixerPlayer?.let { return it }
+        return createSecondaryCrossfadePlayer().apply {
+            removeListener(secondaryCrossfadeListener)
+            addListener(deckMixerListener)
+            deckMixerPlayer = this
+        }
+    }
+
+    fun addToDeckMix(mediaItem: MediaItem) {
+        if (isCrossfading) cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+        val p = ensureDeckMixerPlayer()
+        deckMixerStateFlow.value = DeckMixerState(mediaItem = mediaItem, isPlaying = true)
+        p.setMediaItem(mediaItem)
+        p.prepare()
+        p.playWhenReady = true
+        p.play()
+        applyDeckMixerVolumes()
+    }
+
+    fun setDeckCrossfader(f: Float) {
+        deckCrossfader.value = f.coerceIn(0f, 1f)
+        applyDeckMixerVolumes()
+    }
+
+    fun setDeckAVolume(v: Float) { deckAVolume.value = v.coerceIn(0f, 1f); applyDeckMixerVolumes() }
+    fun setDeckBVolume(v: Float) { deckBVolume.value = v.coerceIn(0f, 1f); applyDeckMixerVolumes() }
+
+    fun setDeckBPlayWhenReady(play: Boolean) {
+        deckMixerPlayer?.playWhenReady = play
+        if (play) deckMixerPlayer?.play() else deckMixerPlayer?.pause()
+    }
+
+    fun seekDeckB(ms: Long) { deckMixerPlayer?.seekTo(ms.coerceAtLeast(0L)) }
+
+    fun removeDeckMix() {
+        deckMixerStateFlow.value = null
+        deckMixerPlayer?.let { p ->
+            runCatching { p.stop() }
+            runCatching { p.clearMediaItems() }
+            runCatching { p.removeListener(deckMixerListener) }
+            runCatching { p.release() }
+        }
+        deckMixerPlayer = null
+        deckCrossfader.value = 0.5f
+        applyDeckMixerVolumes()
+    }
+
+    internal fun deckMixerPlayerInternalForConnection(): Player? = deckMixerPlayer
+
+    private fun applyDeckMixerVolumes() {
+        if (!::player.isInitialized) return
+        val f = deckCrossfader.value.coerceIn(0f, 1f)
+        val base = currentEffectivePlayerVolume()
+        val hasDeckB = deckMixerStateFlow.value != null && deckMixerPlayer != null
+        if (!hasDeckB) {
+            if (!isCrossfading) player.volume = base * deckAVolume.value
+            deckMixerPlayer?.volume = 0f
+            return
+        }
+        // linear prototype: finalA = deckAVolume * (1-f), finalB = deckBVolume * f, both scaled by base
+        val finalA = (base * deckAVolume.value * (1f - f)).coerceIn(0f, maxSafeGainFactor)
+        val finalB = (base * deckBVolume.value * f).coerceIn(0f, maxSafeGainFactor)
+        if (!isCrossfading) player.volume = finalA
+        deckMixerPlayer?.volume = finalB
     }
 
     private fun calculateAudioNormalizationFactor(
@@ -3893,10 +4169,22 @@ class MusicService :
 
         clearAutomix()
         autoAddedMediaIds.clear()
+        val shouldFadePreload = canUseGlobalCrossfade()
         if (queue.preloadItem != null) {
-            player.setMediaItem(queue.preloadItem!!.toMediaItem())
-            player.prepare()
-            player.playWhenReady = playWhenReady
+            if (shouldFadePreload) {
+                val preloadItem = queue.preloadItem!!.toMediaItem()
+                scope.launch {
+                    volumeFadeSwap(globalCrossfadeDuration()) {
+                        player.setMediaItem(preloadItem)
+                        player.prepare()
+                        player.playWhenReady = playWhenReady
+                    }
+                }
+            } else {
+                player.setMediaItem(queue.preloadItem!!.toMediaItem())
+                player.prepare()
+                player.playWhenReady = playWhenReady
+            }
         }
         scope.launch(SilentHandler) {
             val hideExplicit = dataStore.get(HideExplicitKey, false)
@@ -3952,12 +4240,25 @@ class MusicService :
             } else {
                 val items = initialStatus.items
                 val index = initialStatus.mediaItemIndex
-
-                player.setMediaItems(items, index, initialStatus.position)
-                player.prepare()
-                player.playWhenReady = playWhenReady
-                if (player.shuffleModeEnabled) {
-                    applyCurrentFirstShuffleOrder()
+                val shouldFadeQueue = crossfadeEnabled && crossfadeDurationMs >= MIN_CROSSFADE_DURATION_MS &&
+                    togetherSessionState.value is moe.rukamori.archivetune.together.TogetherSessionState.Idle &&
+                    deckMixerPlayer == null
+                if (shouldFadeQueue && player.playWhenReady && player.playbackState == Player.STATE_READY && player.mediaItemCount > 0) {
+                    volumeFadeSwap(globalCrossfadeDuration()) {
+                        player.setMediaItems(items, index, initialStatus.position)
+                        player.prepare()
+                        player.playWhenReady = playWhenReady
+                        if (player.shuffleModeEnabled) {
+                            applyCurrentFirstShuffleOrder()
+                        }
+                    }
+                } else {
+                    player.setMediaItems(items, index, initialStatus.position)
+                    player.prepare()
+                    player.playWhenReady = playWhenReady
+                    if (player.shuffleModeEnabled) {
+                        applyCurrentFirstShuffleOrder()
+                    }
                 }
             }
         }
@@ -4188,6 +4489,7 @@ class MusicService :
         cancelRestoredQueueHydration()
         cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = true
+        removeDeckMix()
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
         clearAutomix()
         currentQueue = EmptyQueue
@@ -8614,6 +8916,7 @@ class MusicService :
         super.onDestroy()
         effectiveVolumeRampJob?.cancel()
         effectiveVolumeRampJob = null
+        removeDeckMix()
         cancelCrossfade(resetVolume = false, resetPauseAtEnd = true)
         audioRouteRecoveryJob?.cancel()
         if (audioDeviceCallbackRegistered) {

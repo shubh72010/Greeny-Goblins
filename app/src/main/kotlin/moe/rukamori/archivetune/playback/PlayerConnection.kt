@@ -87,6 +87,13 @@ class PlayerConnection(
     val waitingForNetworkConnection = service.waitingForNetworkConnection
     val queueRestoreCompleted = service.queueRestoreCompleted
 
+    // deck mixer prototype
+    val deckMixerState = service.deckMixerState
+    val deckCrossfader = service.deckCrossfader
+    val deckAVolume = service.deckAVolume
+    val deckBVolume = service.deckBVolume
+    val deckBPlayer: Player? get() = service.deckMixerPlayerInternalForConnection()
+
     init {
         player.addListener(this)
 
@@ -138,6 +145,7 @@ class PlayerConnection(
             service.requestTogetherControl(moe.rukamori.archivetune.together.ControlAction.SkipNext)
             return
         }
+        if (service.tryGlobalCrossfadeToNext()) return
         player.seekToNext()
         player.prepare()
         player.playWhenReady = true
@@ -149,10 +157,13 @@ class PlayerConnection(
             service.requestTogetherControl(moe.rukamori.archivetune.together.ControlAction.SkipPrevious)
             return
         }
+        if (service.tryGlobalCrossfadeToPrevious()) return
         player.seekToPrevious()
         player.prepare()
         player.playWhenReady = true
     }
+
+    fun seekToIndexWithCrossfade(index: Int, positionMs: Long = 0L): Boolean = service.tryGlobalCrossfadeToIndex(index, positionMs)
 
     override fun onPlaybackStateChanged(state: Int) {
         playbackState.value = state
@@ -224,6 +235,14 @@ class PlayerConnection(
             canSkipNext.value = false
         }
     }
+
+    fun addToDeckMix(item: MediaItem) = service.addToDeckMix(item)
+    fun setDeckCrossfader(f: Float) = service.setDeckCrossfader(f)
+    fun setDeckAVolume(v: Float) = service.setDeckAVolume(v)
+    fun setDeckBVolume(v: Float) = service.setDeckBVolume(v)
+    fun setDeckBPlayWhenReady(play: Boolean) = service.setDeckBPlayWhenReady(play)
+    fun seekDeckB(ms: Long) = service.seekDeckB(ms)
+    fun removeDeckMix() = service.removeDeckMix()
 
     fun dispose() {
         player.removeListener(this)

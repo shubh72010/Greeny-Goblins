@@ -103,6 +103,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
+import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -114,6 +115,7 @@ private enum class TestApiVisualState { Idle, Testing, Success, Failed }
 fun AiIntegrationSettings(
     navController: NavController,
     viewModel: AiIntegrationSettingsViewModel = hiltViewModel(),
+    highlight: String? = null,
 ) {
     val context = LocalContext.current
     val actionState by viewModel.actionState.collectAsStateWithLifecycle()
@@ -173,8 +175,9 @@ fun AiIntegrationSettings(
 
         PreferenceGroup(title = stringResource(R.string.ai_provider_settings)) {
             item {
-                ListPreference(
-                    title = { Text(stringResource(R.string.ai_provider)) },
+                HighlightablePreference(highlightKey = "ai_provider", highlight = highlight) {
+                    ListPreference(
+                        title = { Text(stringResource(R.string.ai_provider)) },
                     description = stringResource(R.string.ai_provider_desc),
                     icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
                     selectedValue = provider,
@@ -196,7 +199,8 @@ fun AiIntegrationSettings(
                         setProvider(selectedProvider)
                         setValidationStatus(AiApiValidationStatus.UNKNOWN)
                     },
-                )
+                    )
+                }
             }
 
             item(visible = provider == AiProvider.CUSTOM) {

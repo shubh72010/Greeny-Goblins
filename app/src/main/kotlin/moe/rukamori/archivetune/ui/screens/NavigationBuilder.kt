@@ -369,8 +369,11 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/hidden_playlists") {
         HiddenPlaylistsScreen(navController)
     }
-    composable("settings/appearance") {
-        AppearanceSettings(navController)
+    composable(
+        route = "settings/appearance?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
+        AppearanceSettings(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
     composable("settings/appearance/icon") {
         IconScreen(navController)
@@ -387,39 +390,48 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/appearance/theme_creator") {
         ThemeCreatorScreen(navController)
     }
-    composable("settings/content") {
-        ContentSettings(navController)
-    }
-    composable("settings/lyrics") {
-        LyricsSettings(navController)
-    }
-    composable("settings/internet") {
-        InternetSettings(navController)
-    }
-    composable("settings/player") {
-        PlayerSettings(navController)
-    }
+    composable(
+        route = "settings/content?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> ContentSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
+    composable(
+        route = "settings/lyrics?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> LyricsSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
+    composable(
+        route = "settings/internet?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> InternetSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
+    composable(
+        route = "settings/player?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> PlayerSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
     composable("settings/player/chiper") {
         ChiperSettings(navController)
     }
-    composable("settings/storage") {
-        StorageSettings(navController)
-    }
-    composable("settings/privacy") {
-        PrivacySettings(navController)
-    }
+    composable(
+        route = "settings/storage?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> StorageSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
+    composable(
+        route = "settings/privacy?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> PrivacySettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
     composable("settings/backup_restore") {
         BackupAndRestore(navController)
     }
-    composable("settings/discord") {
-        DiscordSettings(navController)
-    }
-    composable("settings/integration") {
-        IntegrationScreen(navController)
-    }
-    composable("settings/ai_integration") {
-        AiIntegrationSettings(navController)
-    }
+    composable(
+        route = "settings/discord?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> DiscordSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
+    composable(
+        route = "settings/integration?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> IntegrationScreen(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
+    composable(
+        route = "settings/ai_integration?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> AiIntegrationSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
     composable("settings/music_together") {
         MusicTogetherScreen(navController)
     }
@@ -430,9 +442,10 @@ fun NavGraphBuilder.navigationBuilder(
         moe.rukamori.archivetune.ui.screens.settings
             .DiscordExperimental(navController)
     }
-    composable("settings/misc") {
-        DebugSettings(navController)
-    }
+    composable(
+        route = "settings/misc?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry -> DebugSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
     composable("settings/logcat") {
         LogcatScreen(navController)
     }

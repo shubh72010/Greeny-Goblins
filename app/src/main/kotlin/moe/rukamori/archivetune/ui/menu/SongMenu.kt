@@ -403,6 +403,7 @@ fun SongMenu(
     val playNextText = stringResource(R.string.play_next)
     val addToQueueText = stringResource(R.string.add_to_queue)
     val addToPlaylistText = stringResource(R.string.add_to_playlist)
+    val addToMixText = "Add to mix"
     val shareText = stringResource(R.string.share)
     val editText = stringResource(R.string.edit)
 
@@ -485,6 +486,23 @@ fun SongMenu(
                         },
                         text = addToPlaylistText,
                         onClick = { showChoosePlaylistDialog = true },
+                    ),
+                )
+                add(
+                    NewAction(
+                        icon = {
+                            Icon(
+                                painter = painterResource(R.drawable.mix),
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        text = addToMixText,
+                        onClick = {
+                            onDismiss()
+                            playerConnection.addToDeckMix(song.toMediaItem())
+                        },
                     ),
                 )
                 add(

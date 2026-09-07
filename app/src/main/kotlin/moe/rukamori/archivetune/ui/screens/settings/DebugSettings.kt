@@ -79,6 +79,7 @@ import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
+import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -86,7 +87,7 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DebugSettings(navController: NavController) {
+fun DebugSettings(navController: NavController, highlight: String? = null) {
     val (showDevDebug, onShowDevDebugChange) =
         rememberPreference(
             key = booleanPreferencesKey("dev_show_discord_debug"),
@@ -108,6 +109,12 @@ fun DebugSettings(navController: NavController) {
     val (showStreamSourceBadge, onShowStreamSourceBadgeChange) =
         rememberPreference(
             key = ShowStreamSourceBadgeKey,
+            defaultValue = false,
+        )
+
+    val (lyricsVideoDebug, onLyricsVideoDebugChange) =
+        rememberPreference(
+            key = booleanPreferencesKey("lyrics_video_verbose_logs"),
             defaultValue = false,
         )
 
@@ -169,6 +176,7 @@ fun DebugSettings(navController: NavController) {
                 }
 
                 item {
+                    HighlightablePreference(highlightKey = "show_codec", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.display_codec_on_player)) },
                         description = stringResource(R.string.description_display_codec_on_player),
@@ -176,6 +184,7 @@ fun DebugSettings(navController: NavController) {
                         checked = showCodecOnPlayer,
                         onCheckedChange = onShowCodecOnPlayerChange,
                     )
+                    }
                 }
 
                 item {
@@ -185,6 +194,16 @@ fun DebugSettings(navController: NavController) {
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         checked = showStreamSourceBadge,
                         onCheckedChange = onShowStreamSourceBadgeChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.lyrics_video_debug_title)) },
+                        description = stringResource(R.string.lyrics_video_debug_desc),
+                        icon = { Icon(painterResource(R.drawable.slow_motion_video), null) },
+                        checked = lyricsVideoDebug,
+                        onCheckedChange = onLyricsVideoDebugChange,
                     )
                 }
 

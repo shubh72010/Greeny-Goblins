@@ -62,6 +62,7 @@ import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
+import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.ArtworkStorage
 import moe.rukamori.archivetune.utils.discordAlbumMusicUrl
@@ -83,7 +84,7 @@ private val DiscordLargeTextOptions = listOf("song", "artist", "album", "app", "
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiscordSettings(navController: NavController) {
+fun DiscordSettings(navController: NavController, highlight: String? = null) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val scrollBehavior = appBarScrollBehavior()
     val song by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
@@ -528,6 +529,7 @@ fun DiscordSettings(navController: NavController) {
             item {
                 PreferenceGroup(title = stringResource(R.string.discord_connection_settings)) {
                     item {
+                    HighlightablePreference(highlightKey = "discord_status", highlight = highlight) {
                         ListPreference(
                             title = { Text(stringResource(R.string.activity_status)) },
                             icon = { Icon(painterResource(R.drawable.status), null) },
@@ -547,6 +549,7 @@ fun DiscordSettings(navController: NavController) {
                             valueText = { discordPlatformLabel(it) },
                             onValueSelected = onPlatformSelectionChange,
                         )
+                    }
                     }
                 }
             }
@@ -582,6 +585,7 @@ fun DiscordSettings(navController: NavController) {
                     }
 
                     item {
+                    HighlightablePreference(highlightKey = "discord_paused", highlight = highlight) {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.discord_show_when_paused)) },
                             description = stringResource(R.string.discord_show_when_paused_desc),
@@ -600,6 +604,7 @@ fun DiscordSettings(navController: NavController) {
                             valueText = { discordActivityTypeLabel(it) },
                             onValueSelected = onActivityTypeChange,
                         )
+                    }
                     }
                 }
             }
@@ -649,6 +654,7 @@ fun DiscordSettings(navController: NavController) {
                     }
 
                     item {
+                    HighlightablePreference(highlightKey = "discord_rpc", highlight = highlight) {
                         ListPreference(
                             title = { Text(stringResource(R.string.small_image)) },
                             icon = { Icon(painterResource(R.drawable.image), null) },
@@ -667,6 +673,7 @@ fun DiscordSettings(navController: NavController) {
                             onValueChange = onSmallImageCustomUrlChange,
                             isInputValid = { true },
                         )
+                    }
                     }
                 }
             }
