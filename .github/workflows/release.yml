@@ -86,6 +86,33 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Decode release keystore (JusNotes-style)
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "Decoding RELEASE_KEYSTORE_BASE64 -> app/keystore/release.keystore"
+            mkdir -p app/keystore
+            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/keystore/release.keystore
+            cp app/keystore/release.keystore app/release.keystore 2>/dev/null || true
+            cp app/keystore/release.keystore app/jusnotes-release.jks 2>/dev/null || true
+            ls -lh app/keystore/release.keystore
+          elif [ -n "${{ secrets.KEYSTORE }}" ]; then
+            echo "Decoding KEYSTORE (legacy) -> app/keystore/release.keystore"
+            mkdir -p app/keystore
+            echo "${{ secrets.KEYSTORE }}" | base64 -d > app/keystore/release.keystore
+            cp app/keystore/release.keystore app/release.keystore 2>/dev/null || true
+            ls -lh app/keystore/release.keystore
+          else
+            echo "No base64 secret - using checked-in app/keystore/release.keystore (or debug fallback)"
+            ls -lh app/keystore/release.keystore 2>&1 | head -n 5 || echo "no keystore file"
+            if [ ! -f app/keystore/release.keystore ] && [ ! -f app/release.keystore ]; then
+              mkdir -p ~/.android
+              if [ ! -f ~/.android/debug.keystore ]; then
+                keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+              fi
+            fi
+          fi
+
       - name: Resolve variant names
         id: variant
         shell: bash
@@ -114,6 +141,9 @@ jobs:
           KEYSTORE_PASSWORD: maxverstappen
           KEY_ALIAS: jusplayer
           KEY_PASSWORD: maxverstappen
+          RELEASE_KEYSTORE_PASSWORD: maxverstappen
+          RELEASE_KEY_ALIAS: jusplayer
+          RELEASE_KEY_PASSWORD: maxverstappen
 
       - name: Resolve release output directory
         id: release_dir

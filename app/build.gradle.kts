@@ -155,20 +155,65 @@ android {
 
     signingConfigs {
         create("release") {
-            if (hasReleaseSigningConfig) {
-                storeFile = releaseKeystoreFile
-                storePassword = releaseStorePassword
-                keyAlias = releaseKeyAlias
-                keyPassword = releaseKeyPassword
+            // JusNotes-style: support CI decoded base64 + local fallback, like https://github.com/shubh72010/JusNotes
+            val hasRealPass =
+                System.getenv("RELEASE_KEYSTORE_PASSWORD") != null ||
+                    project.findProperty("RELEASE_KEYSTORE_PASSWORD") != null ||
+                    System.getenv("STORE_PASSWORD") != null ||
+                    System.getenv("KEYSTORE_PASSWORD") != null ||
+                    localProperties.getProperty("STORE_PASSWORD") != null ||
+                    localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") != null
+            val candidates =
+                listOf(
+                    file("keystore/release.keystore"),
+                    file("release.keystore"),
+                    file("jusnotes-release.jks"),
+                    file("${System.getProperty("user.home")}/.keystores/jusnotes-release.jks"),
+                )
+            val real = candidates.firstOrNull { it.exists() }
+            if (hasRealPass && real != null) {
+                storeFile = real
+                storePassword =
+                    System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                        ?: System.getenv("STORE_PASSWORD")
+                        ?: System.getenv("KEYSTORE_PASSWORD")
+                        ?: (project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String? ?: localProperties.getProperty("STORE_PASSWORD") ?: localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") ?: "")
+                keyAlias =
+                    System.getenv("RELEASE_KEY_ALIAS")
+                        ?: System.getenv("KEY_ALIAS")
+                        ?: (project.findProperty("RELEASE_KEY_ALIAS") as String? ?: localProperties.getProperty("KEY_ALIAS") ?: "jusplayer")
+                keyPassword =
+                    System.getenv("RELEASE_KEY_PASSWORD")
+                        ?: System.getenv("KEY_PASSWORD")
+                        ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: localProperties.getProperty("KEY_PASSWORD") ?: "")
+            } else if (hasRealPass) {
+                val ciFile = file("keystore/release.keystore")
+                storeFile = if (ciFile.exists()) ciFile else file("${System.getProperty("user.home")}/.android/debug.keystore")
+                storePassword =
+                    System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                        ?: System.getenv("STORE_PASSWORD")
+                        ?: System.getenv("KEYSTORE_PASSWORD")
+                        ?: (project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String? ?: localProperties.getProperty("STORE_PASSWORD") ?: "")
+                keyAlias =
+                    System.getenv("RELEASE_KEY_ALIAS")
+                        ?: System.getenv("KEY_ALIAS")
+                        ?: (project.findProperty("RELEASE_KEY_ALIAS") as String? ?: localProperties.getProperty("KEY_ALIAS") ?: "jusplayer")
+                keyPassword =
+                    System.getenv("RELEASE_KEY_PASSWORD")
+                        ?: System.getenv("KEY_PASSWORD")
+                        ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: localProperties.getProperty("KEY_PASSWORD") ?: "")
+            } else {
+                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
             }
         }
     }
 
     buildTypes {
         release {
-            if (hasReleaseSigningConfig) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
