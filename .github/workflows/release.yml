@@ -110,10 +110,10 @@ jobs:
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || secrets.KEYSTORE_PASSWORD || 'maxverstappen' }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.STORE_PASSWORD || 'maxverstappen' }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'jusplayer' }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'maxverstappen' }}
+          STORE_PASSWORD: maxverstappen
+          KEYSTORE_PASSWORD: maxverstappen
+          KEY_ALIAS: jusplayer
+          KEY_PASSWORD: maxverstappen
 
       - name: Resolve release output directory
         id: release_dir
