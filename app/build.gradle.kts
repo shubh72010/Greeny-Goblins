@@ -188,20 +188,27 @@ android {
                         ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: localProperties.getProperty("KEY_PASSWORD") ?: "")
             } else if (hasRealPass) {
                 val ciFile = file("keystore/release.keystore")
-                storeFile = if (ciFile.exists()) ciFile else file("${System.getProperty("user.home")}/.android/debug.keystore")
-                storePassword =
-                    System.getenv("RELEASE_KEYSTORE_PASSWORD")
-                        ?: System.getenv("STORE_PASSWORD")
-                        ?: System.getenv("KEYSTORE_PASSWORD")
-                        ?: (project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String? ?: localProperties.getProperty("STORE_PASSWORD") ?: "")
-                keyAlias =
-                    System.getenv("RELEASE_KEY_ALIAS")
-                        ?: System.getenv("KEY_ALIAS")
-                        ?: (project.findProperty("RELEASE_KEY_ALIAS") as String? ?: localProperties.getProperty("KEY_ALIAS") ?: "jusplayer")
-                keyPassword =
-                    System.getenv("RELEASE_KEY_PASSWORD")
-                        ?: System.getenv("KEY_PASSWORD")
-                        ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: localProperties.getProperty("KEY_PASSWORD") ?: "")
+                if (ciFile.exists()) {
+                    storeFile = ciFile
+                    storePassword =
+                        System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                            ?: System.getenv("STORE_PASSWORD")
+                            ?: System.getenv("KEYSTORE_PASSWORD")
+                            ?: (project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String? ?: localProperties.getProperty("STORE_PASSWORD") ?: localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") ?: "")
+                    keyAlias =
+                        System.getenv("RELEASE_KEY_ALIAS")
+                            ?: System.getenv("KEY_ALIAS")
+                            ?: (project.findProperty("RELEASE_KEY_ALIAS") as String? ?: localProperties.getProperty("KEY_ALIAS") ?: "jusplayer")
+                    keyPassword =
+                        System.getenv("RELEASE_KEY_PASSWORD")
+                            ?: System.getenv("KEY_PASSWORD")
+                            ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: localProperties.getProperty("KEY_PASSWORD") ?: "")
+                } else {
+                    storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                    storePassword = "android"
+                    keyAlias = "androiddebugkey"
+                    keyPassword = "android"
+                }
             } else {
                 storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
                 storePassword = "android"
