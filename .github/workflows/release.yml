@@ -176,18 +176,7 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
-      - name: Sign APK (real release keystore - base64 fallback)
-        if: ${{ secrets.KEYSTORE != '' }}
-        uses: ilharp/sign-android-release@v2.0.0
-        with:
-          releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
-          signingKey: ${{ secrets.KEYSTORE }}
-          keyAlias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-          buildToolsVersion: 35.0.0
-      
-      - name: Move and rename APK (require signed — real keystore)
+      - name: Move and rename APK (require signed — real keystore via gradle)
         shell: bash
         run: |
           set -euo pipefail
