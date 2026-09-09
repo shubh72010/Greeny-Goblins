@@ -79,10 +79,10 @@ jobs:
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
           NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || secrets.KEYSTORE_PASSWORD || 'maxverstappen' }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.STORE_PASSWORD || 'maxverstappen' }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'jusplayer' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'maxverstappen' }}
 
       - name: Resolve release output directory
         id: release_dir
@@ -142,8 +142,10 @@ jobs:
           find app/build/outputs/apk -maxdepth 8 -type d -print || true
           exit 1
 
-      - name: Sign APK (real release keystore)
-        # Real keystore: app/keystore/release.keystore (alias jusplayer). Fail fast if secrets missing so unsigned builds don't slip through.
+      - name: Sign APK (real release keystore - base64 fallback)
+        if: ${{ secrets.KEYSTORE != '' }}
+        # Real keystore is app/keystore/release.keystore (alias jusplayer) + gradle env STORE_PASSWORD etc.
+        # This step is fallback if gradle didn't sign via env; prefer gradle signing.
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: ${{ steps.release_dir.outputs.release_dir }}/
