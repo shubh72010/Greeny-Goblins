@@ -69,7 +69,7 @@ jobs:
           fi
 
       - name: Build Release APK
-        run: ./gradlew assembleGmsMobileUniversalRelease
+        run: ./gradlew assembleGmsMobileUniversalRelease --no-configuration-cache
         env:
           PULL_REQUEST: 'false'
           GITHUB_EVENT_NAME: ${{ github.event_name }}
@@ -167,9 +167,11 @@ jobs:
               exit 0
             fi
           fi
-          echo "::error::Release APK not signed with real keystore. Set GitHub secrets: KEYSTORE (base64 of app/keystore/release.keystore), KEY_ALIAS=jusplayer, KEYSTORE_PASSWORD/STORE_PASSWORD=maxverstappen, KEY_PASSWORD=maxverstappen"
+          echo "::error::Release APK not signed - check app/keystore/release.keystore and signing env (STORE_PASSWORD/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD)"
           echo "Unsigned APKs in $RELEASE_DIR:"
           find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" -print || true
+          ls -lh app/keystore/ 2>&1 | head -n 20 || true
+          apksigner verify --verbose "$CANDIDATE" 2>&1 | head -n 20 || true
           exit 1
   
       - name: Upload Signed APK

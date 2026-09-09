@@ -101,7 +101,7 @@ jobs:
           echo "apk_name=app-gms-mobile-universal-release.apk" >> "$GITHUB_OUTPUT"
   
       - name: Build Release + Debug APKs
-        run: ./gradlew assembleGmsMobileUniversalRelease assembleGmsMobileUniversalDebug
+        run: ./gradlew assembleGmsMobileUniversalRelease assembleGmsMobileUniversalDebug --no-configuration-cache
         env:
           PULL_REQUEST: 'false'
           GITHUB_EVENT_NAME: ${{ github.event_name }}
@@ -202,8 +202,10 @@ jobs:
               exit 0
             fi
           fi
-          echo "::error::Release APK not signed with real keystore. Set GitHub secrets: KEYSTORE (base64 of app/keystore/release.keystore), KEY_ALIAS=jusplayer, KEYSTORE_PASSWORD/STORE_PASSWORD=maxverstappen, KEY_PASSWORD=maxverstappen"
+          echo "::error::Release APK not signed - check app/keystore/release.keystore and signing env"
           find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" -print || true
+          ls -lh app/keystore/ 2>&1 | head -n 20 || true
+          apksigner verify --verbose "$CANDIDATE" 2>&1 | head -n 20 || true
           exit 1
 
       - name: Resolve debug output directory
