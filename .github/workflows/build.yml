@@ -401,58 +401,8 @@ jobs:
               echo "::error::VT unexpected HTTP $HTTP_CODE for $LABEL"; cat /tmp/vt_file.json | head -n 40; return 1
             fi
 
-            # Validate and parse - fail on missing stats (P1)
-            python3 << 'PYEOF'
-          import json, sys
-          p = sys.argv[1]; label = sys.argv[2]
-          d = json.load(open('/tmp/vt_result.json'))
-          attrs = d.get('data',{}).get('attributes',{})
-          stats = attrs.get('last_analysis_stats') or attrs.get('stats')
-          if not stats:
-              print(f"::error::VT report for {label} missing last_analysis_stats: {list(attrs.keys())[:10]}")
-              sys.exit(1)
-          # ensure expected keys exist
-          for k in ('malicious','suspicious','undetected','harmless'):
-              if k not in stats:
-                  print(f"::error::VT stats missing key {k} for {label}: {stats}")
-                  sys.exit(1)
-          mal = stats.get('malicious',0); sus = stats.get('suspicious',0)
-          und = stats.get('undetected',0); har = stats.get('harmless',0)
-          total = mal+sus+und+har
-          sha = attrs.get('sha256') or open('/tmp/sha.tmp').read().strip() if False else attrs.get('sha256','')
-          if not sha:
-              import hashlib
-              # not needed - SHA already known
-              sha = "unknown"
-          # Use actual SHA from lookup
-          import pathlib
-          link = f"https://www.virustotal.com/gui/file/{attrs.get('sha256', sha)}/detection"
-          # re-read sha properly
-          sha_real = attrs.get('sha256') or ""
-          if sha_real:
-              link = f"https://www.virustotal.com/gui/file/{sha_real}/detection"
-          if mal==0 and sus==0:
-              summary = f"VirusTotal scan of {label} — clean (0/{total} detections) — [view on VirusTotal]({link})"
-              result = "clean"
-          else:
-              summary = f"VirusTotal scan of {label} — {mal} malicious, {sus} suspicious / {total} — [view on VirusTotal]({link})"
-              result = "detected" if mal>0 else "suspicious"
-          open(p + ".txt",'w').write(summary+"\n")
-          open(p + ".json",'w').write(open('/tmp/vt_result.json').read())
-          print(summary)
-          if result == "detected":
-              print(f"::error::VT flagged {label} as malicious ({mal}/{total})")
-              sys.exit(2)
-          PYEOF
-            _PYSTATUS=$?
-            local py_status=$_PYSTATUS
-            # need to pass args: python script above lost OUT_PREFIX/label due to heredoc - do second pass with explicit
-            # Instead re-run with correct args via separate call
-            # Workaround: above script already handled, check exit code via PIPESTATUS-like
-            # Simpler: re-parse with OUT_PREFIX
-
-            # Actually the above heredoc didn't receive args - redo correctly
-            python3 - "$OUT_PREFIX" "$LABEL" << 'PYEOF2'
+            # Validate and parse - single correct invocation (P1) - pass OUT_PREFIX/LABEL via sys.argv
+            python3 - "$OUT_PREFIX" "$LABEL" << 'PYEOF'
           import json, sys
           out_prefix = sys.argv[1]; label = sys.argv[2]
           d = json.load(open('/tmp/vt_result.json'))
@@ -479,11 +429,11 @@ jobs:
           if result == "detected":
               print(f"::error::VT flagged {label} as malicious ({mal}/{total})")
               sys.exit(2)
-          PYEOF2
-            local py2_status=$?
+          PYEOF
+            local py_status=$?
             cat "$OUT_PREFIX.txt"
-            if [ $py2_status -eq 2 ]; then return 1; fi
-            if [ $py2_status -ne 0 ]; then echo "::error::VT parse failed for $LABEL"; return 1; fi
+            if [ $py_status -eq 2 ]; then return 1; fi
+            if [ $py_status -ne 0 ]; then echo "::error::VT parse failed for $LABEL"; return 1; fi
           }
 
           mkdir -p dist
