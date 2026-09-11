@@ -156,15 +156,26 @@ android {
     signingConfigs {
         create("release") {
             // P0 hardening: release MUST use real keystore, never silently fall back to debug.
-            // Decode RELEASE_KEYSTORE_BASE64 -> app/keystore/release.keystore in CI; fail loudly if missing/creds absent.
+            // Lazy: allow `./gradlew help` / debug builds to configure without keystore.
+            // Hard fail only when a Release task is in the task graph.
             val keystoreFile = file("keystore/release.keystore")
+            val isReleaseTask = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
             if (!keystoreFile.isFile) {
-                throw GradleException(
-                    "Release keystore missing: ${keystoreFile.absolutePath}. " +
-                        "Add GitHub secret RELEASE_KEYSTORE_BASE64 (base64 of keystore) — CI decodes it. " +
-                        "Local: place real keystore at app/keystore/release.keystore. " +
-                        "Refusing to sign release with debug keystore."
-                )
+                if (isReleaseTask) {
+                    throw GradleException(
+                        "Release keystore missing: ${keystoreFile.absolutePath}. " +
+                            "Add GitHub secret RELEASE_KEYSTORE_BASE64 (base64 of keystore) — CI decodes it before any Gradle invocation. " +
+                            "Local: place real keystore at app/keystore/release.keystore. " +
+                            "Refusing to sign release with debug keystore."
+                    )
+                } else {
+                    logger.warn("Release keystore missing (${keystoreFile.path}) — not building Release, using placeholder to allow help/debug.")
+                    storeFile = keystoreFile // placeholder, won't be used unless Release task
+                    storePassword = "missing"
+                    keyAlias = "missing"
+                    keyPassword = "missing"
+                    return@create
+                }
             }
             val storePass: String? =
                 System.getenv("RELEASE_KEYSTORE_PASSWORD")
@@ -187,11 +198,20 @@ android {
                     ?: localProperties.getProperty("RELEASE_KEY_PASSWORD")
                     ?: localProperties.getProperty("KEY_PASSWORD")
             if (storePass.isNullOrBlank() || alias.isNullOrBlank() || keyPass.isNullOrBlank()) {
-                throw GradleException(
-                    "Release keystore present but credentials missing: set RELEASE_KEYSTORE_PASSWORD, " +
-                        "RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD (or aliases STORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD) " +
-                        "via env / Gradle property / local.properties. Found storePass=${if (storePass.isNullOrBlank()) "MISSING" else "***"}, alias=${alias ?: "MISSING"}, keyPass=${if (keyPass.isNullOrBlank()) "MISSING" else "***"}"
-                )
+                if (isReleaseTask) {
+                    throw GradleException(
+                        "Release keystore present but credentials missing: set RELEASE_KEYSTORE_PASSWORD, " +
+                            "RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD (or aliases STORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD) " +
+                            "via env / Gradle property / local.properties. Found storePass=${if (storePass.isNullOrBlank()) "MISSING" else "***"}, alias=${alias ?: "MISSING"}, keyPass=${if (keyPass.isNullOrBlank()) "MISSING" else "***"}"
+                    )
+                } else {
+                    logger.warn("Release keystore creds missing but not building Release — placeholder.")
+                    storeFile = keystoreFile
+                    storePassword = storePass?.ifBlank { "missing" } ?: "missing"
+                    keyAlias = alias?.ifBlank { "missing" } ?: "missing"
+                    keyPassword = keyPass?.ifBlank { "missing" } ?: "missing"
+                    return@create
+                }
             }
             storeFile = keystoreFile
             storePassword = storePass
