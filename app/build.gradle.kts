@@ -155,66 +155,48 @@ android {
 
     signingConfigs {
         create("release") {
-            // JusNotes-style: support CI decoded base64 + local fallback, like https://github.com/shubh72010/JusNotes
-            val hasRealPass =
-                System.getenv("RELEASE_KEYSTORE_PASSWORD") != null ||
-                    project.findProperty("RELEASE_KEYSTORE_PASSWORD") != null ||
-                    System.getenv("STORE_PASSWORD") != null ||
-                    System.getenv("KEYSTORE_PASSWORD") != null ||
-                    localProperties.getProperty("STORE_PASSWORD") != null ||
-                    localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") != null
-            val candidates =
-                listOf(
-                    file("keystore/release.keystore"),
-                    file("release.keystore"),
-                    file("jusnotes-release.jks"),
-                    file("${System.getProperty("user.home")}/.keystores/jusnotes-release.jks"),
+            // P0 hardening: release MUST use real keystore, never silently fall back to debug.
+            // Decode RELEASE_KEYSTORE_BASE64 -> app/keystore/release.keystore in CI; fail loudly if missing/creds absent.
+            val keystoreFile = file("keystore/release.keystore")
+            if (!keystoreFile.isFile) {
+                throw GradleException(
+                    "Release keystore missing: ${keystoreFile.absolutePath}. " +
+                        "Add GitHub secret RELEASE_KEYSTORE_BASE64 (base64 of keystore) — CI decodes it. " +
+                        "Local: place real keystore at app/keystore/release.keystore. " +
+                        "Refusing to sign release with debug keystore."
                 )
-            val real = candidates.firstOrNull { it.exists() }
-            if (hasRealPass && real != null) {
-                storeFile = real
-                storePassword =
-                    System.getenv("RELEASE_KEYSTORE_PASSWORD")
-                        ?: System.getenv("STORE_PASSWORD")
-                        ?: System.getenv("KEYSTORE_PASSWORD")
-                        ?: (project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String? ?: localProperties.getProperty("STORE_PASSWORD") ?: localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") ?: "")
-                keyAlias =
-                    System.getenv("RELEASE_KEY_ALIAS")
-                        ?: System.getenv("KEY_ALIAS")
-                        ?: (project.findProperty("RELEASE_KEY_ALIAS") as String? ?: localProperties.getProperty("KEY_ALIAS") ?: "jusplayer")
-                keyPassword =
-                    System.getenv("RELEASE_KEY_PASSWORD")
-                        ?: System.getenv("KEY_PASSWORD")
-                        ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: localProperties.getProperty("KEY_PASSWORD") ?: "")
-            } else if (hasRealPass) {
-                val ciFile = file("keystore/release.keystore")
-                if (ciFile.exists()) {
-                    storeFile = ciFile
-                    storePassword =
-                        System.getenv("RELEASE_KEYSTORE_PASSWORD")
-                            ?: System.getenv("STORE_PASSWORD")
-                            ?: System.getenv("KEYSTORE_PASSWORD")
-                            ?: (project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String? ?: localProperties.getProperty("STORE_PASSWORD") ?: localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD") ?: "")
-                    keyAlias =
-                        System.getenv("RELEASE_KEY_ALIAS")
-                            ?: System.getenv("KEY_ALIAS")
-                            ?: (project.findProperty("RELEASE_KEY_ALIAS") as String? ?: localProperties.getProperty("KEY_ALIAS") ?: "jusplayer")
-                    keyPassword =
-                        System.getenv("RELEASE_KEY_PASSWORD")
-                            ?: System.getenv("KEY_PASSWORD")
-                            ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String? ?: localProperties.getProperty("KEY_PASSWORD") ?: "")
-                } else {
-                    storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-                    storePassword = "android"
-                    keyAlias = "androiddebugkey"
-                    keyPassword = "android"
-                }
-            } else {
-                storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
             }
+            val storePass: String? =
+                System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                    ?: System.getenv("STORE_PASSWORD")
+                    ?: System.getenv("KEYSTORE_PASSWORD")
+                    ?: (project.findProperty("RELEASE_KEYSTORE_PASSWORD") as String?)
+                    ?: localProperties.getProperty("RELEASE_KEYSTORE_PASSWORD")
+                    ?: localProperties.getProperty("STORE_PASSWORD")
+                    ?: localProperties.getProperty("KEYSTORE_PASSWORD")
+            val alias: String? =
+                System.getenv("RELEASE_KEY_ALIAS")
+                    ?: System.getenv("KEY_ALIAS")
+                    ?: (project.findProperty("RELEASE_KEY_ALIAS") as String?)
+                    ?: localProperties.getProperty("RELEASE_KEY_ALIAS")
+                    ?: localProperties.getProperty("KEY_ALIAS")
+            val keyPass: String? =
+                System.getenv("RELEASE_KEY_PASSWORD")
+                    ?: System.getenv("KEY_PASSWORD")
+                    ?: (project.findProperty("RELEASE_KEY_PASSWORD") as String?)
+                    ?: localProperties.getProperty("RELEASE_KEY_PASSWORD")
+                    ?: localProperties.getProperty("KEY_PASSWORD")
+            if (storePass.isNullOrBlank() || alias.isNullOrBlank() || keyPass.isNullOrBlank()) {
+                throw GradleException(
+                    "Release keystore present but credentials missing: set RELEASE_KEYSTORE_PASSWORD, " +
+                        "RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD (or aliases STORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD) " +
+                        "via env / Gradle property / local.properties. Found storePass=${if (storePass.isNullOrBlank()) "MISSING" else "***"}, alias=${alias ?: "MISSING"}, keyPass=${if (keyPass.isNullOrBlank()) "MISSING" else "***"}"
+                )
+            }
+            storeFile = keystoreFile
+            storePassword = storePass
+            keyAlias = alias
+            keyPassword = keyPass
         }
     }
 

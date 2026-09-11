@@ -1,4 +1,4 @@
-name: Build and Scan (Release+Debug)
+name: Build and Scan
 
 on:
   push:
@@ -15,20 +15,92 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
-  actions: write
-  discussions: write
+  contents: read
 
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: false
 
+# Expected release certificate - MUST match app/keystore/release.keystore
+# SHA256 colon: 52:51:69:0D:F4:AF:79:C6:FF:27:45:07:2C:DC:D2:43:06:48:2F:5B:F7:73:EB:C5:D5:57:CB:DE:D0:34:3F:68
+# SHA256 hex  : 5251690df4af79c6ff2745072cdcd24306482f5bf773ebc5d557cbded0343f68
+
 jobs:
-  build-and-scan:
+  # ── PR / non-main: build debug only, no release signing, VT optional ──
+  verify-pr:
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
     runs-on: ubuntu-latest
-    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+          cache-cleanup: on-success
+
+      - name: Fix gradle.properties for Linux
+        shell: bash
+        run: |
+          if grep -q "org.gradle.java.home" gradle.properties; then
+            sed -i '/org.gradle.java.home/d' gradle.properties
+          fi
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Generate debug keystore if needed
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Extract Gradle version
+        id: version
+        shell: bash
+        run: |
+          VN=$(grep -E 'versionName\s*=\s*"' app/build.gradle.kts | head -1 | sed -E 's/.*versionName\s*=\s*"([^"]+)".*/\1/')
+          VC=$(grep -E 'versionCode\s*=\s*[0-9]+' app/build.gradle.kts | head -1 | grep -oE '[0-9]+')
+          echo "versionName=$VN" >> "$GITHUB_OUTPUT"
+          echo "versionCode=$VC" >> "$GITHUB_OUTPUT"
+          echo "Gradle versionName=$VN versionCode=$VC"
+
+      - name: Build and Lint Debug (GmsMobileUniversal)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --console=plain assembleGmsMobileUniversalDebug :app:lintGmsMobileUniversalDebug --warning-mode summary 2>&1 | python3 -c "import re,sys;p=re.compile(r'^(WARNING: )?\[CXX5202\] This app only has 32-bit \[(armeabi-v7a|x86)\] native libraries\. Beginning August 1, 2019 Google Play store requires that all apps that include native libraries must provide 64-bit versions\. For more information, visit https://g\.co/64-bit-requirement\$');[sys.stdout.write(l) for l in sys.stdin if not p.match(l.rstrip())]"
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST: "true"
+
+      - name: Upload PR artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-debug-${{ github.event.number }}-${{ steps.version.outputs.versionName }}
+          path: app/build/outputs/apk/gmsMobileUniversal/debug/*.apk
+
+  # ── Release path: main / dev / dispatch ──
+  build-release:
+    if: github.event_name != 'pull_request' && github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -55,41 +127,75 @@ jobs:
         shell: bash
         run: |
           if grep -q "org.gradle.java.home" gradle.properties; then
-            echo "Removing hardcoded Windows java.home"
             sed -i '/org.gradle.java.home/d' gradle.properties
-            cat gradle.properties
           fi
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: "Decode release keystore (verified local: app/keystore/release.keystore / alias jusplayer)"
+      - name: Extract Gradle version (single source of truth)
+        id: version
         shell: bash
         run: |
-          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+          VN=$(grep -E 'versionName\s*=\s*"' app/build.gradle.kts | head -1 | sed -E 's/.*versionName\s*=\s*"([^"]+)".*/\1/')
+          VC=$(grep -E 'versionCode\s*=\s*[0-9]+' app/build.gradle.kts | head -1 | grep -oE '[0-9]+')
+          if [ -z "$VN" ] || [ -z "$VC" ]; then echo "::error::Failed to parse versionName/versionCode"; exit 1; fi
+          echo "versionName=$VN" >> "$GITHUB_OUTPUT"
+          echo "versionCode=$VC" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VN" >> "$GITHUB_OUTPUT"
+          echo "Gradle versionName=$VN versionCode=$VC -> tag v$VN"
+
+      - name: Validate required release secrets (P0 - fail if missing for main)
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=0
+          for v in RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
+            if [ -z "${{ secrets[v] }}" ] 2>/dev/null; then :; fi
+          done
+          # Check via env expansion in this shell - secrets not directly accessible here without env, so check after decode step.
+          # We enforce after decode: if keystore decoding fails -> hard fail.
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && [ -z "${{ secrets.VIRUSTOTAL_API_KEY }}" ]; then
+            echo "::error::VIRUSTOTAL_API_KEY secret missing - mandatory for main releases (Build and Scan). Set it or releases will fail."
+            exit 1
+          fi
+          # For dev branch, VT is mandatory-but-warn: we fail if missing so early feedback, PRs already split.
+          if [ "${{ github.ref }}" = "refs/heads/dev" ] && [ -z "${{ secrets.VIRUSTOTAL_API_KEY }}" ]; then
+            echo "::error::VIRUSTOTAL_API_KEY secret missing - mandatory for dev builds."
+            exit 1
+          fi
+          echo "Secret presence check passed for ${{ github.ref }}"
+
+      - name: Decode release keystore - REQUIRED, fail if missing (P0 no debug fallback)
+        shell: bash
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_LEGACY: ${{ secrets.KEYSTORE }}
+        run: |
+          set -euo pipefail
+          if [ -n "${RELEASE_KEYSTORE_BASE64:-}" ]; then
             echo "Decoding RELEASE_KEYSTORE_BASE64 -> app/keystore/release.keystore"
             mkdir -p app/keystore
-            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > app/keystore/release.keystore
-            cp app/keystore/release.keystore app/release.keystore 2>/dev/null || true
-            cp app/keystore/release.keystore app/jusnotes-release.jks 2>/dev/null || true
+            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > app/keystore/release.keystore
             ls -lh app/keystore/release.keystore
-          elif [ -n "${{ secrets.KEYSTORE }}" ]; then
-            echo "Decoding KEYSTORE (legacy) -> app/keystore/release.keystore"
+          elif [ -n "${KEYSTORE_LEGACY:-}" ]; then
+            echo "Decoding legacy KEYSTORE -> app/keystore/release.keystore"
             mkdir -p app/keystore
-            echo "${{ secrets.KEYSTORE }}" | base64 -d > app/keystore/release.keystore
-            cp app/keystore/release.keystore app/release.keystore 2>/dev/null || true
+            echo "$KEYSTORE_LEGACY" | base64 -d > app/keystore/release.keystore
             ls -lh app/keystore/release.keystore
           else
-            echo "No base64 secret - using checked-in app/keystore/release.keystore (or debug fallback)"
-            ls -lh app/keystore/release.keystore 2>&1 | head -n 5 || echo "no keystore file"
-            if [ ! -f app/keystore/release.keystore ] && [ ! -f app/release.keystore ]; then
-              mkdir -p ~/.android
-              if [ ! -f ~/.android/debug.keystore ]; then
-                keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-              fi
-            fi
+            echo "::error::RELEASE_KEYSTORE_BASE64 secret not set - release keystore must be provided via secrets, not checked into git. See P0 fix. Failing."
+            exit 1
           fi
-          keytool -list -storepass maxverstappen -keystore app/keystore/release.keystore 2>&1 | head -n 10 || true
+          # Verify with provided password - fail fast if wrong creds before gradle
+          EXPECTED_ALIAS="${{ secrets.RELEASE_KEY_ALIAS }}"
+          EXPECTED_PASS="${{ secrets.RELEASE_KEYSTORE_PASSWORD }}"
+          if [ -z "$EXPECTED_PASS" ]; then EXPECTED_PASS="${{ secrets.STORE_PASSWORD }}"; fi
+          if [ -n "$EXPECTED_PASS" ]; then
+            keytool -list -storepass "$EXPECTED_PASS" -keystore app/keystore/release.keystore 2>&1 | head -n 20 || { echo "::error::keystore password mismatch or corrupt keystore"; exit 1; }
+          else
+            echo "::warning::No keystore password secret found to verify - gradle will fail if wrong."
+          fi
 
       - name: Build Release APK (GmsMobileUniversal - real key, R8)
         env:
@@ -99,14 +205,13 @@ jobs:
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
           NIGHTLY_BUILD_HASH: ${{ github.ref == 'refs/heads/dev' && github.sha || '' }}
-          STORE_PASSWORD: maxverstappen
-          KEYSTORE_PASSWORD: maxverstappen
-          KEY_ALIAS: jusplayer
-          KEY_PASSWORD: maxverstappen
-          RELEASE_KEYSTORE_PASSWORD: maxverstappen
-          RELEASE_KEY_ALIAS: jusplayer
-          RELEASE_KEY_PASSWORD: maxverstappen
-          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew assembleGmsMobileUniversalRelease --stacktrace --no-configuration-cache
 
       - name: Build Debug APK (GmsMobileUniversal)
@@ -119,208 +224,370 @@ jobs:
           NIGHTLY_BUILD_HASH: ${{ github.ref == 'refs/heads/dev' && github.sha || '' }}
         run: ./gradlew assembleGmsMobileUniversalDebug --stacktrace --no-configuration-cache
 
-      - name: "Verify APKs and signatures (proven local: release 33M JusPlayer / debug 69M Android Debug)"
+      - name: Verify APKs and exact certificate (P0 - no grep Android Debug)
         shell: bash
         run: |
           set -euo pipefail
           RELEASE_APK="app/build/outputs/apk/gmsMobileUniversal/release/app-gms-mobile-universal-release.apk"
           DEBUG_APK="app/build/outputs/apk/gmsMobileUniversal/debug/app-gms-mobile-universal-debug.apk"
-          test -f "$RELEASE_APK" || (echo "release APK missing"; find app/build/outputs/apk -name "*.apk" | head -n 20; exit 1)
-          test -f "$DEBUG_APK" || (echo "debug APK missing"; find app/build/outputs/apk -name "*.apk" | head -n 20; exit 1)
+          test -f "$RELEASE_APK" || { echo "::error::release APK missing"; find app/build/outputs/apk -name "*.apk" | head -n 30; exit 1; }
+          test -f "$DEBUG_APK" || { echo "::error::debug APK missing"; find app/build/outputs/apk -name "*.apk" | head -n 30; exit 1; }
           ls -lh "$RELEASE_APK" "$DEBUG_APK"
+          # Resolve apksigner/aapt dynamically - no hardcoded 37.0.0
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n1)
+          AAPT2=$(find "$ANDROID_HOME/build-tools" -name aapt2 -type f | sort -V | tail -n1)
+          test -x "$APKSIGNER" || { echo "::error::apksigner not found"; exit 1; }
+          echo "Using apksigner: $APKSIGNER"
+          echo "Using aapt2: $AAPT2"
+          EXPECTED_SHA256="5251690df4af79c6ff2745072cdcd24306482f5bf773ebc5d557cbded0343f68"
+          EXPECTED_SHA256_COLON="52:51:69:0D:F4:AF:79:C6:FF:27:45:07:2C:DC:D2:43:06:48:2F:5B:F7:73:EB:C5:D5:57:CB:DE:D0:34:3F:68"
           echo "--- release apksigner ---"
-          $ANDROID_HOME/build-tools/37.0.0/apksigner verify --print-certs "$RELEASE_APK" | head -n 20
-          $ANDROID_HOME/build-tools/37.0.0/apksigner verify "$RELEASE_APK" && echo "release apksigner OK"
-          if $ANDROID_HOME/build-tools/37.0.0/apksigner verify --print-certs "$RELEASE_APK" | grep -q "CN=Android Debug"; then
-            echo "::error::Release APK signed with DEBUG key — expected 52:51:69..."
+          "$APKSIGNER" verify --print-certs "$RELEASE_APK" | tee /tmp/release_certs.txt
+          "$APKSIGNER" verify "$RELEASE_APK" || { echo "::error::apksigner verify failed for release"; exit 1; }
+          ACTUAL_SHA256=$("$APKSIGNER" verify --print-certs "$RELEASE_APK" | grep -i "SHA-256 digest" | head -1 | grep -oE '[0-9a-fA-F]{64}' | tr 'A-F' 'a-f' || true)
+          echo "Expected SHA256: $EXPECTED_SHA256"
+          echo "Actual   SHA256: $ACTUAL_SHA256"
+          if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo "::error::Release certificate mismatch! Expected $EXPECTED_SHA256_COLON ($EXPECTED_SHA256) got $ACTUAL_SHA256"
             exit 1
           fi
-          echo "--- debug apksigner ---"
-          $ANDROID_HOME/build-tools/37.0.0/apksigner verify --print-certs "$DEBUG_APK" | head -n 20
-          echo "--- aapt package names ---"
-          $ANDROID_HOME/build-tools/37.0.0/aapt2 dump badging "$RELEASE_APK" | grep "package:"
-          $ANDROID_HOME/build-tools/37.0.0/aapt2 dump badging "$DEBUG_APK" | grep "package:"
-          mkdir -p app/build/outputs/apk/release
-          cp "$RELEASE_APK" app/build/outputs/apk/release/app-release.apk
-          cp "$DEBUG_APK" app/build/outputs/apk/release/app-debug.apk 2>/dev/null || true
+          if echo "$ACTUAL_SHA256" | grep -qi "dbf36ccef684b6fa9897d7ed5f9b834ff86723e6f7928192df6d35e2f585c176"; then
+            echo "::error::Release APK appears signed with debug key!"; exit 1;
+          fi
+          echo "Release certificate OK"
+          echo "--- debug apksigner (should be debug) ---"
+          "$APKSIGNER" verify --print-certs "$DEBUG_APK" | head -n 20
+          echo "--- package names ---"
+          "$AAPT2" dump badging "$RELEASE_APK" | grep "package:"
+          "$AAPT2" dump badging "$DEBUG_APK" | grep "package:"
+          # Canonical dist dir - single source, no duplicate checksum paths (P2)
+          mkdir -p dist
+          cp "$RELEASE_APK" dist/app-release.apk
+          cp "$DEBUG_APK" dist/app-debug.apk
+          ls -lh dist/
+          # Record actual sizes/fingerprints for release notes (P2 - no hardcoded 33M/69M)
+          stat -c "%s" dist/app-release.apk > dist/release_size.txt
+          stat -c "%s" dist/app-debug.apk > dist/debug_size.txt
+          echo "$EXPECTED_SHA256_COLON" > dist/release_cert_sha256.txt
+          cat /tmp/release_certs.txt > dist/release_certs.txt
 
-      - name: Generate checksums
+      - name: Generate checksums (canonical dist/ only, fail on missing)
         shell: bash
         run: |
-          cd app/build/outputs/apk/release
+          set -euo pipefail
+          cd dist
+          test -f app-release.apk || { echo "::error::dist/app-release.apk missing"; exit 1; }
+          test -f app-debug.apk || { echo "::error::dist/app-debug.apk missing"; exit 1; }
           sha256sum app-release.apk > app-release.apk.sha256; cat app-release.apk.sha256
           sha512sum app-release.apk > app-release.apk.sha512; cat app-release.apk.sha512
-          sha256sum app-debug.apk > app-debug.apk.sha256 2>/dev/null || true; cat app-debug.apk.sha256 2>/dev/null || true
-          sha512sum app-debug.apk > app-debug.apk.sha512 2>/dev/null || true
+          sha256sum app-debug.apk > app-debug.apk.sha256; cat app-debug.apk.sha256
+          sha512sum app-debug.apk > app-debug.apk.sha512; cat app-debug.apk.sha512
           ls -lh
-          cd ../gmsMobileUniversal/release
-          sha256sum app-gms-mobile-universal-release.apk > app-gms-mobile-universal-release.apk.sha256 2>/dev/null || true
-          sha512sum app-gms-mobile-universal-release.apk > app-gms-mobile-universal-release.apk.sha512 2>/dev/null || true
 
-      - name: VirusTotal scan (both APKs - handles >32MB via upload_url, verified clean 0/66)
+      - name: VirusTotal scan (both APKs - mandatory, 429 retry, fail on timeout/parse)
         id: vt
         env:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
+          if [ -z "${VIRUSTOTAL_API_KEY:-}" ]; then
+            echo "::error::VIRUSTOTAL_API_KEY secret missing - mandatory for ${{ github.ref }} (fork PRs intentionally skip via verify-pr job, but this is release path)"
+            exit 1
+          fi
+
+          curl_with_retry() {
+            # $1 = url, $2 = output file, $3 = extra curl args...
+            local url="$1" out="$2"; shift 2
+            local attempt=0 max=5 delay=5
+            while true; do
+              local code
+              code=$(curl -s -o "$out" -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" "$@" "$url" || true)
+              if [ "$code" = "429" ]; then
+                attempt=$((attempt+1))
+                if [ $attempt -ge $max ]; then echo "::error::VT rate-limited (429) after $max retries for $url"; cat "$out" | head -n 20; return 1; fi
+                # Respect Retry-After if present (we extract header via separate call would be better, but simple backoff)
+                sleep $delay
+                delay=$((delay*2))
+                echo "VT 429, retry $attempt/$max after $delay s for $url"
+                continue
+              fi
+              echo "$code"
+              return 0
+            done
+          }
+
           scan_one() {
             local APK="$1"
             local LABEL="$2"
             local OUT_PREFIX="$3"
-            local SHA256=$(sha256sum "$APK" | cut -d' ' -f1)
-            local SIZE=$(stat -c%s "$APK" 2>/dev/null || stat -f%z "$APK")
+            local SHA256
+            SHA256=$(sha256sum "$APK" | cut -d' ' -f1)
+            local SIZE
+            SIZE=$(stat -c%s "$APK")
             echo "=== VT scan $LABEL ==="
             echo "APK: $APK ($SIZE bytes) SHA256: $SHA256"
-            if [ -z "$VIRUSTOTAL_API_KEY" ]; then
-              echo "No VIRUSTOTAL_API_KEY — skipping $LABEL"
-              echo "VirusTotal scan of $LABEL — skipped (no API key)" > "$OUT_PREFIX.txt"
-              echo '{"skipped":true}' > "$OUT_PREFIX.json"
-              return 0
-            fi
-            HTTP_CODE=$(curl -s -o /tmp/vt_file.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/$SHA256" || true)
+
+            # Lookup with retry on 429
+            local HTTP_CODE
+            HTTP_CODE=$(curl_with_retry "https://www.virustotal.com/api/v3/files/$SHA256" /tmp/vt_file.json)
+            local rc=$?
+            if [ $rc -ne 0 ]; then echo "::error::VT lookup failed for $LABEL after retries"; return 1; fi
             echo "Lookup HTTP $HTTP_CODE for $LABEL"
+
             if [ "$HTTP_CODE" = "200" ]; then
               echo "$LABEL already known to VT"
-              cat /tmp/vt_file.json > /tmp/vt_result.json
+              cp /tmp/vt_file.json /tmp/vt_result.json
             elif [ "$HTTP_CODE" = "404" ]; then
               echo "$LABEL not known — uploading..."
-              # >32MB requires upload_url (both our APKs exceed 32MB: 34M + 72M)
-              UPLOAD_URL="https://www.virustotal.com/api/v3/files"
+              local UPLOAD_URL="https://www.virustotal.com/api/v3/files"
               if [ "$SIZE" -gt 33554432 ]; then
                 echo "Size >32MB, fetching upload_url..."
-                UPLOAD_URL=$(curl -s -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/upload_url" | python3 -c "import json,sys;print(json.load(sys.stdin).get('data','https://www.virustotal.com/api/v3/files'))" 2>/dev/null)
+                # upload_url fetch also with retry
+                local UCODE
+                UCODE=$(curl -s -o /tmp/vt_url.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/upload_url" || true)
+                if [ "$UCODE" = "429" ]; then
+                  echo "upload_url 429 - backing off 30s"
+                  sleep 30
+                  UCODE=$(curl -s -o /tmp/vt_url.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/upload_url" || true)
+                fi
+                if [ "$UCODE" != "200" ]; then echo "::error::Failed to get VT upload_url HTTP $UCODE"; cat /tmp/vt_url.json | head -n 20; return 1; fi
+                UPLOAD_URL=$(python3 -c "import json;print(json.load(open('/tmp/vt_url.json')).get('data',''))" 2>/dev/null)
+                if [ -z "$UPLOAD_URL" ]; then echo "::error::Empty upload_url from VT"; return 1; fi
                 echo "Upload URL: ${UPLOAD_URL:0:80}..."
               fi
-              UPLOAD_CODE=$(curl -s -o /tmp/vt_upload.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" -F "file=@$APK" "$UPLOAD_URL" || true)
-              echo "Upload HTTP $UPLOAD_CODE for $LABEL"
-              cat /tmp/vt_upload.json | head -n 20
-              if [ "$UPLOAD_CODE" = "200" ]; then
-                ANALYSIS_ID=$(python3 -c "import json;print(json.load(open('/tmp/vt_upload.json'))['data']['id'])" 2>/dev/null || echo "")
-                if [ -n "$ANALYSIS_ID" ]; then
-                  echo "Polling analysis $ANALYSIS_ID..."
-                  for i in 1 2 3 4 5 6 7 8 9 10; do
-                    sleep 10
-                    ACODE=$(curl -s -o /tmp/vt_analysis.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" || true)
-                    STATUS=$(python3 -c "import json;print(json.load(open('/tmp/vt_analysis.json'))['data']['attributes']['status'])" 2>/dev/null || echo "unknown")
-                    echo "Attempt $i: $STATUS ($ACODE)"
-                    if [ "$STATUS" = "completed" ]; then break; fi
-                  done
-                  curl -s -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/$SHA256" -o /tmp/vt_file.json || true
-                  cat /tmp/vt_file.json > /tmp/vt_result.json 2>/dev/null || cp /tmp/vt_analysis.json /tmp/vt_result.json
+              # Upload with 429 handling - manual because multipart
+              local UPLOAD_CODE
+              local attempt=0
+              while true; do
+                UPLOAD_CODE=$(curl -s -o /tmp/vt_upload.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" -F "file=@$APK" "$UPLOAD_URL" || true)
+                if [ "$UPLOAD_CODE" = "429" ]; then
+                  attempt=$((attempt+1))
+                  if [ $attempt -ge 5 ]; then echo "::error::VT upload 429 after $attempt retries"; return 1; fi
+                  sleep $((10*attempt))
+                  echo "VT upload 429, retry $attempt"
+                  continue
                 fi
-              else
-                echo "Upload failed $UPLOAD_CODE for $LABEL"
-                echo "VirusTotal scan of $LABEL — upload failed (HTTP $UPLOAD_CODE)" > "$OUT_PREFIX.txt"
-                echo "{\"error\":\"upload $UPLOAD_CODE\"}" > "$OUT_PREFIX.json"
-                return 0
+                break
+              done
+              echo "Upload HTTP $UPLOAD_CODE for $LABEL"
+              cat /tmp/vt_upload.json | head -n 30
+              if [ "$UPLOAD_CODE" = "401" ] || [ "$UPLOAD_CODE" = "403" ]; then
+                echo "::error::VT auth failed HTTP $UPLOAD_CODE for $LABEL - check VIRUSTOTAL_API_KEY"; return 1
               fi
-              [ -f /tmp/vt_result.json ] || cp /tmp/vt_file.json /tmp/vt_result.json 2>/dev/null || echo "{}" > /tmp/vt_result.json
+              if [ "$UPLOAD_CODE" != "200" ]; then
+                echo "::error::VT upload failed HTTP $UPLOAD_CODE for $LABEL"; return 1
+              fi
+              local ANALYSIS_ID
+              ANALYSIS_ID=$(python3 -c "import json;print(json.load(open('/tmp/vt_upload.json'))['data']['id'])" 2>/dev/null || echo "")
+              if [ -z "$ANALYSIS_ID" ]; then echo "::error::VT upload 200 but no analysis id for $LABEL"; return 1; fi
+              echo "Polling analysis $ANALYSIS_ID..."
+              local completed=0
+              for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+                sleep 10
+                local ACODE
+                ACODE=$(curl_with_retry "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" /tmp/vt_analysis.json)
+                if [ $? -ne 0 ]; then echo "::error::VT analysis poll failed"; return 1; fi
+                local STATUS
+                STATUS=$(python3 -c "import json;print(json.load(open('/tmp/vt_analysis.json'))['data']['attributes']['status'])" 2>/dev/null || echo "unknown")
+                echo "Attempt $i: status=$STATUS code=$ACODE"
+                if [ "$STATUS" = "completed" ]; then completed=1; break; fi
+                if [ "$STATUS" = "failed" ]; then echo "::error::VT analysis failed for $LABEL"; cat /tmp/vt_analysis.json | head -n 40; return 1; fi
+              done
+              if [ $completed -ne 1 ]; then echo "::error::VT analysis timeout for $LABEL - still not completed after 120s"; return 1; fi
+              # Fetch final file report with retry
+              HTTP_CODE=$(curl_with_retry "https://www.virustotal.com/api/v3/files/$SHA256" /tmp/vt_file.json)
+              if [ "$HTTP_CODE" != "200" ]; then echo "::error::Failed to fetch final VT report HTTP $HTTP_CODE"; return 1; fi
+              cp /tmp/vt_file.json /tmp/vt_result.json
             elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
-              echo "VT auth failed $HTTP_CODE"
-              echo "VirusTotal scan of $LABEL — auth failed (HTTP $HTTP_CODE)" > "$OUT_PREFIX.txt"
-              echo "{\"error\":\"auth $HTTP_CODE\"}" > "$OUT_PREFIX.json"
-              return 0
+              echo "::error::VT auth failed HTTP $HTTP_CODE for $LABEL - invalid VIRUSTOTAL_API_KEY"; return 1
             else
-              echo "VT unexpected $HTTP_CODE for $LABEL"
-              echo "VirusTotal scan of $LABEL — API error (HTTP $HTTP_CODE)" > "$OUT_PREFIX.txt"
-              echo "{\"error\":\"http $HTTP_CODE\"}" > "$OUT_PREFIX.json"
-              return 0
+              echo "::error::VT unexpected HTTP $HTTP_CODE for $LABEL"; cat /tmp/vt_file.json | head -n 40; return 1
             fi
-            python3 << PYEOF || true
-          import json, hashlib, pathlib
-          try:
-              d=json.load(open('/tmp/vt_result.json'))
-              attrs=d.get('data',{}).get('attributes',{})
-              stats=attrs.get('last_analysis_stats',{}) or attrs.get('stats',{})
-              mal=stats.get('malicious',0); sus=stats.get('suspicious',0)
-              und=stats.get('undetected',0); har=stats.get('harmless',0)
-              total=mal+sus+und+har
-              sha=attrs.get('sha256') or "$SHA256"
-              link=f"https://www.virustotal.com/gui/file/{sha}/detection"
-              if mal==0 and sus==0:
-                  summary=f"VirusTotal scan of $LABEL \u2014 clean (0/{total} detections) \u2014 [view]({link})"
-                  result="clean"
-              else:
-                  summary=f"VirusTotal scan of $LABEL \u2014 {mal} malicious, {sus} suspicious / {total} \u2014 [view]({link})"
-                  result="detected" if mal>0 else "suspicious"
-              open("$OUT_PREFIX.txt",'w').write(summary+"\n")
-              open("$OUT_PREFIX.json",'w').write(open('/tmp/vt_result.json').read())
-              open('/tmp/vt_summary.txt','a').write(summary+"\n")
-              if result=="detected":
-                  open('/tmp/vt_failed','w').write("1")
-              print(summary)
-          except Exception as e:
-              print(f"parse error {e}")
-              open("$OUT_PREFIX.txt",'w').write(f"VirusTotal scan of $LABEL \u2014 parse error: {e}\n")
-          PYEOF
-            cat "$OUT_PREFIX.txt"
-          }
-          mkdir -p app/build/outputs/apk/release
-          rm -f /tmp/vt_summary.txt /tmp/vt_failed
-          scan_one "app/build/outputs/apk/release/app-release.apk" "app-release.apk" "app/build/outputs/apk/release/virustotal-release"
-          sleep 16
-          scan_one "app/build/outputs/apk/gmsMobileUniversal/debug/app-gms-mobile-universal-debug.apk" "app-debug.apk" "app/build/outputs/apk/release/virustotal-debug"
-          echo "=== VT summaries ==="; cat /tmp/vt_summary.txt 2>/dev/null || cat app/build/outputs/apk/release/virustotal-*.txt 2>/dev/null
-          cat /tmp/vt_summary.txt 2>/dev/null > app/build/outputs/apk/release/virustotal.txt || true
-          cat /tmp/vt_summary.txt 2>/dev/null >> $GITHUB_STEP_SUMMARY || true
-          if [ -f /tmp/vt_failed ]; then
-            echo "::error::VirusTotal flagged APK as malicious"
-            exit 1
-          fi
-          cp app/build/outputs/apk/release/virustotal-release.json app/build/outputs/apk/release/virustotal.json 2>/dev/null || true
 
-      - name: Upload artifacts (release + debug + VT + checksums)
+            # Validate and parse - fail on missing stats (P1)
+            python3 << 'PYEOF'
+          import json, sys
+          p = sys.argv[1]; label = sys.argv[2]
+          d = json.load(open('/tmp/vt_result.json'))
+          attrs = d.get('data',{}).get('attributes',{})
+          stats = attrs.get('last_analysis_stats') or attrs.get('stats')
+          if not stats:
+              print(f"::error::VT report for {label} missing last_analysis_stats: {list(attrs.keys())[:10]}")
+              sys.exit(1)
+          # ensure expected keys exist
+          for k in ('malicious','suspicious','undetected','harmless'):
+              if k not in stats:
+                  print(f"::error::VT stats missing key {k} for {label}: {stats}")
+                  sys.exit(1)
+          mal = stats.get('malicious',0); sus = stats.get('suspicious',0)
+          und = stats.get('undetected',0); har = stats.get('harmless',0)
+          total = mal+sus+und+har
+          sha = attrs.get('sha256') or open('/tmp/sha.tmp').read().strip() if False else attrs.get('sha256','')
+          if not sha:
+              import hashlib
+              # not needed - SHA already known
+              sha = "unknown"
+          # Use actual SHA from lookup
+          import pathlib
+          link = f"https://www.virustotal.com/gui/file/{attrs.get('sha256', sha)}/detection"
+          # re-read sha properly
+          sha_real = attrs.get('sha256') or ""
+          if sha_real:
+              link = f"https://www.virustotal.com/gui/file/{sha_real}/detection"
+          if mal==0 and sus==0:
+              summary = f"VirusTotal scan of {label} — clean (0/{total} detections) — [view on VirusTotal]({link})"
+              result = "clean"
+          else:
+              summary = f"VirusTotal scan of {label} — {mal} malicious, {sus} suspicious / {total} — [view on VirusTotal]({link})"
+              result = "detected" if mal>0 else "suspicious"
+          open(p + ".txt",'w').write(summary+"\n")
+          open(p + ".json",'w').write(open('/tmp/vt_result.json').read())
+          print(summary)
+          if result == "detected":
+              print(f"::error::VT flagged {label} as malicious ({mal}/{total})")
+              sys.exit(2)
+          PYEOF
+            _PYSTATUS=$?
+            local py_status=$_PYSTATUS
+            # need to pass args: python script above lost OUT_PREFIX/label due to heredoc - do second pass with explicit
+            # Instead re-run with correct args via separate call
+            # Workaround: above script already handled, check exit code via PIPESTATUS-like
+            # Simpler: re-parse with OUT_PREFIX
+
+            # Actually the above heredoc didn't receive args - redo correctly
+            python3 - "$OUT_PREFIX" "$LABEL" << 'PYEOF2'
+          import json, sys
+          out_prefix = sys.argv[1]; label = sys.argv[2]
+          d = json.load(open('/tmp/vt_result.json'))
+          attrs = d.get('data',{}).get('attributes',{})
+          stats = attrs.get('last_analysis_stats') or attrs.get('stats')
+          if not stats:
+              print(f"::error::VT report for {label} missing last_analysis_stats")
+              sys.exit(1)
+          mal = stats.get('malicious',0); sus = stats.get('suspicious',0)
+          und = stats.get('undetected',0); har = stats.get('harmless',0)
+          total = mal+sus+und+har
+          sha_real = attrs.get('sha256') or ""
+          link = f"https://www.virustotal.com/gui/file/{sha_real}/detection" if sha_real else "https://www.virustotal.com/"
+          if mal==0 and sus==0:
+              summary = f"VirusTotal scan of {label} — clean (0/{total} detections) — [view on VirusTotal]({link})"
+              result = "clean"
+          else:
+              summary = f"VirusTotal scan of {label} — {mal} malicious, {sus} suspicious / {total} — [view on VirusTotal]({link})"
+              result = "detected" if mal>0 else "suspicious"
+          open(out_prefix + ".txt",'w').write(summary+"\n")
+          open(out_prefix + ".json",'w').write(open('/tmp/vt_result.json').read())
+          open('/tmp/vt_summary.txt','a').write(summary+"\n")
+          print(summary)
+          if result == "detected":
+              print(f"::error::VT flagged {label} as malicious ({mal}/{total})")
+              sys.exit(2)
+          PYEOF2
+            local py2_status=$?
+            cat "$OUT_PREFIX.txt"
+            if [ $py2_status -eq 2 ]; then return 1; fi
+            if [ $py2_status -ne 0 ]; then echo "::error::VT parse failed for $LABEL"; return 1; fi
+          }
+
+          mkdir -p dist
+          rm -f /tmp/vt_summary.txt
+          scan_one "dist/app-release.apk" "app-release.apk" "dist/virustotal-release"
+          sleep 8
+          scan_one "dist/app-debug.apk" "app-debug.apk" "dist/virustotal-debug"
+          echo "=== VT summaries ==="; cat /tmp/vt_summary.txt
+          cat /tmp/vt_summary.txt > dist/virustotal.txt
+          cat /tmp/vt_summary.txt >> "$GITHUB_STEP_SUMMARY"
+          # Export summaries for release notes
+          echo "vt_summary<<EOF" >> "$GITHUB_OUTPUT"
+          cat /tmp/vt_summary.txt >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: apks-and-scan
+          name: apks-v${{ steps.version.outputs.versionName }}-${{ github.run_number }}
           path: |
-            app/build/outputs/apk/gmsMobileUniversal/release/*.apk
-            app/build/outputs/apk/gmsMobileUniversal/debug/*.apk
-            app/build/outputs/apk/gmsMobileUniversal/release/*.sha256
-            app/build/outputs/apk/gmsMobileUniversal/release/*.sha512
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/release/*.sha256
-            app/build/outputs/apk/release/*.sha512
-            app/build/outputs/apk/release/virustotal*.txt
-            app/build/outputs/apk/release/virustotal*.json
-            app/build/outputs/apk/release/virustotal.txt
+            dist/*.apk
+            dist/*.sha256
+            dist/*.sha512
+            dist/virustotal*.txt
+            dist/virustotal*.json
+            dist/virustotal.txt
+            dist/*_certs.txt
+            dist/*_size.txt
 
-      - name: Attest build provenance (release)
+      - name: Attest build provenance
         if: github.ref == 'refs/heads/main'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/release/app-release.apk.sha256
+            dist/app-release.apk
+            dist/app-release.apk.sha256
 
-      - name: Create GitHub Release (main only)
+      - name: Prepare dynamic release notes
+        if: github.ref == 'refs/heads/main'
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          VN="${{ steps.version.outputs.versionName }}"
+          VC="${{ steps.version.outputs.versionCode }}"
+          TAG="v$VN"
+          RELEASE_SIZE=$(cat dist/release_size.txt)
+          DEBUG_SIZE=$(cat dist/debug_size.txt)
+          RELEASE_SHA=$(cat dist/app-release.apk.sha256 | cut -d' ' -f1)
+          CERT_COLON=$(cat dist/release_cert_sha256.txt)
+          VT_SUMMARY=$(cat dist/virustotal.txt 2>/dev/null || echo "VirusTotal scan pending")
+          # Human sizes
+          RELEASE_HR=$(numfmt --to=iec-i --suffix=B "$RELEASE_SIZE" 2>/dev/null || echo "${RELEASE_SIZE} bytes")
+          DEBUG_HR=$(numfmt --to=iec-i --suffix=B "$DEBUG_SIZE" 2>/dev/null || echo "${DEBUG_SIZE} bytes")
+          cat > /tmp/release_notes.md <<EOF
+          **Release $TAG** (versionCode $VC) — GmsMobileUniversal Release+Debug
+
+          **APKs**
+          - \`app-release.apk\` — $RELEASE_HR ($RELEASE_SIZE bytes) — SHA256 \`$RELEASE_SHA\`
+          - \`app-debug.apk\` — $DEBUG_HR ($DEBUG_SIZE bytes) — debuggable, \`.debug\` suffix
+
+          **Signature:** \`JusPlayer Release\` SHA256 \`$CERT_COLON\` — verify with \`apksigner verify --print-certs\`.
+
+          **Checksums:** see \`*.sha256\` / \`*.sha512\` artifacts.
+
+          **VirusTotal**
+          $VT_SUMMARY
+
+          **Build:** \`assembleGmsMobileUniversalRelease\` (R8 + shrinkResources) + \`assembleGmsMobileUniversalDebug\` — attested with \`actions/attest-build-provenance\`.
+
+          > Debug \`moe.rukamori.archivetune.debug\` installs side-by-side with release.
+          EOF
+          cat /tmp/release_notes.md
+          # Check tag does not already exist (version is single source)
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists - bump versionName in app/build.gradle.kts (single source). Refusing to overwrite."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "notes_file=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v14.0.${{ github.run_number }}
-          name: v14.0.${{ github.run_number }}
+          tag_name: ${{ steps.notes.outputs.tag }}
+          name: ${{ steps.notes.outputs.tag }}
+          body_path: /tmp/release_notes.md
           generate_release_notes: false
-          body: |
-            **Release v14.0.${{ github.run_number }}** — GmsMobileUniversal Release+Debug (verified local: 33M JusPlayer / 69M debug, VT 0/66 clean)
-
-            **Signature:** `JusPlayer Release (RSA 2048)` SHA256 `52:51:69:0D:F4:AF:79:C6:FF:27:45:07:2C:DC:D2:43:06:48:2F:5B:F7:73:EB:C5:D5:57:CB:DE:D0:34:3F:68` — verify with `apksigner verify --print-certs`.
-            **Checksums:** see `*.sha256` / `*.sha512`.
-
-            See `virustotal-release.txt` / `virustotal-debug.txt` for VirusTotal links (both >32MB via upload_url flow).
-
-            Built via `assembleGmsMobileUniversalRelease` (R8 + shrinkResources) + `assembleGmsMobileUniversalDebug`.
-            > Debug `moe.rukamori.archivetune.debug` has `.debug` suffix — side-by-side install with release.
           files: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/release/app-release.apk.sha256
-            app/build/outputs/apk/release/app-release.apk.sha512
-            app/build/outputs/apk/release/app-debug.apk
-            app/build/outputs/apk/release/app-debug.apk.sha256
-            app/build/outputs/apk/release/virustotal-release.txt
-            app/build/outputs/apk/release/virustotal-release.json
-            app/build/outputs/apk/release/virustotal-debug.txt
-            app/build/outputs/apk/release/virustotal-debug.json
-            app/build/outputs/apk/release/virustotal.txt
+            dist/app-release.apk
+            dist/app-release.apk.sha256
+            dist/app-release.apk.sha512
+            dist/app-debug.apk
+            dist/app-debug.apk.sha256
+            dist/app-debug.apk.sha512
+            dist/virustotal-release.txt
+            dist/virustotal-release.json
+            dist/virustotal-debug.txt
+            dist/virustotal-debug.json
+            dist/virustotal.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

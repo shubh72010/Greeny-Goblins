@@ -118,3 +118,7 @@ core.*
 /.codexignore
 /trace_processor
 .env
+app/keystore/release.keystore
+app/release.keystore
+jusnotes-release.jks
+app/jusnotes-release.jks
