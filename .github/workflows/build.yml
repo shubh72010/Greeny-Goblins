@@ -149,21 +149,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          missing=0
-          for v in RELEASE_KEYSTORE_BASE64 RELEASE_KEYSTORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
-            if [ -z "${{ secrets[v] }}" ] 2>/dev/null; then :; fi
-          done
-          # Check via env expansion in this shell - secrets not directly accessible here without env, so check after decode step.
-          # We enforce after decode: if keystore decoding fails -> hard fail.
+          # PRs use verify-pr job and don't need these; this job is release path only.
+          # We check VIRUSTOTAL_API_KEY mandatory for main/dev - fail fast.
           if [ "${{ github.ref }}" = "refs/heads/main" ] && [ -z "${{ secrets.VIRUSTOTAL_API_KEY }}" ]; then
             echo "::error::VIRUSTOTAL_API_KEY secret missing - mandatory for main releases (Build and Scan). Set it or releases will fail."
             exit 1
           fi
-          # For dev branch, VT is mandatory-but-warn: we fail if missing so early feedback, PRs already split.
           if [ "${{ github.ref }}" = "refs/heads/dev" ] && [ -z "${{ secrets.VIRUSTOTAL_API_KEY }}" ]; then
             echo "::error::VIRUSTOTAL_API_KEY secret missing - mandatory for dev builds."
             exit 1
           fi
+          # Keystore secret check is done in next step (Decode) which fails hard if missing.
           echo "Secret presence check passed for ${{ github.ref }}"
 
       - name: Decode release keystore - REQUIRED, fail if missing (P0 no debug fallback)
