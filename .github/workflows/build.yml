@@ -377,20 +377,20 @@ jobs:
               local ANALYSIS_ID
               ANALYSIS_ID=$(python3 -c "import json;print(json.load(open('/tmp/vt_upload.json'))['data']['id'])" 2>/dev/null || echo "")
               if [ -z "$ANALYSIS_ID" ]; then echo "::error::VT upload 200 but no analysis id for $LABEL"; return 1; fi
-              echo "Polling analysis $ANALYSIS_ID..."
+              echo "Polling analysis $ANALYSIS_ID... (timeout 600s / 10m)"
               local completed=0
-              for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              for i in $(seq 1 60); do
                 sleep 10
                 local ACODE
                 ACODE=$(curl_with_retry "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" /tmp/vt_analysis.json)
                 if [ $? -ne 0 ]; then echo "::error::VT analysis poll failed"; return 1; fi
                 local STATUS
                 STATUS=$(python3 -c "import json;print(json.load(open('/tmp/vt_analysis.json'))['data']['attributes']['status'])" 2>/dev/null || echo "unknown")
-                echo "Attempt $i: status=$STATUS code=$ACODE"
+                echo "Attempt $i/60: status=$STATUS code=$ACODE"
                 if [ "$STATUS" = "completed" ]; then completed=1; break; fi
                 if [ "$STATUS" = "failed" ]; then echo "::error::VT analysis failed for $LABEL"; cat /tmp/vt_analysis.json | head -n 40; return 1; fi
               done
-              if [ $completed -ne 1 ]; then echo "::error::VT analysis timeout for $LABEL - still not completed after 120s"; return 1; fi
+              if [ $completed -ne 1 ]; then echo "::error::VT analysis timeout for $LABEL - still not completed after 600s (10m)"; return 1; fi
               # Fetch final file report with retry
               HTTP_CODE=$(curl_with_retry "https://www.virustotal.com/api/v3/files/$SHA256" /tmp/vt_file.json)
               if [ "$HTTP_CODE" != "200" ]; then echo "::error::Failed to fetch final VT report HTTP $HTTP_CODE"; return 1; fi
