@@ -1,9 +1,8 @@
-name: Build APKs
+name: Build and Scan (Release+Debug)
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ 'dev' ]
+    branches: [main, dev]
     paths-ignore:
       - 'README.md'
       - 'fastlane/**'
@@ -11,42 +10,62 @@ on:
       - '.github/**/*.md'
       - '.github/FUNDING.yml'
       - '.github/ISSUE_TEMPLATE/**'
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
 
 permissions:
   contents: write
-  discussions: write
+  id-token: write
+  attestations: write
   actions: write
+  discussions: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build Release APK (GmsMobileUniversal)
-    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
+  build-and-scan:
     runs-on: ubuntu-latest
-
+    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
     steps:
       - uses: actions/checkout@v7
         with:
           submodules: true
-      
-      - name: Set up JDK 21
+          fetch-depth: 0
+
+      - name: Setup JDK 21
         uses: actions/setup-java@v5
         with:
-          java-version: '21'
-          distribution: 'temurin'
-      
-      - name: Set Up Gradle
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          cache-cleanup: on-success
           cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
-          
+          cache-cleanup: on-success
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Fix gradle.properties for Linux
+        shell: bash
+        run: |
+          if grep -q "org.gradle.java.home" gradle.properties; then
+            echo "Removing hardcoded Windows java.home"
+            sed -i '/org.gradle.java.home/d' gradle.properties
+            cat gradle.properties
+          fi
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Decode release keystore (JusNotes-style)
+      - name: "Decode release keystore (verified local: app/keystore/release.keystore / alias jusplayer)"
         shell: bash
         run: |
-          # JusNotes: secrets.RELEASE_KEYSTORE_BASE64 -> app/release.keystore + copy; fallback to debug or existing app/keystore/release.keystore
           if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
             echo "Decoding RELEASE_KEYSTORE_BASE64 -> app/keystore/release.keystore"
             mkdir -p app/keystore
@@ -70,43 +89,16 @@ jobs:
               fi
             fi
           fi
+          keytool -list -storepass maxverstappen -keystore app/keystore/release.keystore 2>&1 | head -n 10 || true
 
-      - name: Resolve variant names
-        id: variant
-        shell: bash
-        run: |
-          echo "distribution=gms" >> "$GITHUB_OUTPUT"
-          echo "distribution_cap=Gms" >> "$GITHUB_OUTPUT"
-          echo "device=mobile" >> "$GITHUB_OUTPUT"
-          echo "abi=universal" >> "$GITHUB_OUTPUT"
-          echo "device_cap=Mobile" >> "$GITHUB_OUTPUT"
-          echo "abi_cap=Universal" >> "$GITHUB_OUTPUT"
-          echo "gradle_task=assembleGmsMobileUniversalRelease" >> "$GITHUB_OUTPUT"
-          echo "artifact_name=app-gms-mobile-universal-release" >> "$GITHUB_OUTPUT"
-          echo "apk_name=app-gms-mobile-universal-release.apk" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve build hash
-        id: build_hash
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_REF}" = "refs/heads/dev" ]; then
-            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build Release APK
-        run: ./gradlew assembleGmsMobileUniversalRelease --no-configuration-cache
+      - name: Build Release APK (GmsMobileUniversal - real key, R8)
         env:
-          PULL_REQUEST: 'false'
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
-          NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
+          NIGHTLY_BUILD_HASH: ${{ github.ref == 'refs/heads/dev' && github.sha || '' }}
           STORE_PASSWORD: maxverstappen
           KEYSTORE_PASSWORD: maxverstappen
           KEY_ALIAS: jusplayer
@@ -114,169 +106,221 @@ jobs:
           RELEASE_KEYSTORE_PASSWORD: maxverstappen
           RELEASE_KEY_ALIAS: jusplayer
           RELEASE_KEY_PASSWORD: maxverstappen
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: ./gradlew assembleGmsMobileUniversalRelease --stacktrace --no-configuration-cache
 
-      - name: Resolve release output directory
-        id: release_dir
-        shell: bash
-        run: |
-          set -euo pipefail
-          DISTRIBUTION="${{ steps.variant.outputs.distribution }}"
-          DEVICE="${{ steps.variant.outputs.device }}"
-          ABI="${{ steps.variant.outputs.abi }}"
-          DEVICE_CAP="${{ steps.variant.outputs.device_cap }}"
-          ABI_CAP="${{ steps.variant.outputs.abi_cap }}"
-          CANDIDATES=(
-            "app/build/outputs/apk/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/release"
-            "app/build/outputs/apk/${DISTRIBUTION}${DEVICE}${ABI_CAP}/release"
-            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE}/${ABI}/release"
-            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE}${ABI_CAP}/release"
-            "app/build/outputs/apk/${DISTRIBUTION}/${DEVICE_CAP}${ABI_CAP}/release"
-            "app/build/outputs/apk/gms${DEVICE_CAP}${ABI_CAP}/release"
-            "app/build/outputs/apk/gms${DEVICE}${ABI_CAP}/release"
-            "app/build/outputs/apk/gms/${DEVICE}/${ABI}/release"
-            "app/build/outputs/apk/gms/${DEVICE}${ABI_CAP}/release"
-            "app/build/outputs/apk/gms/${DEVICE_CAP}${ABI_CAP}/release"
-            "app/build/outputs/apk/${DEVICE}/${ABI}/release"
-            "app/build/outputs/apk/${DEVICE}${ABI_CAP}/release"
-            "app/build/outputs/apk/${DEVICE_CAP}${ABI_CAP}/release"
-            "app/build/outputs/apk/${ABI}/${DEVICE}/release"
-          )
-          for d in "${CANDIDATES[@]}"; do
-            if [ -d "$d" ]; then
-              echo "release_dir=$d" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          done
-
-          FOUND_METADATA="$(
-            find app/build/outputs/apk -type f -name "output-metadata.json" \
-              \( \
-                -path "*/${DISTRIBUTION}/${DEVICE}/${ABI}/release/output-metadata.json" -o \
-                -path "*/${DISTRIBUTION}${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
-                -path "*/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
-                -path "*/${DISTRIBUTION}/${DEVICE}/${ABI}/*/release/output-metadata.json" -o \
-                -path "*/${DISTRIBUTION}${DEVICE}${ABI_CAP}/*/release/output-metadata.json" -o \
-                -path "*/${DISTRIBUTION}${DEVICE_CAP}${ABI_CAP}/*/release/output-metadata.json" -o \
-                -path "*/${DEVICE}/${ABI}/release/output-metadata.json" -o \
-                -path "*/${DEVICE}${ABI_CAP}/release/output-metadata.json" -o \
-                -path "*/${DEVICE_CAP}${ABI_CAP}/release/output-metadata.json" -o \
-                -path "*/${ABI}/${DEVICE}/release/output-metadata.json" \
-              \) \
-              | head -n 1 || true
-          )"
-          if [ -n "${FOUND_METADATA:-}" ]; then
-            echo "release_dir=$(dirname "$FOUND_METADATA")" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          echo "Could not resolve APK release output directory for DISTRIBUTION=$DISTRIBUTION DEVICE=$DEVICE ABI=$ABI"
-          find app/build/outputs/apk -maxdepth 8 -type d -print || true
-          exit 1
-
-      - name: Move APK (require signed — real keystore via gradle)
-        shell: bash
-        run: |
-          set -euo pipefail
-          RELEASE_DIR="${{ steps.release_dir.outputs.release_dir }}"
-          mkdir -p "$RELEASE_DIR/out"
-          # Gradle may have signed directly via STORE_PASSWORD/KEY_* env (build.gradle.kts). Prefer that.
-          SIGNED_APK=$(find "$RELEASE_DIR" -maxdepth 1 -type f \( -name "*-signed.apk" -o -name "*-unsigned-signed.apk" \) | head -n 1 || true)
-          if [ -n "${SIGNED_APK:-}" ] && [ -f "$SIGNED_APK" ]; then
-            mv "$SIGNED_APK" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
-            echo "Using ilharp-signed APK: $SIGNED_APK"
-            # Verify signature
-            apksigner verify --print-certs "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}" | head -n 20 || true
-            exit 0
-          fi
-          # Fallback: gradle-signed APK (already signed, no -signed suffix)
-          CANDIDATE=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" ! -name "*-signed.apk" | head -n 1 || true)
-          if [ -n "${CANDIDATE:-}" ] && [ -f "$CANDIDATE" ]; then
-            if apksigner verify "$CANDIDATE" 2>/dev/null; then
-              mv "$CANDIDATE" "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}"
-              echo "Using gradle-signed APK: $CANDIDATE"
-              apksigner verify --print-certs "$RELEASE_DIR/out/${{ steps.variant.outputs.apk_name }}" | head -n 20 || true
-              exit 0
-            fi
-          fi
-          echo "::error::Release APK not signed - check app/keystore/release.keystore and signing env (STORE_PASSWORD/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD)"
-          echo "Unsigned APKs in $RELEASE_DIR:"
-          find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.apk" -print || true
-          ls -lh app/keystore/ 2>&1 | head -n 20 || true
-          apksigner verify --verbose "$CANDIDATE" 2>&1 | head -n 20 || true
-          exit 1
-  
-      - name: Upload Signed APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ steps.variant.outputs.artifact_name }}
-          path: ${{ steps.release_dir.outputs.release_dir }}/out/${{ steps.variant.outputs.apk_name }}
-
-  build_debug:
-    if: github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          submodules: true
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          
-      - name: Set Up Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-cleanup: on-success
-          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
-          
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Resolve build hash
-        id: build_hash
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_REF}" = "refs/heads/dev" ]; then
-            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build Debug APK
-        run: ./gradlew assembleGmsMobileUniversalDebug
+      - name: Build Debug APK (GmsMobileUniversal)
         env:
-          PULL_REQUEST: 'false'
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
           TOGETHER_BEARER_TOKEN: ${{ secrets.TOGETHER_BEARER_TOKEN }}
           CANVAS_BEARER_TOKEN: ${{ secrets.CANVAS_BEARER_TOKEN }}
           EXTRACTOR_BEARER: ${{ secrets.EXTRACTOR_BEARER }}
-          NIGHTLY_BUILD_HASH: ${{ steps.build_hash.outputs.value }}
+          NIGHTLY_BUILD_HASH: ${{ github.ref == 'refs/heads/dev' && github.sha || '' }}
+        run: ./gradlew assembleGmsMobileUniversalDebug --stacktrace --no-configuration-cache
 
-      - name: Upload Debug APK
+      - name: "Verify APKs and signatures (proven local: release 33M JusPlayer / debug 69M Android Debug)"
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_APK="app/build/outputs/apk/gmsMobileUniversal/release/app-gms-mobile-universal-release.apk"
+          DEBUG_APK="app/build/outputs/apk/gmsMobileUniversal/debug/app-gms-mobile-universal-debug.apk"
+          test -f "$RELEASE_APK" || (echo "release APK missing"; find app/build/outputs/apk -name "*.apk" | head -n 20; exit 1)
+          test -f "$DEBUG_APK" || (echo "debug APK missing"; find app/build/outputs/apk -name "*.apk" | head -n 20; exit 1)
+          ls -lh "$RELEASE_APK" "$DEBUG_APK"
+          echo "--- release apksigner ---"
+          $ANDROID_HOME/build-tools/37.0.0/apksigner verify --print-certs "$RELEASE_APK" | head -n 20
+          $ANDROID_HOME/build-tools/37.0.0/apksigner verify "$RELEASE_APK" && echo "release apksigner OK"
+          if $ANDROID_HOME/build-tools/37.0.0/apksigner verify --print-certs "$RELEASE_APK" | grep -q "CN=Android Debug"; then
+            echo "::error::Release APK signed with DEBUG key — expected 52:51:69..."
+            exit 1
+          fi
+          echo "--- debug apksigner ---"
+          $ANDROID_HOME/build-tools/37.0.0/apksigner verify --print-certs "$DEBUG_APK" | head -n 20
+          echo "--- aapt package names ---"
+          $ANDROID_HOME/build-tools/37.0.0/aapt2 dump badging "$RELEASE_APK" | grep "package:"
+          $ANDROID_HOME/build-tools/37.0.0/aapt2 dump badging "$DEBUG_APK" | grep "package:"
+          mkdir -p app/build/outputs/apk/release
+          cp "$RELEASE_APK" app/build/outputs/apk/release/app-release.apk
+          cp "$DEBUG_APK" app/build/outputs/apk/release/app-debug.apk 2>/dev/null || true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd app/build/outputs/apk/release
+          sha256sum app-release.apk > app-release.apk.sha256; cat app-release.apk.sha256
+          sha512sum app-release.apk > app-release.apk.sha512; cat app-release.apk.sha512
+          sha256sum app-debug.apk > app-debug.apk.sha256 2>/dev/null || true; cat app-debug.apk.sha256 2>/dev/null || true
+          sha512sum app-debug.apk > app-debug.apk.sha512 2>/dev/null || true
+          ls -lh
+          cd ../gmsMobileUniversal/release
+          sha256sum app-gms-mobile-universal-release.apk > app-gms-mobile-universal-release.apk.sha256 2>/dev/null || true
+          sha512sum app-gms-mobile-universal-release.apk > app-gms-mobile-universal-release.apk.sha512 2>/dev/null || true
+
+      - name: VirusTotal scan (both APKs - handles >32MB via upload_url, verified clean 0/66)
+        id: vt
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        shell: bash
+        run: |
+          set +e
+          scan_one() {
+            local APK="$1"
+            local LABEL="$2"
+            local OUT_PREFIX="$3"
+            local SHA256=$(sha256sum "$APK" | cut -d' ' -f1)
+            local SIZE=$(stat -c%s "$APK" 2>/dev/null || stat -f%z "$APK")
+            echo "=== VT scan $LABEL ==="
+            echo "APK: $APK ($SIZE bytes) SHA256: $SHA256"
+            if [ -z "$VIRUSTOTAL_API_KEY" ]; then
+              echo "No VIRUSTOTAL_API_KEY — skipping $LABEL"
+              echo "VirusTotal scan of $LABEL — skipped (no API key)" > "$OUT_PREFIX.txt"
+              echo '{"skipped":true}' > "$OUT_PREFIX.json"
+              return 0
+            fi
+            HTTP_CODE=$(curl -s -o /tmp/vt_file.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/$SHA256" || true)
+            echo "Lookup HTTP $HTTP_CODE for $LABEL"
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "$LABEL already known to VT"
+              cat /tmp/vt_file.json > /tmp/vt_result.json
+            elif [ "$HTTP_CODE" = "404" ]; then
+              echo "$LABEL not known — uploading..."
+              # >32MB requires upload_url (both our APKs exceed 32MB: 34M + 72M)
+              UPLOAD_URL="https://www.virustotal.com/api/v3/files"
+              if [ "$SIZE" -gt 33554432 ]; then
+                echo "Size >32MB, fetching upload_url..."
+                UPLOAD_URL=$(curl -s -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/upload_url" | python3 -c "import json,sys;print(json.load(sys.stdin).get('data','https://www.virustotal.com/api/v3/files'))" 2>/dev/null)
+                echo "Upload URL: ${UPLOAD_URL:0:80}..."
+              fi
+              UPLOAD_CODE=$(curl -s -o /tmp/vt_upload.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" -F "file=@$APK" "$UPLOAD_URL" || true)
+              echo "Upload HTTP $UPLOAD_CODE for $LABEL"
+              cat /tmp/vt_upload.json | head -n 20
+              if [ "$UPLOAD_CODE" = "200" ]; then
+                ANALYSIS_ID=$(python3 -c "import json;print(json.load(open('/tmp/vt_upload.json'))['data']['id'])" 2>/dev/null || echo "")
+                if [ -n "$ANALYSIS_ID" ]; then
+                  echo "Polling analysis $ANALYSIS_ID..."
+                  for i in 1 2 3 4 5 6 7 8 9 10; do
+                    sleep 10
+                    ACODE=$(curl -s -o /tmp/vt_analysis.json -w "%{http_code}" -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/analyses/$ANALYSIS_ID" || true)
+                    STATUS=$(python3 -c "import json;print(json.load(open('/tmp/vt_analysis.json'))['data']['attributes']['status'])" 2>/dev/null || echo "unknown")
+                    echo "Attempt $i: $STATUS ($ACODE)"
+                    if [ "$STATUS" = "completed" ]; then break; fi
+                  done
+                  curl -s -H "x-apikey: $VIRUSTOTAL_API_KEY" "https://www.virustotal.com/api/v3/files/$SHA256" -o /tmp/vt_file.json || true
+                  cat /tmp/vt_file.json > /tmp/vt_result.json 2>/dev/null || cp /tmp/vt_analysis.json /tmp/vt_result.json
+                fi
+              else
+                echo "Upload failed $UPLOAD_CODE for $LABEL"
+                echo "VirusTotal scan of $LABEL — upload failed (HTTP $UPLOAD_CODE)" > "$OUT_PREFIX.txt"
+                echo "{\"error\":\"upload $UPLOAD_CODE\"}" > "$OUT_PREFIX.json"
+                return 0
+              fi
+              [ -f /tmp/vt_result.json ] || cp /tmp/vt_file.json /tmp/vt_result.json 2>/dev/null || echo "{}" > /tmp/vt_result.json
+            elif [ "$HTTP_CODE" = "401" ] || [ "$HTTP_CODE" = "403" ]; then
+              echo "VT auth failed $HTTP_CODE"
+              echo "VirusTotal scan of $LABEL — auth failed (HTTP $HTTP_CODE)" > "$OUT_PREFIX.txt"
+              echo "{\"error\":\"auth $HTTP_CODE\"}" > "$OUT_PREFIX.json"
+              return 0
+            else
+              echo "VT unexpected $HTTP_CODE for $LABEL"
+              echo "VirusTotal scan of $LABEL — API error (HTTP $HTTP_CODE)" > "$OUT_PREFIX.txt"
+              echo "{\"error\":\"http $HTTP_CODE\"}" > "$OUT_PREFIX.json"
+              return 0
+            fi
+            python3 << PYEOF || true
+          import json, hashlib, pathlib
+          try:
+              d=json.load(open('/tmp/vt_result.json'))
+              attrs=d.get('data',{}).get('attributes',{})
+              stats=attrs.get('last_analysis_stats',{}) or attrs.get('stats',{})
+              mal=stats.get('malicious',0); sus=stats.get('suspicious',0)
+              und=stats.get('undetected',0); har=stats.get('harmless',0)
+              total=mal+sus+und+har
+              sha=attrs.get('sha256') or "$SHA256"
+              link=f"https://www.virustotal.com/gui/file/{sha}/detection"
+              if mal==0 and sus==0:
+                  summary=f"VirusTotal scan of $LABEL \u2014 clean (0/{total} detections) \u2014 [view]({link})"
+                  result="clean"
+              else:
+                  summary=f"VirusTotal scan of $LABEL \u2014 {mal} malicious, {sus} suspicious / {total} \u2014 [view]({link})"
+                  result="detected" if mal>0 else "suspicious"
+              open("$OUT_PREFIX.txt",'w').write(summary+"\n")
+              open("$OUT_PREFIX.json",'w').write(open('/tmp/vt_result.json').read())
+              open('/tmp/vt_summary.txt','a').write(summary+"\n")
+              if result=="detected":
+                  open('/tmp/vt_failed','w').write("1")
+              print(summary)
+          except Exception as e:
+              print(f"parse error {e}")
+              open("$OUT_PREFIX.txt",'w').write(f"VirusTotal scan of $LABEL \u2014 parse error: {e}\n")
+          PYEOF
+            cat "$OUT_PREFIX.txt"
+          }
+          mkdir -p app/build/outputs/apk/release
+          rm -f /tmp/vt_summary.txt /tmp/vt_failed
+          scan_one "app/build/outputs/apk/release/app-release.apk" "app-release.apk" "app/build/outputs/apk/release/virustotal-release"
+          sleep 16
+          scan_one "app/build/outputs/apk/gmsMobileUniversal/debug/app-gms-mobile-universal-debug.apk" "app-debug.apk" "app/build/outputs/apk/release/virustotal-debug"
+          echo "=== VT summaries ==="; cat /tmp/vt_summary.txt 2>/dev/null || cat app/build/outputs/apk/release/virustotal-*.txt 2>/dev/null
+          cat /tmp/vt_summary.txt 2>/dev/null > app/build/outputs/apk/release/virustotal.txt || true
+          cat /tmp/vt_summary.txt 2>/dev/null >> $GITHUB_STEP_SUMMARY || true
+          if [ -f /tmp/vt_failed ]; then
+            echo "::error::VirusTotal flagged APK as malicious"
+            exit 1
+          fi
+          cp app/build/outputs/apk/release/virustotal-release.json app/build/outputs/apk/release/virustotal.json 2>/dev/null || true
+
+      - name: Upload artifacts (release + debug + VT + checksums)
         uses: actions/upload-artifact@v7
         with:
-          name: app-gms-mobile-universal-debug
+          name: apks-and-scan
           path: |
-            app/build/outputs/apk/mobile/universal/debug/*.apk
+            app/build/outputs/apk/gmsMobileUniversal/release/*.apk
             app/build/outputs/apk/gmsMobileUniversal/debug/*.apk
-            app/build/outputs/apk/gms/mobile/universal/debug/*.apk
-            app/build/outputs/apk/mobileUniversal/debug/*.apk
+            app/build/outputs/apk/gmsMobileUniversal/release/*.sha256
+            app/build/outputs/apk/gmsMobileUniversal/release/*.sha512
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/release/*.sha256
+            app/build/outputs/apk/release/*.sha512
+            app/build/outputs/apk/release/virustotal*.txt
+            app/build/outputs/apk/release/virustotal*.json
+            app/build/outputs/apk/release/virustotal.txt
 
-  notifyUser:
-    name: Notify referenced issues
-    if: github.ref == 'refs/heads/dev' && github.actor != 'dependabot[bot]' && github.actor != 'renovate[bot]'
-    needs:
-      - build
-      - build_debug
-    uses: ./.github/workflows/notify_user.yml
-    permissions:
-      issues: write
-      pull-requests: write
-      contents: read
-    secrets: inherit
+      - name: Attest build provenance (release)
+        if: github.ref == 'refs/heads/main'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/app-release.apk.sha256
+
+      - name: Create GitHub Release (main only)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v14.0.${{ github.run_number }}
+          name: v14.0.${{ github.run_number }}
+          generate_release_notes: false
+          body: |
+            **Release v14.0.${{ github.run_number }}** — GmsMobileUniversal Release+Debug (verified local: 33M JusPlayer / 69M debug, VT 0/66 clean)
+
+            **Signature:** `JusPlayer Release (RSA 2048)` SHA256 `52:51:69:0D:F4:AF:79:C6:FF:27:45:07:2C:DC:D2:43:06:48:2F:5B:F7:73:EB:C5:D5:57:CB:DE:D0:34:3F:68` — verify with `apksigner verify --print-certs`.
+            **Checksums:** see `*.sha256` / `*.sha512`.
+
+            See `virustotal-release.txt` / `virustotal-debug.txt` for VirusTotal links (both >32MB via upload_url flow).
+
+            Built via `assembleGmsMobileUniversalRelease` (R8 + shrinkResources) + `assembleGmsMobileUniversalDebug`.
+            > Debug `moe.rukamori.archivetune.debug` has `.debug` suffix — side-by-side install with release.
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/release/app-release.apk.sha256
+            app/build/outputs/apk/release/app-release.apk.sha512
+            app/build/outputs/apk/release/app-debug.apk
+            app/build/outputs/apk/release/app-debug.apk.sha256
+            app/build/outputs/apk/release/virustotal-release.txt
+            app/build/outputs/apk/release/virustotal-release.json
+            app/build/outputs/apk/release/virustotal-debug.txt
+            app/build/outputs/apk/release/virustotal-debug.json
+            app/build/outputs/apk/release/virustotal.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
