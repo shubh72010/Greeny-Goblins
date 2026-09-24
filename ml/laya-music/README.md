@@ -30,6 +30,10 @@ The 421M-param teacher never ships on-device. The phone gets the distilled head.
 | `eval-hard.jsonl` | 60 boundary rows. **Held out — never train on these** |
 | `generate_synthetic.py` | Seeded (`42`) generator. Its `CENTROIDS` are rule-v0, mirrored in-app later |
 | `validate.py` | Schema + enum + quota checker. Run on every dataset before training |
+| `to_notebook_format.py` | Converts our JSONL → the notebook's `{state, questions, gold}` format (incl. soft labels) |
+| `baseline_zero_shot.py` | Stock-Laya accuracy we must beat (`pip install laya torch`) |
+| `FINE_TUNE.md` | Cell-by-cell notebook adaptation guide (start here for training) |
+| `MICRO_HEAD.md` | Spec for the tiny on-device student (reads silver data later) |
 | `laya-music-human-v1.jsonl` | **You create this.** The 500 human rows (§4) |
 
 ## 2. Taxonomy (frozen v1)
