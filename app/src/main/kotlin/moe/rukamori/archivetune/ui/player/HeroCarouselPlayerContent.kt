@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -35,16 +36,21 @@ import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,6 +80,7 @@ fun HeroCarouselPlayerContent(
     queueWindows: List<Timeline.Window>,
     currentWindowIndex: Int,
     modifier: Modifier = Modifier,
+    showOverlay: Boolean = true,
 ) {
     val context = LocalContext.current
     val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
@@ -81,12 +88,21 @@ fun HeroCarouselPlayerContent(
     val carouselState = rememberCarouselState { queueWindows.size }
     val latestQueueWindows by rememberUpdatedState(queueWindows)
     val latestCurrentIndex by rememberUpdatedState(currentWindowIndex)
+    var isFirstScroll by remember { mutableStateOf(true) }
 
     LaunchedEffect(currentWindowIndex, queueWindows.size) {
         if (queueWindows.isNotEmpty()) {
-            carouselState.scrollToItem(
-                currentWindowIndex.coerceIn(0, queueWindows.lastIndex),
-            )
+            val target = currentWindowIndex.coerceIn(0, queueWindows.lastIndex)
+            if (isFirstScroll) {
+                carouselState.scrollToItem(target)
+                isFirstScroll = false
+            } else {
+                // fast but smooth – tween 300ms avoids spring overshoot jank on mid-range devices
+                carouselState.animateScrollToItem(
+                    target,
+                    animationSpec = tween(300, easing = FastOutSlowInEasing),
+                )
+            }
         }
     }
 
@@ -106,49 +122,41 @@ fun HeroCarouselPlayerContent(
             }
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val heroHeight = (maxHeight - 16.dp).coerceIn(120.dp, 380.dp)
-        val heroMaxWidth = (maxWidth - 48.dp).coerceAtLeast(200.dp).coerceAtMost(440.dp)
-        val density = LocalDensity.current
-        val requestWidthPx = with(density) { heroMaxWidth.roundToPx().coerceAtLeast(1) }
-        val requestHeightPx = with(density) { heroHeight.roundToPx().coerceAtLeast(1) }
-
+    // fixed size = no BoxWithConstraints recompose on every drag frame → no stutter
+    val heroHeight = 340.dp
+    val heroMaxWidth = 340.dp
+    // small fixed bitmap = no 1.5MP decode while animating
+    val requestSize = 720
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         HorizontalCenteredHeroCarousel(
             state = carouselState,
             maxItemWidth = heroMaxWidth,
-            itemSpacing = 10.dp,
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            modifier =
-                Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth()
-                    .height(heroHeight),
+            itemSpacing = 12.dp,
+            contentPadding = PaddingValues(horizontal = 20.dp),
+            modifier = Modifier.fillMaxWidth().height(heroHeight),
         ) { index ->
             val window = queueWindows.getOrNull(index)
             val metadata = window?.mediaItem?.metadata
             val isActive = index == carouselState.currentItem
             val imageRequest =
-                remember(metadata?.thumbnailUrl, requestWidthPx, requestHeightPx) {
+                remember(metadata?.thumbnailUrl) {
                     ImageRequest
                         .Builder(context)
                         .data(metadata?.thumbnailUrl)
-                        .size(Size(requestWidthPx, requestHeightPx))
-                        .crossfade(true)
+                        .size(Size(requestSize, requestSize))
+                        .crossfade(120)
                         .build()
                 }
 
+            val figmaShape = RoundedCornerShape(28.dp)
             Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .maskClip(MaterialTheme.shapes.extraLarge)
-                        .maskBorder(
-                            BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f),
-                            ),
-                            MaterialTheme.shapes.extraLarge,
-                        ).clickable {
+                        .clip(figmaShape)
+                        .maskClip(figmaShape)
+                        // no border during scroll = one less layer
+                        .clickable {
                             if (window != null) {
                                 if (index == latestCurrentIndex) {
                                     playerConnection.player.togglePlayPause()
@@ -168,18 +176,20 @@ fun HeroCarouselPlayerContent(
                     modifier = Modifier.fillMaxSize(),
                 )
 
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    0f to Color.Transparent,
-                                    0.48f to Color.Black.copy(alpha = 0.08f),
-                                    1f to Color.Black.copy(alpha = 0.84f),
+                if (showOverlay) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        0f to Color.Transparent,
+                                        0.48f to Color.Black.copy(alpha = 0.08f),
+                                        1f to Color.Black.copy(alpha = 0.84f),
+                                    ),
                                 ),
-                            ),
-                )
+                    )
+                }
 
                 if (isActive && isPlaying) {
                     Surface(
@@ -203,27 +213,29 @@ fun HeroCarouselPlayerContent(
                     }
                 }
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(16.dp),
-                ) {
-                    Text(
-                        text = metadata?.title ?: "",
-                        style = MaterialTheme.typography.titleLargeEmphasized,
-                        color = Color.White,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = metadata?.artists?.joinToString { it.name }.orEmpty(),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White.copy(alpha = 0.78f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                if (showOverlay) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(16.dp),
+                    ) {
+                        Text(
+                            text = metadata?.title ?: "",
+                            style = MaterialTheme.typography.titleLargeEmphasized,
+                            color = Color.White,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = metadata?.artists?.joinToString { it.name }.orEmpty(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White.copy(alpha = 0.78f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }

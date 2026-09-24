@@ -201,7 +201,7 @@ fun YouTubeSongMenu(
         ListDialog(
             onDismiss = { showSelectArtistDialog = false },
         ) {
-            items(splitArtists.distinctBy { it.name }) { splitArtist ->
+            items(splitArtists.distinctBy { it.name }, key = { it.name }) { splitArtist ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier =

@@ -69,6 +69,9 @@ val SeekExtraSeconds = booleanPreferencesKey("seekExtraSeconds")
 val DisableBlurKey = booleanPreferencesKey("disableBlur")
 val BlurRadiusKey = floatPreferencesKey("blurRadius")
 
+// Liquid Glass — single toggle (off by default, preserves existing UI until user opts in)
+val LiquidGlassEnabledKey = booleanPreferencesKey("liquidGlassEnabled")
+
 // Backdrop blur for detail pages
 val BackdropEnabledKey = booleanPreferencesKey("backdropEnabled")
 val BackdropBlurAmountKey = intPreferencesKey("backdropBlurAmount")

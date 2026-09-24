@@ -78,6 +78,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.component.GlassComponent
+import moe.rukamori.archivetune.ui.component.LocalGlassEffectConfig
+import moe.rukamori.archivetune.ui.component.isGlassAllowed
+import moe.rukamori.archivetune.ui.component.liquidGlass
 import moe.rukamori.archivetune.ui.screens.Screens
 
 @Composable
@@ -96,12 +100,16 @@ fun FloatingNavigationToolbar(
     onItemClick: (Screens, Boolean) -> Unit,
     onSearchItemDoubleClick: (() -> Unit)? = null,
 ) {
-    val toolbarContainerColor = floatingToolbarContainerColor(pureBlack = pureBlack)
+    val glassConfig = LocalGlassEffectConfig.current
+    val useGlass = glassConfig.isEnabledFor(GlassComponent.NAV_BAR) && isGlassAllowed()
+    val toolbarContainerColor = if (useGlass) Color.Transparent else floatingToolbarContainerColor(pureBlack = pureBlack)
     val toolbarColors =
         FloatingToolbarDefaults.standardFloatingToolbarColors(
             toolbarContainerColor = toolbarContainerColor,
         )
     val hasOverflowAction = onShuffleClick != null && shuffleIconRes != null
+    val refractedConfig = remember(glassConfig) { glassConfig.copy(lensHeight = 0.85f, lensAmount = 1f, chromaticAberration = true, depthEffect = true) }
+    val glassModifier = if (useGlass) Modifier.liquidGlass(refractedConfig, shape = RoundedCornerShape(28.dp)) else Modifier
 
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
@@ -123,7 +131,7 @@ fun FloatingNavigationToolbar(
                         onMusicTogetherClick = onMusicTogetherClick,
                     )
                 },
-                modifier = Modifier.widthIn(max = 480.dp),
+                modifier = Modifier.widthIn(max = 480.dp).then(glassModifier),
                 colors = toolbarColors,
                 scrollBehavior = scrollBehavior,
                 animationSpec = FloatingToolbarDefaults.animationSpec(),
@@ -140,7 +148,7 @@ fun FloatingNavigationToolbar(
         } else {
             HorizontalFloatingToolbar(
                 expanded = true,
-                modifier = Modifier.widthIn(max = 420.dp),
+                modifier = Modifier.widthIn(max = 420.dp).then(glassModifier),
                 colors = toolbarColors,
                 scrollBehavior = scrollBehavior,
             ) {
@@ -253,11 +261,17 @@ private fun FloatingToolbarOverflowAction(
     onMusicTogetherClick: (() -> Unit)?,
 ) {
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+    val glassConfig = LocalGlassEffectConfig.current
+    val useFabGlass = glassConfig.isEnabledFor(GlassComponent.NAV_BAR) && isGlassAllowed()
+    val fabGlassConfig = remember(glassConfig) { glassConfig.copy(lensHeight = 0.85f, lensAmount = 1f, chromaticAberration = true, depthEffect = true) }
 
     Box {
+        Box(
+            modifier = if (useFabGlass) Modifier.liquidGlass(fabGlassConfig, shape = CircleShape, backdropScale = 1f) else Modifier
+        ) {
         FloatingToolbarDefaults.VibrantFloatingActionButton(
             onClick = { fabMenuExpanded = !fabMenuExpanded },
-            containerColor = floatingToolbarFabContainerColor(),
+            containerColor = if (useFabGlass) Color.Transparent else floatingToolbarFabContainerColor(),
             contentColor = floatingToolbarFabContentColor(),
         ) {
             Icon(
@@ -267,6 +281,7 @@ private fun FloatingToolbarOverflowAction(
                         stringResource(R.string.more)
                     },
             )
+        }
         }
 
         DropdownMenu(

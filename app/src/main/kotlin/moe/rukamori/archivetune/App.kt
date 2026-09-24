@@ -9,6 +9,7 @@ package moe.rukamori.archivetune
 
 import android.app.ActivityManager
 import android.app.Application
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -19,6 +20,8 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.disk.directory
+import coil3.memory.MemoryCache
+import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.allowHardware
 import coil3.request.crossfade
@@ -55,6 +58,8 @@ import moe.rukamori.archivetune.utils.MoriCipherUpdateScheduler
 import moe.rukamori.archivetune.utils.clearPlaybackAuthSession
 import moe.rukamori.archivetune.utils.clearPlaybackWebAuthSession
 import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.deviceTier
+import moe.rukamori.archivetune.utils.budgets
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.potoken.BotGuardTokenGenerator
 import moe.rukamori.archivetune.utils.reportException
@@ -115,7 +120,10 @@ class App :
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        // WebView cleanup happens automatically on process death
+        // ponytail: trim Coil memory on pressure, never touch active playback.
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+            runCatching { imageLoader.memoryCache?.clear() }
+        }
     }
 
     private fun initializeCriticalSync() {
@@ -322,7 +330,13 @@ class App :
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         val smartTrimmer = dataStore[SmartTrimmerKey] ?: false
-        val imageCacheConfig = resolveImageDiskCacheConfig(dataStore[MaxImageCacheSizeKey])
+        // ponytail: RAM-based tier (3GB Oppo/Redmi land in CONSTRAINED/REDUCED even
+        // when isLowRamDevice is false). User-set disk size still wins.
+        val budgets = deviceTier().budgets()
+        val imageCacheConfig =
+            resolveImageDiskCacheConfig(
+                dataStore[MaxImageCacheSizeKey] ?: budgets.imageDiskMb,
+            )
 
         val diskCache =
             DiskCache
@@ -339,6 +353,13 @@ class App :
             .Builder(this)
             .crossfade(true)
             .allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+            .memoryCache {
+                MemoryCache
+                    .Builder()
+                    // ponytail: 12/18/25% by tier — was Coil default (unbounded by us).
+                    .maxSizePercent(this, budgets.coilMemoryPercent)
+                    .build()
+            }
             .diskCache(diskCache)
             .diskCachePolicy(imageCacheConfig.policy)
             .build()

@@ -46,6 +46,10 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.MiniPlayerBackgroundStyleKey
 import moe.rukamori.archivetune.constants.SwipeSensitivityKey
+import moe.rukamori.archivetune.ui.component.GlassComponent
+import moe.rukamori.archivetune.ui.component.LocalGlassEffectConfig
+import moe.rukamori.archivetune.ui.component.isGlassAllowed
+import moe.rukamori.archivetune.ui.component.liquidGlass
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -174,6 +178,9 @@ private fun NewMiniPlayer(
             useArtworkBackground = effectiveBackgroundStyle != MiniPlayerBackgroundStyle.THEME,
         )
 
+    val glassConfig = LocalGlassEffectConfig.current
+    val useGlass = glassConfig.isEnabledFor(GlassComponent.MINI_PLAYER) && isGlassAllowed()
+    val refractedConfig = remember(glassConfig) { glassConfig.copy(lensHeight = 0.85f, lensAmount = 1f, chromaticAberration = true, depthEffect = true) }
     SwipeableMiniPlayerBox(
         modifier = modifier,
         swipeSensitivity = swipeSensitivity,
@@ -190,13 +197,18 @@ private fun NewMiniPlayer(
                     .fillMaxWidth()
                     .height(64.dp)
                     .offset { IntOffset(offsetX.roundToInt(), 0) }
-                    .clip(RoundedCornerShape(32.dp)),
+                    .then(
+                        if (useGlass) Modifier.liquidGlass(refractedConfig, RoundedCornerShape(32.dp), highlightAlpha = 0.3f)
+                        else Modifier.clip(RoundedCornerShape(32.dp))
+                    ),
         ) {
-            MiniPlayerBackground(
-                style = effectiveBackgroundStyle,
-                palette = backgroundPalette,
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (!useGlass) {
+                MiniPlayerBackground(
+                    style = effectiveBackgroundStyle,
+                    palette = backgroundPalette,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             NewMiniPlayerContent(
                 position = position,
                 duration = duration,

@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -3757,6 +3758,175 @@ private fun V9TransportButton(
                 tint = iconColor.copy(alpha = if (enabled) 0.88f else 0.36f),
                 modifier = Modifier.size(34.dp),
             )
+        }
+    }
+}
+
+// Figma pill design for V10 carousel – premium, theme-matched (no hard-coded rose)
+@Composable
+fun V10FigmaControls(
+    mediaMetadata: MediaMetadata,
+    position: Long,
+    duration: Long,
+    sliderPosition: Long?,
+    isPlaying: Boolean,
+    playbackState: Int,
+    isLoading: Boolean,
+    canSkipPrevious: Boolean,
+    canSkipNext: Boolean,
+    currentSongLiked: Boolean,
+    playerConnection: PlayerConnection,
+    onSliderValueChange: (Long) -> Unit,
+    onSliderValueChangeFinished: () -> Unit,
+    onQueueClick: () -> Unit,
+    onLyricsClick: () -> Unit,
+    onMenuClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptic = LocalHapticFeedback.current
+    val scheme = MaterialTheme.colorScheme
+    // glass over dark scrim = feeling, play keeps theme primary for identity
+    val pill = Color.White.copy(alpha = 0.14f)
+    val pillStrong = Color.White.copy(alpha = 0.18f)
+    val pillBorder = Color.White.copy(alpha = 0.18f)
+    val pillOn = Color.White
+    val pillVariant = Color.White.copy(alpha = 0.10f)
+    val onScrim = Color.White
+    val onScrimVariant = Color.White.copy(alpha = 0.72f)
+    val safeDuration = if (duration <= 0L || duration == C.TIME_UNSET) 0f else duration.toFloat()
+    val safeValue = (sliderPosition ?: position).toFloat().coerceIn(0f, safeDuration.coerceAtLeast(0f))
+    val playCorner by androidx.compose.animation.core.animateDpAsState(if (isPlaying) 28.dp else 36.dp, label = "v10PlayCorner")
+    val likeContainer by androidx.compose.animation.animateColorAsState(if (currentSongLiked) scheme.primary else pillStrong, label = "v10Like")
+    val likeContent by androidx.compose.animation.animateColorAsState(if (currentSongLiked) scheme.onPrimary else pillOn, label = "v10LikeOn")
+
+    Column(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // Title + LIKE – white over dark scrim = that Figma "BABYDOLL" feeling
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f).padding(end = 14.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = mediaMetadata.title.uppercase(),
+                    style = MaterialTheme.typography.titleLargeEmphasized.copy(letterSpacing = 0.4.sp),
+                    fontWeight = FontWeight.ExtraBold,
+                    color = onScrim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee(),
+                )
+                Text(
+                    text = mediaMetadata.artists.joinToString { it.name },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = onScrimVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.basicMarquee(),
+                )
+            }
+            Surface(
+                onClick = { playerConnection.toggleLike() },
+                shape = CircleShape,
+                color = likeContainer,
+                tonalElevation = if (currentSongLiked) 6.dp else 2.dp,
+                shadowElevation = if (currentSongLiked) 6.dp else 2.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder),
+                modifier = Modifier.size(56.dp),
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(if (currentSongLiked) R.drawable.favorite else R.drawable.favorite_border),
+                        contentDescription = null,
+                        tint = likeContent,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
+        }
+        // Time labels – white over scrim
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(makeTimeString(sliderPosition ?: position), style = MaterialTheme.typography.labelMedium, color = onScrimVariant)
+            Text(if (duration != C.TIME_UNSET) makeTimeString(duration) else "", style = MaterialTheme.typography.labelMedium, color = onScrimVariant)
+        }
+        // Pill progress – glass track, primary active
+        val sliderColors = SliderDefaults.colors(
+            activeTrackColor = scheme.primary,
+            inactiveTrackColor = Color.White.copy(alpha = 0.18f),
+            thumbColor = Color.Transparent,
+            activeTickColor = Color.Transparent,
+            inactiveTickColor = Color.Transparent,
+        )
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = pillVariant,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+        ) {
+            Slider(
+                value = safeValue.coerceIn(0f, safeDuration.coerceAtLeast(1f)),
+                valueRange = 0f..safeDuration.coerceAtLeast(1f),
+                onValueChange = { onSliderValueChange(it.toLong()) },
+                onValueChangeFinished = onSliderValueChangeFinished,
+                enabled = safeDuration > 0f,
+                colors = sliderColors,
+                thumb = { Spacer(Modifier.size(0.dp)) },
+                track = { state -> PlayerSliderTrack(sliderState = state, colors = sliderColors, trackHeight = 52.dp) },
+                modifier = Modifier.fillMaxSize().padding(horizontal = 2.dp),
+            )
+        }
+        // PREV / PLAY / SKIP – connected pill group, theme secondaryContainer, premium elevation
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); playerConnection.seekToPrevious() },
+                enabled = canSkipPrevious,
+                shape = RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp, topEnd = 14.dp, bottomEnd = 14.dp),
+                color = pill,
+                tonalElevation = 2.dp,
+                shadowElevation = 3.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder),
+                modifier = Modifier.weight(1f).height(52.dp),
+            ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.skip_previous), null, tint = pillOn.copy(alpha = if (canSkipPrevious) 1f else 0.38f), modifier = Modifier.size(28.dp)) } }
+            Surface(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (playbackState == STATE_ENDED) { playerConnection.player.seekTo(0, 0); playerConnection.player.playWhenReady = true } else playerConnection.player.togglePlayPause()
+                },
+                shape = RoundedCornerShape(playCorner),
+                color = scheme.primary,
+                contentColor = scheme.onPrimary,
+                tonalElevation = 4.dp,
+                shadowElevation = 8.dp,
+                modifier = Modifier.size(62.dp),
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (isLoading) CircularWavyProgressIndicator(Modifier.size(30.dp), color = scheme.onPrimary)
+                    else Icon(painterResource(when { playbackState == STATE_ENDED -> R.drawable.replay; isPlaying -> R.drawable.pause; else -> R.drawable.play }), null, tint = scheme.onPrimary, modifier = Modifier.size(32.dp))
+                }
+            }
+            Surface(
+                onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); playerConnection.seekToNext() },
+                enabled = canSkipNext,
+                shape = RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp, topEnd = 28.dp, bottomEnd = 28.dp),
+                color = pill,
+                tonalElevation = 2.dp,
+                shadowElevation = 3.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder),
+                modifier = Modifier.weight(1f).height(52.dp),
+            ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.skip_next), null, tint = pillOn.copy(alpha = if (canSkipNext) 1f else 0.38f), modifier = Modifier.size(28.dp)) } }
+        }
+        // QUEUE / MENU / LYRICS – segmented pill row, theme-matched
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(onClick = onQueueClick, shape = RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp, topEnd = 12.dp, bottomEnd = 12.dp), color = pillVariant, tonalElevation = 2.dp, shadowElevation = 2.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.weight(1f).height(52.dp)) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.queue_music), null, tint = onScrim, modifier = Modifier.size(22.dp)) }
+            }
+            Surface(onClick = onMenuClick, shape = CircleShape, color = pill, tonalElevation = 2.dp, shadowElevation = 3.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.size(52.dp)) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.more_horiz), null, tint = pillOn, modifier = Modifier.size(22.dp)) }
+            }
+            Surface(onClick = onLyricsClick, shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp, topEnd = 28.dp, bottomEnd = 28.dp), color = pillVariant, tonalElevation = 2.dp, shadowElevation = 2.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.weight(1f).height(52.dp)) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.lyrics), null, tint = onScrim, modifier = Modifier.size(20.dp)) }
+            }
         }
     }
 }

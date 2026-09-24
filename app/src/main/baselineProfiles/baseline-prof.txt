@@ -1,0 +1,8 @@
+# JusPlayer hand-written Baseline Profile (startup path).
+# AGP merges this into the APK (assets/dexopt/baseline.prof); profileinstaller
+# applies it on API <33. Expand with Macrobenchmark-generated rules later —
+# only these startup entries have verified signatures, the rest is fungible.
+HSPLmoe/rukamori/archivetune/App;->onCreate()V
+HSPLmoe/rukamori/archivetune/MainActivity;->onCreate(Landroid/os/Bundle;)V
+HSPLmoe/rukamori/archivetune/playback/MusicService;->onCreate()V
+HSPLmoe/rukamori/archivetune/playback/MusicService;->onGetSession(Landroidx/media3/session/MediaLibraryService$MediaLibrarySessionCallback;)Landroidx/media3/session/MediaLibrarySession;

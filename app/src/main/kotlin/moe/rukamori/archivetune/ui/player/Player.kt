@@ -736,7 +736,8 @@ fun BottomSheetPlayer(
         val startTime = SystemClock.elapsedRealtime()
         if (playbackState == STATE_READY) {
             while (isActive) {
-                delay(if (aodModeEnabled) 500L else 100L)
+                // ponytail: 5Hz progress (was 10Hz) — slider interpolates visually.
+                delay(if (aodModeEnabled) 500L else 200L)
                 val isTransitioning = playerConnection.player.currentMediaItem?.mediaId != mediaMetadata?.id
                 val currentPlayerPosition = playerConnection.player.currentPosition
                 val currentPlayerDuration = playerConnection.player.duration
@@ -783,7 +784,7 @@ fun BottomSheetPlayer(
     }
 
     val dynamicQueuePeekHeight =
-        if (playerDesignStyle == PlayerDesignStyle.V5) {
+        if (playerDesignStyle == PlayerDesignStyle.V5 || playerDesignStyle == PlayerDesignStyle.V10) {
             0.dp
         } else if (playerDesignStyle == PlayerDesignStyle.V9) {
             88.dp +
@@ -1188,7 +1189,8 @@ fun BottomSheetPlayer(
             playerDesignStyle != PlayerDesignStyle.V5 &&
             playerDesignStyle != PlayerDesignStyle.V7 &&
             playerDesignStyle != PlayerDesignStyle.V8 &&
-            playerDesignStyle != PlayerDesignStyle.V9
+            playerDesignStyle != PlayerDesignStyle.V9 &&
+            playerDesignStyle != PlayerDesignStyle.V10
         ) {
             PlayerBackground(
                 playerBackground = playerBackground,
@@ -1454,6 +1456,46 @@ fun BottomSheetPlayer(
                             }
                         },
                     )
+                } else if (playerDesignStyle == PlayerDesignStyle.V10) {
+                    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)).padding(bottom = queueSheetState.collapsedBound + 16.dp).nestedScroll(state.preUpPostDownNestedScrollConnection)) {
+                        enrichedMetadata?.thumbnailUrl?.let { thumb ->
+                            val blurMod = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) Modifier.blur(32.dp) else Modifier
+                            AsyncImage(model = thumb, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().then(blurMod).graphicsLayer { scaleX = 1.2f; scaleY = 1.2f; alpha = 0.38f })
+                        }
+                        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.10f), 1f to Color.Black.copy(alpha = 0.78f))))
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)))
+                        Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                                HeroCarouselPlayerContent(playerConnection = playerConnection, queueWindows = queueWindows, currentWindowIndex = currentWindowIndex, showOverlay = false, modifier = Modifier.fillMaxSize())
+                            }
+                            Column(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                enrichedMetadata?.let { metadata ->
+                                    V10FigmaControls(
+                                        mediaMetadata = metadata,
+                                        position = position,
+                                        duration = duration,
+                                        sliderPosition = sliderPosition,
+                                        isPlaying = isPlaying,
+                                        playbackState = playbackState,
+                                        isLoading = isLoading,
+                                        canSkipPrevious = canSkipPrevious,
+                                        canSkipNext = canSkipNext,
+                                        currentSongLiked = currentSongLiked,
+                                        playerConnection = playerConnection,
+                                        onSliderValueChange = onSliderValueChange,
+                                        onSliderValueChangeFinished = onSliderValueChangeFinished,
+                                        onQueueClick = openQueue,
+                                        onLyricsClick = { isLyricsScreenVisible = true },
+                                        onMenuClick = {
+                                            menuState.show {
+                                                PlayerMenu(mediaMetadata = metadata, navController = navController, playerBottomSheetState = state, onShowDetailsDialog = { bottomSheetPageState.show { ShowMediaInfo(metadata.id) } }, onDismiss = menuState::dismiss)
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
                 } else {
                     Row(
                         modifier =
@@ -1741,36 +1783,75 @@ fun BottomSheetPlayer(
                         },
                     )
                 } else if (playerDesignStyle == PlayerDesignStyle.V10) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier =
-                            Modifier
-                                .windowInsetsPadding(
-                                    WindowInsets.systemBars.only(
-                                        WindowInsetsSides.Horizontal,
-                                    ),
-                                ).padding(bottom = queueSheetState.collapsedBound),
+                    Box(
+                        modifier = Modifier.fillMaxSize()
+                            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+                            .padding(bottom = queueSheetState.collapsedBound)
+                            .nestedScroll(state.preUpPostDownNestedScrollConnection),
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            HeroCarouselPlayerContent(
-                                playerConnection = playerConnection,
-                                queueWindows = queueWindows,
-                                currentWindowIndex = currentWindowIndex,
-                                modifier =
-                                    Modifier
-                                        .fillMaxSize()
-                                        .nestedScroll(state.preUpPostDownNestedScrollConnection),
+                        // ambient blurred cover = fills "empty" feeling, cheap (no Palette)
+                        enrichedMetadata?.thumbnailUrl?.let { thumb ->
+                            val blurMod = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) Modifier.blur(36.dp) else Modifier
+                            AsyncImage(
+                                model = thumb,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize().then(blurMod).graphicsLayer { scaleX = 1.25f; scaleY = 1.25f; alpha = 0.42f },
                             )
                         }
-
-                        enrichedMetadata?.let {
-                            controlsContent(it)
+                        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.12f), 0.45f to Color.Black.copy(alpha = 0.38f), 1f to Color.Black.copy(alpha = 0.86f))))
+                        // subtle theme tint so it still matches app palette
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.07f)))
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 8.dp),
+                            ) {
+                                HeroCarouselPlayerContent(
+                                    playerConnection = playerConnection,
+                                    queueWindows = queueWindows,
+                                    currentWindowIndex = currentWindowIndex,
+                                    showOverlay = false,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            enrichedMetadata?.let { metadata ->
+                                V10FigmaControls(
+                                    mediaMetadata = metadata,
+                                    position = position,
+                                    duration = duration,
+                                    sliderPosition = sliderPosition,
+                                    isPlaying = isPlaying,
+                                    playbackState = playbackState,
+                                    isLoading = isLoading,
+                                    canSkipPrevious = canSkipPrevious,
+                                    canSkipNext = canSkipNext,
+                                    currentSongLiked = currentSongLiked,
+                                    playerConnection = playerConnection,
+                                    onSliderValueChange = onSliderValueChange,
+                                    onSliderValueChangeFinished = onSliderValueChangeFinished,
+                                    onQueueClick = openQueue,
+                                    onLyricsClick = { isLyricsScreenVisible = true },
+                                    onMenuClick = {
+                                        menuState.show {
+                                            PlayerMenu(
+                                                mediaMetadata = metadata,
+                                                navController = navController,
+                                                playerBottomSheetState = state,
+                                                onShowDetailsDialog = {
+                                                    bottomSheetPageState.show { ShowMediaInfo(metadata.id) }
+                                                },
+                                                onDismiss = menuState::dismiss,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                            Spacer(Modifier.height(22.dp))
                         }
-
-                        Spacer(Modifier.height(30.dp))
                     }
                 } else {
                     Column(

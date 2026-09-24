@@ -333,6 +333,8 @@ dependencies {
     implementation(libs.coil)
     implementation(libs.coil.gif)
     implementation(libs.coil.network.okhttp)
+    // ponytail: ships hand-written baseline-prof.txt on API <33 (AGP embeds it on 33+).
+    implementation(libs.profileinstaller)
 
     implementation(libs.shimmer)
 

@@ -14,3 +14,11 @@ fun Context.isLowRamDevice(): Boolean {
     val activityManager = applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
     return activityManager?.isLowRamDevice == true
 }
+
+/** RAM-based tier. Cached per process — totalMem never changes at runtime. */
+fun Context.deviceTier(): DeviceTier {
+    val activityManager = applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+    val memInfo = ActivityManager.MemoryInfo()
+    activityManager?.getMemoryInfo(memInfo)
+    return classifyDeviceTier(memInfo.totalMem, activityManager?.isLowRamDevice == true)
+}

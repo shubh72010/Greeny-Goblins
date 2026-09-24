@@ -635,7 +635,7 @@ fun Thumbnail(
                                                     .clip(thumbnailShape),
                                         )
 
-                                        if (shouldUseCanvas &&
+                                        if (isPlayerExpanded && shouldUseCanvas &&
                                             (!primaryCanvasUrl.isNullOrBlank() || !fallbackCanvasUrl.isNullOrBlank())
                                         ) {
                                             CanvasArtworkPlayer(

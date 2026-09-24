@@ -275,6 +275,12 @@ import moe.rukamori.archivetune.ui.screens.search.decodeOnlineSearchQuery
 import moe.rukamori.archivetune.ui.screens.search.onlineSearchResultRoute
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.screens.settings.NavigationTab
+import moe.rukamori.archivetune.constants.LiquidGlassEnabledKey
+import moe.rukamori.archivetune.ui.component.GlassEffectConfig
+import moe.rukamori.archivetune.ui.component.LocalAppBackdrop
+import moe.rukamori.archivetune.ui.component.LocalGlassEffectConfig
+import moe.rukamori.archivetune.ui.component.backdrop.backdrops.layerBackdrop
+import moe.rukamori.archivetune.ui.component.backdrop.backdrops.rememberLayerBackdrop
 import moe.rukamori.archivetune.ui.theme.ArchiveTuneTheme
 import moe.rukamori.archivetune.ui.theme.ColorSaver
 import moe.rukamori.archivetune.ui.theme.DefaultThemeColor
@@ -821,6 +827,14 @@ class MainActivity : ComponentActivity() {
                     return@ArchiveTuneTheme
                 }
 
+                // Liquid Glass — toggle, off by default (hotfix: translucent fallback only, no backdrop to avoid circular RenderNode crash)
+                val liquidGlassEnabled by rememberPreference(LiquidGlassEnabledKey, defaultValue = false)
+                val glassConfig = remember(liquidGlassEnabled) { GlassEffectConfig(globalEnabled = liquidGlassEnabled) }
+                val appBackdrop = rememberLayerBackdrop()
+                androidx.compose.runtime.CompositionLocalProvider(
+                    LocalGlassEffectConfig provides glassConfig,
+                    LocalAppBackdrop provides appBackdrop,
+                ) {
                 BoxWithConstraints(
                     modifier =
                         Modifier
@@ -2284,6 +2298,7 @@ class MainActivity : ComponentActivity() {
                                     },
                                     modifier =
                                         Modifier
+                                            .then(if (glassConfig.anyComponentEnabled) Modifier.layerBackdrop(appBackdrop) else Modifier)
                                             .then(
                                                 if (isTvDevice) {
                                                     Modifier
@@ -2402,7 +2417,8 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-            }
+            } // BoxWithConstraints
+            } // CompositionLocalProvider
         }
     }
 

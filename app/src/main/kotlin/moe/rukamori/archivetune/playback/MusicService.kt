@@ -267,7 +267,9 @@ import moe.rukamori.archivetune.engine.JusPlayerEngineResolver
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.budgets
 import moe.rukamori.archivetune.utils.dataStore
+import moe.rukamori.archivetune.utils.deviceTier
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.getAsync
@@ -395,6 +397,21 @@ class MusicService :
     private val _activeStreamSource = kotlinx.coroutines.flow.MutableStateFlow("WEB_REMIX")
     val activeStreamSource: kotlinx.coroutines.flow.StateFlow<String> = _activeStreamSource
     private val contentLengthCache = ConcurrentHashMap<String, Long>()
+
+    // ponytail: cap URL caches at 256 (expired-first eviction); were unbounded.
+    private fun <V> putBoundedCache(
+        map: ConcurrentHashMap<String, V>,
+        key: String,
+        value: V,
+        maxSize: Int = 256,
+        isExpired: (V) -> Boolean = { false },
+    ) {
+        if (map.size >= maxSize) {
+            runCatching { map.entries.removeIf { isExpired(it.value) } }
+            if (map.size >= maxSize) map.keys.firstOrNull()?.let { map.remove(it) }
+        }
+        map[key] = value
+    }
     private val streamingExtractionManager by lazy {
         StreamingExtractionManager(
             bearerToken = moe.rukamori.archivetune.BuildConfig.EXTRACTOR_BEARER,
@@ -7844,12 +7861,15 @@ class MusicService :
         val trackingExpiryMs = System.currentTimeMillis() + (nonNullPlayback.streamExpiresInSeconds * 1000L)
 
         if (!lowDataModeActive) {
-            playbackUrlCache[mediaId] =
+            putBoundedCache(
+                playbackUrlCache, mediaId,
                 AuthScopedCacheValue(
                     url = streamUrl,
                     expiresAtMs = trackingExpiryMs,
                     authFingerprint = nonNullPlayback.authFingerprint,
-                )
+                ),
+                isExpired = { it.expiresAtMs <= System.currentTimeMillis() },
+            )
         }
         val resolvedDataSpec = dataSpec.withUri(streamUrl.toUri())
         val length =
@@ -7937,12 +7957,13 @@ class MusicService :
                 }
             }
 
-        extractorPlaybackUrlCache[mediaId] =
+        putBoundedCache(extractorPlaybackUrlCache, mediaId,
             AuthScopedCacheValue(
                 url = streamUrl,
                 expiresAtMs = System.currentTimeMillis() + ArchiveTuneExtractorCacheTtlMs,
                 authFingerprint = authFingerprint,
             )
+        )
         _activeStreamSource.value = "ARCHIVETUNE_EXTRACTOR"
         scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
         return dataSpec.withUri(streamUrl.toUri())
@@ -7975,12 +7996,13 @@ class MusicService :
         }.getOrNull()
 
         if (engineUrl != null && engineUrl.isNotBlank()) {
-            jusPlayerEnginePlaybackUrlCache[mediaId] =
+            putBoundedCache(jusPlayerEnginePlaybackUrlCache, mediaId,
                 AuthScopedCacheValue(
                     url = engineUrl,
                     expiresAtMs = System.currentTimeMillis() + JusPlayerEngineCacheTtlMs,
                     authFingerprint = authFingerprint,
                 )
+            )
             _activeStreamSource.value = "JUSPLAYER_ENGINE • NewPipe"
             scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
             return dataSpec.withUri(engineUrl.toUri())
@@ -8040,19 +8062,21 @@ class MusicService :
         }
 
         val streamUrl = playbackData.streamUrl
-        playbackUrlCache[mediaId] =
+        putBoundedCache(playbackUrlCache, mediaId,
             AuthScopedCacheValue(
                 url = streamUrl,
                 expiresAtMs = System.currentTimeMillis() + playbackData.streamExpiresInSeconds * 1000L,
                 authFingerprint = authFingerprintFallback,
             )
+        )
         // Also cache under engine cache for future engine hits
-        jusPlayerEnginePlaybackUrlCache[mediaId] =
+        putBoundedCache(jusPlayerEnginePlaybackUrlCache, mediaId,
             AuthScopedCacheValue(
                 url = streamUrl,
                 expiresAtMs = System.currentTimeMillis() + JusPlayerEngineCacheTtlMs,
                 authFingerprint = authFingerprint,
             )
+        )
         _activeStreamSource.value = "WEB_REMIX (fallback)"
         scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
         return dataSpec.withUri(streamUrl.toUri())
@@ -8129,12 +8153,13 @@ class MusicService :
             val stream = engineStream ?: return@coroutineScope null
             val authState = YouTube.currentPlaybackAuthState()
             val authFingerprint = JusPlayerEngineCacheFingerprintPrefix + authState.fingerprint
-            jusPlayerEnginePlaybackUrlCache[mediaId] =
+            putBoundedCache(jusPlayerEnginePlaybackUrlCache, mediaId,
                 AuthScopedCacheValue(
                     url = stream.url,
                     expiresAtMs = System.currentTimeMillis() + JusPlayerEngineCacheTtlMs,
                     authFingerprint = authFingerprint,
                 )
+            )
             _activeStreamSource.value = "JUSPLAYER_ENGINE (max • NewPipe)"
             scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
             dataSpec.withUri(stream.url.toUri())
@@ -8176,12 +8201,13 @@ class MusicService :
             val streamUrl = playbackData.streamUrl
             _activeStreamSource.value = "WEB_REMIX (max)"
             val trackingExpiryMs = System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
-            playbackUrlCache[mediaId] =
+            putBoundedCache(playbackUrlCache, mediaId,
                 AuthScopedCacheValue(
                     url = streamUrl,
                     expiresAtMs = trackingExpiryMs,
                     authFingerprint = playbackData.authFingerprint,
                 )
+            )
             val resolvedDataSpec = dataSpec.withUri(streamUrl.toUri())
             val length = resolveStreamChunkLength(
                 requestedLength = dataSpec.length,
@@ -8469,16 +8495,19 @@ class MusicService :
         }
     }
 
-    private fun createPrimaryLoadControl(): DefaultLoadControl =
-        DefaultLoadControl
+    private fun createPrimaryLoadControl(): DefaultLoadControl {
+        // ponytail: buffers from RAM tier (10/20 → 12/24 → 15/30) — was 20/60 flat.
+        val budgets = runCatching { deviceTier().budgets() }.getOrNull()
+        return DefaultLoadControl
             .Builder()
             .setBufferDurationsMs(
-                PRIMARY_MIN_BUFFER_MS,
-                PRIMARY_MAX_BUFFER_MS,
+                budgets?.bufferMinMs ?: PRIMARY_MIN_BUFFER_MS,
+                budgets?.bufferMaxMs ?: PRIMARY_MAX_BUFFER_MS,
                 PRIMARY_BUFFER_FOR_PLAYBACK_MS,
                 PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
             ).setPrioritizeTimeOverSizeThresholds(true)
             .build()
+    }
 
     private fun createCrossfadeLoadControl(): DefaultLoadControl =
         DefaultLoadControl
@@ -9203,10 +9232,10 @@ class MusicService :
         const val CROSSFADE_HANDOFF_SEEK_GUARD_MS = 750L
         const val CROSSFADE_MIN_BUFFER_BEFORE_START_MS = 5_000L
         const val CROSSFADE_MAX_BUFFER_BEFORE_START_MS = 12_500L
-        const val PRIMARY_MIN_BUFFER_MS = 20_000
-        const val PRIMARY_MAX_BUFFER_MS = 60_000
-        const val PRIMARY_BUFFER_FOR_PLAYBACK_MS = 750
-        const val PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 2_500
+        const val PRIMARY_MIN_BUFFER_MS = 15_000
+        const val PRIMARY_MAX_BUFFER_MS = 30_000
+        const val PRIMARY_BUFFER_FOR_PLAYBACK_MS = 1_000
+        const val PRIMARY_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 2_000
         const val CROSSFADE_MIN_BUFFER_MS = 15_000
         const val CROSSFADE_MAX_BUFFER_MS = 45_000
         const val CROSSFADE_FRAME_MS = 32L

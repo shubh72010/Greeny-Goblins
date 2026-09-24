@@ -73,6 +73,7 @@ import moe.rukamori.archivetune.constants.ArtistThumbnailShapeKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
+import moe.rukamori.archivetune.constants.LiquidGlassEnabledKey
 import moe.rukamori.archivetune.constants.ChipSortTypeKey
 import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
 import moe.rukamori.archivetune.constants.CustomFontNameKey
@@ -329,6 +330,12 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
             RandomThumbnailShapeKey,
             defaultValue = true,
         )
+    val (liquidGlassEnabled, onLiquidGlassEnabledChange) =
+        rememberPreference(
+            LiquidGlassEnabledKey,
+            defaultValue = false,
+        )
+
     val (hideArtistPfp, onHideArtistPfpChange) =
         rememberPreference(
             HideArtistPfpKey,
@@ -705,6 +712,26 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
                         description = customFontDescription,
                         icon = { Icon(painterResource(R.drawable.text_fields), null) },
                         onClick = pickCustomFont,
+                    )
+                }
+            }
+
+            PreferenceGroup(title = "Liquid Glass") {
+                item {
+                    SwitchPreference(
+                        title = { Text("Liquid Glass") },
+                        description = if (liquidGlassEnabled) "On — frosted nav + player (requires Android 12+)" else "Off — classic JusPlayer UI",
+                        icon = { Icon(painterResource(R.drawable.blur_on), null) },
+                        checked = liquidGlassEnabled,
+                        onCheckedChange = onLiquidGlassEnabledChange,
+                    )
+                }
+                item(visible = liquidGlassEnabled) {
+                    PreferenceEntry(
+                        title = { Text("How it works") },
+                        description = "Samples real content behind the bar (refraction + blur). Toggle off to restore the original opaque chrome. Low-RAM / pre-Android 12 falls back to translucent tint.",
+                        icon = { Icon(painterResource(R.drawable.info), null) },
+                        onClick = {},
                     )
                 }
             }

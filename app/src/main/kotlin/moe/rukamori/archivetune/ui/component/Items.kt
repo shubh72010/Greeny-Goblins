@@ -139,6 +139,8 @@ import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
 import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
+import moe.rukamori.archivetune.utils.budgets
+import moe.rukamori.archivetune.utils.deviceTier
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -450,7 +452,7 @@ fun SongListItem(
             badges = badges,
             thumbnailContent = {
                 ItemThumbnail(
-                    thumbnailUrl = song.song.thumbnailUrl?.resize(200, 200),
+                    thumbnailUrl = song.song.thumbnailUrl,
                     albumIndex = albumIndex,
                     isSelected = isSelected,
                     isActive = isActive,
@@ -562,13 +564,25 @@ fun ArtistListItem(
         }
     },
     trailingContent: @Composable RowScope.() -> Unit = {},
-) = ListItem(
-    title = artist.artist.name,
-    subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
-    badges = badges,
-    thumbnailContent = {
-        AsyncImage(
-            model = artist.artist.thumbnailUrl?.resize(200, 200),
+) =
+    ListItem(
+        title = artist.artist.name,
+        subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
+        badges = badges,
+        thumbnailContent = {
+            val context = LocalContext.current
+            AsyncImage(
+                model =
+                    remember(artist.artist.thumbnailUrl) {
+                        ImageRequest
+                            .Builder(context)
+                            .data(artist.artist.thumbnailUrl?.resize(200, 200))
+                            .size(200, 200)
+                            .allowHardware(true)
+                            .memoryCacheKey(artist.artist.thumbnailUrl)
+                            .diskCacheKey(artist.artist.thumbnailUrl)
+                            .build()
+                    },
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier =
@@ -596,8 +610,19 @@ fun ArtistGridItem(
     subtitle = pluralStringResource(R.plurals.n_song, artist.songCount, artist.songCount),
     badges = badges,
     thumbnailContent = {
+        val context = LocalContext.current
         AsyncImage(
-            model = artist.artist.thumbnailUrl?.resize(544, 544),
+            model =
+                remember(artist.artist.thumbnailUrl) {
+                    ImageRequest
+                        .Builder(context)
+                        .data(artist.artist.thumbnailUrl?.resize(544, 544))
+                        .size(544, 544)
+                        .allowHardware(true)
+                        .memoryCacheKey(artist.artist.thumbnailUrl)
+                        .diskCacheKey(artist.artist.thumbnailUrl)
+                        .build()
+                },
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier =
@@ -618,27 +643,18 @@ fun AlbumListItem(
     badges: @Composable RowScope.() -> Unit = {
         val database = LocalDatabase.current
         val downloadUtil = LocalDownloadUtil.current
-        var songs by remember {
-            mutableStateOf(emptyList<Song>())
-        }
-
-        LaunchedEffect(Unit) {
-            database.albumSongs(album.id).collect {
-                songs = it
-            }
-        }
-
-        var downloadState by remember {
-            mutableStateOf(Download.STATE_STOPPED)
-        }
-
-        LaunchedEffect(songs) {
-            if (songs.isEmpty()) return@LaunchedEffect
-            downloadUtil.downloads.collect { downloads ->
-                downloadState =
+        // ponytail: single songs collect keyed on album.id + single downloads snapshot;
+        // was LaunchedEffect(Unit)+nested downloads collect restarting per songs change.
+        val songs by remember(album.id) { database.albumSongs(album.id) }
+            .collectAsState(initial = emptyList())
+        val downloads by downloadUtil.downloads.collectAsState()
+        val downloadState =
+            remember(songs, downloads) {
+                if (songs.isEmpty()) {
+                    Download.STATE_STOPPED
+                } else {
                     when {
                         songs.all { downloads[it.id]?.state == STATE_COMPLETED } -> STATE_COMPLETED
-
                         songs.all {
                             downloads[it.id]?.state in
                                 listOf(
@@ -647,11 +663,10 @@ fun AlbumListItem(
                                     STATE_COMPLETED,
                                 )
                         } -> STATE_DOWNLOADING
-
                         else -> Download.STATE_STOPPED
                     }
+                }
             }
-        }
 
         if (showLikedIcon && album.album.bookmarkedAt != null) {
             Icon.Favorite()
@@ -694,21 +709,17 @@ fun AlbumGridItem(
     badges: @Composable RowScope.() -> Unit = {
         val database = LocalDatabase.current
         val downloadUtil = LocalDownloadUtil.current
-        var songs by remember { mutableStateOf(emptyList<Song>()) }
-
-        LaunchedEffect(Unit) {
-            database.albumSongs(album.id).collect { songs = it }
-        }
-
-        var downloadState by remember { mutableStateOf(Download.STATE_STOPPED) }
-
-        LaunchedEffect(songs) {
-            if (songs.isEmpty()) return@LaunchedEffect
-            downloadUtil.downloads.collect { downloads ->
-                downloadState =
+        // ponytail: same single-collect pattern as AlbumListItem (see above).
+        val songs by remember(album.id) { database.albumSongs(album.id) }
+            .collectAsState(initial = emptyList())
+        val downloads by downloadUtil.downloads.collectAsState()
+        val downloadState =
+            remember(songs, downloads) {
+                if (songs.isEmpty()) {
+                    Download.STATE_STOPPED
+                } else {
                     when {
                         songs.all { downloads[it.id]?.state == STATE_COMPLETED } -> STATE_COMPLETED
-
                         songs.all {
                             downloads[it.id]?.state in
                                 listOf(
@@ -717,11 +728,10 @@ fun AlbumGridItem(
                                     STATE_COMPLETED,
                                 )
                         } -> STATE_DOWNLOADING
-
                         else -> Download.STATE_STOPPED
                     }
+                }
             }
-        }
 
         if (album.album.bookmarkedAt != null) {
             Icon.Favorite()
@@ -1696,6 +1706,9 @@ fun ItemThumbnail(
         val shouldApplySquareCrop = cropThumbnailToSquare && isYouTubeThumb && kotlin.math.abs(thumbnailRatio - 1f) < 0.001f
         val widthPx = if (maxWidth == Dp.Infinity) null else with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
         val heightPx = if (maxHeight == Dp.Infinity) null else with(density) { maxHeight.roundToPx().coerceAtLeast(1) }
+        // ponytail: decode cap from RAM tier; totalMem never changes so remember it.
+        // Hoisted out of the if below — conditional remember calls desync the slot table.
+        val artCap = remember { context.deviceTier().budgets().fullscreenArtCapPx }
 
         if (albumIndex == null) {
             if (placeholderIconRes != null) {
@@ -1718,9 +1731,13 @@ fun ItemThumbnail(
             if (shouldLoadImage && !thumbnailUrl.isNullOrBlank()) {
                 val request =
                     remember(thumbnailUrl, widthPx, heightPx) {
+                        // ponytail: per-surface URL resize capped to measured px (max tier cap) so
+                        // 56dp rows don't fetch 544px+; Coil .size() then downsamples exactly.
+                        val urlW = (widthPx?.coerceIn(1, artCap) ?: 544).coerceAtMost(artCap)
+                        val urlH = (heightPx?.coerceIn(1, artCap) ?: 544).coerceAtMost(artCap)
                         ImageRequest
                             .Builder(context)
-                            .data(thumbnailUrl?.resize(544, 544))
+                            .data(thumbnailUrl?.resize(urlW, urlH))
                             .allowHardware(true)
                             .apply {
                                 if (widthPx != null && heightPx != null) {

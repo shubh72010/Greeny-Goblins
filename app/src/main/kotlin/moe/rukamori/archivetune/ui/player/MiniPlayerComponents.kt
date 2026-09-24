@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -72,6 +73,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
@@ -357,8 +360,23 @@ private fun MiniPlayerArtwork(
                         lowDataMode = rememberLowDataModeActive(),
                         isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                     )
+                val context = LocalContext.current
+                // ponytail: 37dp art -> 168px request, don't full-decode 1000px+ thumbs.
+                val miniArtRequest =
+                    remember(thumbnailSwapState.displayUrl) {
+                        thumbnailSwapState.displayUrl?.let { url ->
+                            ImageRequest
+                                .Builder(context)
+                                .data(url)
+                                .size(168, 168)
+                                .allowHardware(true)
+                                .memoryCacheKey(url)
+                                .diskCacheKey(url)
+                                .build()
+                        }
+                    }
                 AsyncImage(
-                    model = thumbnailSwapState.displayUrl,
+                    model = miniArtRequest,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
