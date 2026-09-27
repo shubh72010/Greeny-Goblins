@@ -439,6 +439,9 @@ val QuickPicksKey = stringPreferencesKey("discover")
 
 val NewsLastReadTimestampKey = longPreferencesKey("news_last_read_timestamp")
 val SpeedDialSongIdsKey = stringPreferencesKey("speedDialSongIds")
+
+/** `songId:expiryEpochMillis,…` — songs temporarily excluded from recommendations. */
+val SongRecommendationHidesKey = stringPreferencesKey("songRecommendationHides")
 val PreferredLyricsProviderKey = stringPreferencesKey("lyricsProvider")
 val LyricsProviderOrderKey = stringPreferencesKey("lyricsProviderOrder")
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")

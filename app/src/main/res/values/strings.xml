@@ -171,6 +171,13 @@
     <string name="no_playlists_yet">No playlists yet</string>
     <string name="pin_to_speed_dial">Pin to speed dial</string>
     <string name="remove_from_speed_dial">Remove from speed dial</string>
+    <string name="hide_song_from_recommendations">Don\'t recommend this song</string>
+    <string name="show_song_in_recommendations">Recommend this song again</string>
+    <string name="hide_song_duration_title">Don\'t recommend “%1$s” for…</string>
+    <string name="hide_song_duration_6_hours">6 hours</string>
+    <string name="hide_song_duration_1_day">1 day</string>
+    <string name="hide_song_duration_1_week">1 week</string>
+    <string name="hide_song_duration_1_month">1 month</string>
     <string name="view_artist">View artist</string>
     <string name="view_album">View album</string>
     <string name="view_all">View all</string>

@@ -33,10 +33,12 @@ import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.QuickPicks
 import moe.rukamori.archivetune.constants.QuickPicksKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
+import moe.rukamori.archivetune.constants.SongRecommendationHidesKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.*
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
+import moe.rukamori.archivetune.extensions.filterHiddenSongs
 import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.home.HomeAction
 import moe.rukamori.archivetune.home.HomePresentationPreferences
@@ -59,6 +61,7 @@ import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.parseSongHides
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.toPlaybackAuthState
@@ -304,8 +307,12 @@ class HomeViewModel
                 it.title.contains("podcasts", ignoreCase = true)
             }
 
-        private fun List<Song>.toQuickPickSample(): List<Song> =
-            filter { song -> song.artists.none { it.blockedAt != null } }
+        private suspend fun hiddenRecommendationIds(): Set<String> =
+            parseSongHides(context.dataStore.get(SongRecommendationHidesKey, "")).keys
+
+        private fun List<Song>.toQuickPickSample(hiddenSongIds: Set<String>): List<Song> =
+            filterHiddenSongs(hiddenSongIds)
+                .filter { song -> song.artists.none { it.blockedAt != null } }
                 .distinctBy { it.id }
                 .shuffled()
                 .take(20)
@@ -333,13 +340,14 @@ class HomeViewModel
         }
 
         private suspend fun quickPicksWithFallback(primary: List<Song>): List<Song> {
-            val primaryPicks = primary.toQuickPickSample()
+            val hidden = hiddenRecommendationIds()
+            val primaryPicks = primary.toQuickPickSample(hidden)
             if (primaryPicks.isNotEmpty()) return primaryPicks
 
-            val recentPicks = database.recentSongs(limit = 60).first().toQuickPickSample()
+            val recentPicks = database.recentSongs(limit = 60).first().toQuickPickSample(hidden)
             if (recentPicks.isNotEmpty()) return recentPicks
 
-            return database.allSongs().first().toQuickPickSample()
+            return database.allSongs().first().toQuickPickSample(hidden)
         }
 
         private fun lastListenQuickPicksFlow(): Flow<List<Song>> =
@@ -349,7 +357,8 @@ class HomeViewModel
                 .flatMapLatest { lastSongId ->
                     flow {
                         if (!lastSongId.isNullOrBlank() && database.hasRelatedSongs(lastSongId)) {
-                            val relatedSongs = database.getRelatedSongs(lastSongId).first().toQuickPickSample()
+                            val relatedSongs =
+                                database.getRelatedSongs(lastSongId).first().toQuickPickSample(hiddenRecommendationIds())
                             if (relatedSongs.isNotEmpty()) {
                                 emit(relatedSongs)
                                 return@flow
@@ -460,6 +469,7 @@ class HomeViewModel
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    val hiddenSongIds = hiddenRecommendationIds()
                     val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
 
                     launch { loadSpeedDialItems() }
@@ -468,6 +478,7 @@ class HomeViewModel
                             database
                                 .forgottenFavorites()
                                 .first()
+                                .filterHiddenSongs(hiddenSongIds)
                                 .filter { song -> song.artists.none { it.blockedAt != null } }
                                 .shuffled()
                                 .take(20)
@@ -478,6 +489,7 @@ class HomeViewModel
                             database
                                 .mostPlayedSongs(fromTimeStamp, limit = 15, offset = 5)
                                 .first()
+                                .filterHiddenSongs(hiddenSongIds)
                                 .filter { song -> song.artists.none { it.blockedAt != null } }
                                 .shuffled()
                                 .take(10)
@@ -515,7 +527,8 @@ class HomeViewModel
                                                         section.items
                                                             .filterExplicit(hideExplicit)
                                                             .filterVideo(hideVideo)
-                                                            .filterBlockedArtists(blockedArtistIds),
+                                                            .filterBlockedArtists(blockedArtistIds)
+                                                            .filterHiddenSongs(hiddenSongIds),
                                                 )
                                             },
                                     )
@@ -554,6 +567,7 @@ class HomeViewModel
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideo = context.dataStore.get(HideVideoKey, false)
             val blockedArtistIds = database.getBlockedArtistIds().toSet()
+            val hiddenSongIds = hiddenRecommendationIds()
             val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
 
             val artistRecommendations =
@@ -579,13 +593,14 @@ class HomeViewModel
                         }
                         SimilarRecommendation(
                             title = it,
-                            items =
-                                items
-                                    .filterExplicit(hideExplicit)
-                                    .filterVideo(hideVideo)
-                                    .filterBlockedArtists(blockedArtistIds)
-                                    .shuffled()
-                                    .ifEmpty { return@mapNotNull null },
+                                items =
+                                    items
+                                        .filterExplicit(hideExplicit)
+                                        .filterVideo(hideVideo)
+                                        .filterBlockedArtists(blockedArtistIds)
+                                        .filterHiddenSongs(hiddenSongIds)
+                                        .shuffled()
+                                        .ifEmpty { return@mapNotNull null },
                         )
                     }
 
@@ -612,6 +627,7 @@ class HomeViewModel
                                 ).filterExplicit(hideExplicit)
                                     .filterVideo(hideVideo)
                                     .filterBlockedArtists(blockedArtistIds)
+                                    .filterHiddenSongs(hiddenSongIds)
                                     .shuffled()
                                     .ifEmpty { return@mapNotNull null },
                         )
@@ -721,6 +737,7 @@ class HomeViewModel
                 isLoadingMore.value = true
                 try {
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    val hiddenSongIds = hiddenRecommendationIds()
                     val nextSections = YouTube.home(continuation).getOrNull() ?: return@launch
                     homePage.value =
                         nextSections.copy(
@@ -732,7 +749,8 @@ class HomeViewModel
                                             section.items
                                                 .filterExplicit(hideExplicit)
                                                 .filterVideo(hideVideo)
-                                                .filterBlockedArtists(blockedArtistIds),
+                                                .filterBlockedArtists(blockedArtistIds)
+                                                .filterHiddenSongs(hiddenSongIds),
                                     )
                                 },
                         )
@@ -760,6 +778,7 @@ class HomeViewModel
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                    val hiddenSongIds = hiddenRecommendationIds()
                     val nextSections = YouTube.home(params = chip?.endpoint?.params).getOrNull() ?: return@launch
 
                     homePage.value =
@@ -772,7 +791,8 @@ class HomeViewModel
                                             section.items
                                                 .filterExplicit(hideExplicit)
                                                 .filterVideo(hideVideo)
-                                                .filterBlockedArtists(blockedArtistIds),
+                                                .filterBlockedArtists(blockedArtistIds)
+                                                .filterHiddenSongs(hiddenSongIds),
                                     )
                                 },
                         )

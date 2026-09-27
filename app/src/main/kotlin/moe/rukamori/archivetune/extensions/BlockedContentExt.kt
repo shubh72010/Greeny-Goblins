@@ -27,6 +27,13 @@ fun <T : YTItem> List<T>.filterBlockedArtists(blockedArtistIds: Set<String>): Li
     }
 }
 
+/** Keeps every non-song item; only hides songs the user muted from recommendations. */
+fun <T : YTItem> List<T>.filterHiddenSongs(hiddenSongIds: Set<String>): List<T> {
+    if (hiddenSongIds.isEmpty()) return this
+
+    return filter { it !is SongItem || it.id !in hiddenSongIds }
+}
+
 fun BrowseResult.filterBlockedArtists(blockedArtistIds: Set<String>): BrowseResult {
     if (blockedArtistIds.isEmpty()) return this
 

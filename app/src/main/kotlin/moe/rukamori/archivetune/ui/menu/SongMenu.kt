@@ -74,6 +74,8 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -84,6 +86,7 @@ import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
 import moe.rukamori.archivetune.constants.ListThumbnailSize
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
+import moe.rukamori.archivetune.constants.SongRecommendationHidesKey
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.PlaylistSong
@@ -104,7 +107,9 @@ import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
+import moe.rukamori.archivetune.utils.parseSongHides
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
+import moe.rukamori.archivetune.utils.setSongHide
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.serializeSpeedDialPins
 import moe.rukamori.archivetune.utils.shareLocalAudio
@@ -152,6 +157,11 @@ fun SongMenu(
         remember(speedDialPins, songPin) {
             speedDialPins.any { it.type == songPin.type && it.id == songPin.id }
         }
+
+    val (songHides, onSongHidesChange) = rememberPreference(SongRecommendationHidesKey, "")
+    val isHiddenFromRecommendations =
+        remember(songHides, song.id) { song.id in parseSongHides(songHides) }
+    var showSongHideDialog by rememberSaveable { mutableStateOf(false) }
 
     val orderedArtists by produceState(initialValue = emptyList<ArtistEntity>(), song) {
         withContext(Dispatchers.IO) {
@@ -358,6 +368,44 @@ fun SongMenu(
                                     showSelectArtistDialog = false
                                     onDismiss()
                                 }
+                            },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+        }
+    }
+
+    if (showSongHideDialog) {
+        val presets =
+            listOf(
+                6.hours to stringResource(R.string.hide_song_duration_6_hours),
+                1.days to stringResource(R.string.hide_song_duration_1_day),
+                7.days to stringResource(R.string.hide_song_duration_1_week),
+                30.days to stringResource(R.string.hide_song_duration_1_month),
+            )
+        ListDialog(
+            onDismiss = { showSongHideDialog = false },
+        ) {
+            item {
+                Text(
+                    text = stringResource(R.string.hide_song_duration_title, song.song.title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+                )
+            }
+            items(
+                items = presets,
+                key = { (_, label) -> label },
+            ) { (duration, label) ->
+                ListItem(
+                    headlineContent = { Text(text = label) },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onSongHidesChange(setSongHide(songHides, song.id, duration))
+                                showSongHideDialog = false
+                                onDismiss()
                             },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 )
@@ -649,6 +697,41 @@ fun SongMenu(
                             val updatedPins = toggleSpeedDialPin(speedDialPins, songPin)
                             onSpeedDialSongIdsChange(serializeSpeedDialPins(updatedPins))
                             onDismiss()
+                        },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+        }
+
+        item {
+            MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text =
+                                stringResource(
+                                    if (isHiddenFromRecommendations) {
+                                        R.string.show_song_in_recommendations
+                                    } else {
+                                        R.string.hide_song_from_recommendations
+                                    },
+                                ),
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            painter = painterResource(R.drawable.visibility_off),
+                            contentDescription = null,
+                        )
+                    },
+                    modifier =
+                        Modifier.clickable {
+                            if (isHiddenFromRecommendations) {
+                                onSongHidesChange(setSongHide(songHides, song.id, null))
+                                onDismiss()
+                            } else {
+                                showSongHideDialog = true
+                            }
                         },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 )

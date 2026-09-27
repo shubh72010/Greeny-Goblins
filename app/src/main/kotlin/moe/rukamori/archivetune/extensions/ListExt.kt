@@ -57,5 +57,8 @@ fun List<Album>.filterExplicitAlbums(enabled: Boolean = true) =
 
 fun List<Song>.filterBlockedArtists() = filter { song -> song.artists.none { it.blockedAt != null } }
 
+fun List<Song>.filterHiddenSongs(hiddenSongIds: Set<String>) =
+    if (hiddenSongIds.isEmpty()) this else filter { it.id !in hiddenSongIds }
+
 // No-op for local songs: local Song entities do not contain video metadata to filter reliably
 fun List<Song>.filterVideo(enabled: Boolean = true) = this
