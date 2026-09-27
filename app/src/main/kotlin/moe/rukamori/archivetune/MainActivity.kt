@@ -1733,65 +1733,6 @@ class MainActivity : ComponentActivity() {
                                                         )
                                                     }
                                                 },
-                                                actions = {
-                                                    val (sneakyMode, onSneakyModeChange) =
-                                                        rememberPreference(PauseListenHistoryKey, false)
-                                                    val sneakyHaptic = LocalHapticFeedback.current
-                                                    TranslucentTopAppBarIconButton(
-                                                        onClick = { navController.navigate("history") },
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.history),
-                                                            contentDescription = stringResource(R.string.history),
-                                                        )
-                                                    }
-
-                                                    // Sneaky Mode 🥷 — incognito toggle (reuses PauseListenHistoryKey)
-                                                    TranslucentTopAppBarIconButton(
-                                                        onClick = {
-                                                            sneakyHaptic.performHapticFeedback(
-                                                                HapticFeedbackType.LongPress,
-                                                            )
-                                                            onSneakyModeChange(!sneakyMode)
-                                                        },
-                                                    ) {
-                                                        Icon(
-                                                            painter = painterResource(R.drawable.visibility_off),
-                                                            contentDescription = stringResource(R.string.pause_listen_history),
-                                                            tint =
-                                                                if (sneakyMode) MaterialTheme.colorScheme.primary
-                                                                else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        )
-                                                    }
-
-                                                    // TranslucentTopAppBarIconButton(
-                                                    //     onClick = { navController.navigate("new_release") },
-                                                    // ) {
-                                                    //     Icon(
-                                                    //         painter = painterResource(R.drawable.new_release),
-                                                    //         contentDescription = stringResource(R.string.new_release_albums),
-                                                    //     )
-                                                    // }
-                                                    TranslucentTopAppBarIconButton(
-                                                        onClick = { navController.navigate("settings") },
-                                                    ) {
-                                                        BadgedBox(badge = {
-                                                            if (
-                                                                BuildConfig.UPDATER_AVAILABLE &&
-                                                                latestUpdateChannel == updateChannel &&
-                                                                Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME)
-                                                            ) {
-                                                                Badge()
-                                                            }
-                                                        }) {
-                                                            Icon(
-                                                                painter = painterResource(R.drawable.settings),
-                                                                contentDescription = stringResource(R.string.settings),
-                                                                modifier = Modifier.size(24.dp),
-                                                            )
-                                                        }
-                                                    }
-                                                },
                                                 scrollBehavior =
                                                     if (navBackStackEntry?.destination?.route == Screens.Library.route ||
                                                         shouldUseFloatingTopBar
@@ -2193,6 +2134,12 @@ class MainActivity : ComponentActivity() {
                                                     } else {
                                                         null
                                                     },
+                                                onHistoryClick = { navController.navigate("history") },
+                                                onSettingsClick = { navController.navigate("settings") },
+                                                showSettingsBadge =
+                                                    BuildConfig.UPDATER_AVAILABLE &&
+                                                        latestUpdateChannel == updateChannel &&
+                                                        Updater.isUpdateAvailable(latestVersionName, BuildConfig.VERSION_NAME),
                                                 isSelected = { screen ->
                                                     navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } ==
                                                         true
@@ -2842,8 +2789,8 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        const val ACTION_SEARCH = "moe.rukamori.archivetune.action.SEARCH"
-        const val ACTION_LIBRARY = "moe.rukamori.archivetune.action.LIBRARY"
+        const val ACTION_SEARCH = "com.jusdots.jusplayer.action.SEARCH"
+        const val ACTION_LIBRARY = "com.jusdots.jusplayer.action.LIBRARY"
     }
 }
 

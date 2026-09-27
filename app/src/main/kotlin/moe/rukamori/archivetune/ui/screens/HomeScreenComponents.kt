@@ -8,7 +8,12 @@
 package moe.rukamori.archivetune.ui.screens
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -18,6 +23,14 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.snapping.SnapLayoutInfoProvider
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.foundation.rememberOverscrollEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -66,6 +79,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -89,6 +103,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
 import moe.rukamori.archivetune.constants.ListItemHeight
@@ -572,6 +587,103 @@ fun QuickPicksSection(
                 val widthFactor = if (maxWidth * 0.475f >= 320.dp) 0.475f else 0.9f
                 val itemWidth = maxWidth * widthFactor
                 val lazyGridState = rememberLazyGridState()
+                // End-only rubber band + circular overscroll: pushing past the
+                // last item stretches the grid with resistance, springs back
+                // on release, and — if the push was deliberate — flies back
+                // to the first page. The start edge gets nothing.
+                // Detection lives here (not in grid state) because at the true
+                // end the grid does not move at all: the push only exists as
+                // unconsumed deltas in this connection.
+                val density = LocalDensity.current
+                val maxStretchPx = with(density) { 120.dp.toPx() }
+                val wrapPushThresholdPx = with(density) { 64.dp.toPx() }
+                val rubberBandOffset = remember { Animatable(0f) }
+                val rubberBandScope = rememberCoroutineScope()
+                val endRubberBand =
+                    remember(lazyGridState, maxStretchPx, wrapPushThresholdPx, distinctQuickPicks.size) {
+                        object : NestedScrollConnection {
+                            var edgePushPx = 0f
+
+                            override fun onPostScroll(
+                                consumed: Offset,
+                                available: Offset,
+                                source: NestedScrollSource,
+                            ): Offset {
+                                if (available.x < 0f) {
+                                    // Forward push. Only counts (and stretches)
+                                    // once the grid itself cannot move further.
+                                    // Deliberately no reset here: while the grid
+                                    // is still settling into its snap position
+                                    // it consumes the deltas (available ~ 0) and
+                                    // resetting would wipe the push every time.
+                                    if (!lazyGridState.canScrollForward) {
+                                        edgePushPx -= available.x
+                                        val next =
+                                            (rubberBandOffset.value + available.x / 3f)
+                                                .coerceIn(-maxStretchPx, 0f)
+                                        rubberBandScope.launch { rubberBandOffset.snapTo(next) }
+                                    }
+                                } else if (available.x > 8f) {
+                                    // Deliberate backward push cancels the wrap…
+                                    edgePushPx = 0f
+                                    // …and eases the stretch back.
+                                    val next =
+                                        (rubberBandOffset.value + available.x / 3f)
+                                            .coerceIn(-maxStretchPx, 0f)
+                                    rubberBandScope.launch { rubberBandOffset.snapTo(next) }
+                                }
+                                return Offset.Zero
+                            }
+
+                            override suspend fun onPostFling(
+                                consumed: Velocity,
+                                available: Velocity,
+                            ): Velocity {
+                                if (rubberBandOffset.value != 0f) {
+                                    rubberBandOffset.animateTo(
+                                        0f,
+                                        spring(stiffness = Spring.StiffnessMediumLow),
+                                    )
+                                }
+                                val lastVisible =
+                                    lazyGridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                                        ?: -1
+                                if (edgePushPx > wrapPushThresholdPx &&
+                                    lastVisible == distinctQuickPicks.size - 1
+                                ) {
+                                    rubberBandScope.launch {
+                                        // Fast flight to the first page: manual tween
+                                        // (animateScrollToItem's default spring is
+                                        // sluggish over ~19 items), then exact settle.
+                                        lazyGridState.scroll {
+                                            val first = lazyGridState.firstVisibleItemIndex
+                                            if (first > 0) {
+                                                val avgW =
+                                                    lazyGridState.layoutInfo.visibleItemsInfo
+                                                        .takeIf { it.isNotEmpty() }
+                                                        ?.map { it.size.width }
+                                                        ?.average()?.toFloat() ?: 0f
+                                                val distance =
+                                                    (avgW * first + lazyGridState.firstVisibleItemScrollOffset)
+                                                        .coerceAtLeast(0f)
+                                                var prev = 0f
+                                                Animatable(0f).animateTo(
+                                                    distance,
+                                                    tween(320, easing = FastOutSlowInEasing),
+                                                ) {
+                                                    scrollBy(-(value - prev))
+                                                    prev = value
+                                                }
+                                            }
+                                            lazyGridState.scrollToItem(0)
+                                        }
+                                    }
+                                }
+                                edgePushPx = 0f
+                                return Velocity.Zero
+                            }
+                        }
+                    }
                 val snapLayoutInfoProvider =
                     remember(lazyGridState, widthFactor) {
                         buildSnapLayoutInfoProvider(
@@ -592,7 +704,11 @@ fun QuickPicksSection(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(ListItemHeight * 4),
+                            .height(ListItemHeight * 4)
+                            .nestedScroll(endRubberBand)
+                            .graphicsLayer {
+                                translationX = rubberBandOffset.value
+                            },
                 ) {
                     items(
                         items = distinctQuickPicks,

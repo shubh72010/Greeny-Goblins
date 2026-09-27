@@ -265,7 +265,7 @@ fun SettingsScreen(
                 }
             }
 
-            stickyHeader(key = "search") {
+            item(key = "search") {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = if (isSearchFocused || query.isNotBlank()) 2.dp else 0.dp,
@@ -274,7 +274,7 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                            .padding(top = 4.dp, bottom = 8.dp),
+                            .padding(vertical = 2.dp),
                     ) {
                         OutlinedTextField(
                             value = query,

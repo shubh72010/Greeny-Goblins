@@ -47,13 +47,13 @@ import moe.rukamori.archivetune.ui.component.backdrop.shadow.Shadow
 data class GlassEffectConfig(
     val globalEnabled: Boolean = false,
     val vibrancy: Float = 1.2f,
-    /** Blur in dp applied to glass pills. User requested 2dp for landscape fix. */
-    val blurRadius: Float = 2f,
-    /** 0..1, mapped to 0..[LENS_MAX_DP] dp of lens refraction height. 0.4 = 40%. */
-    val lensHeight: Float = 0.4f,
-    /** 0..1, mapped to 0..[LENS_MAX_DP] dp of lens refraction amount. 0.6 = 60%. */
-    val lensAmount: Float = 0.6f,
-    val chromaticAberration: Boolean = false,
+    /** Blur in dp applied to glass pills. Kept low so refraction stays visible. */
+    val blurRadius: Float = 1f,
+    /** 0..1, mapped to 0..[LENS_MAX_DP] dp of lens refraction height. */
+    val lensHeight: Float = 0.6f,
+    /** 0..1, mapped to 0..[LENS_MAX_DP] dp of lens refraction amount. */
+    val lensAmount: Float = 0.85f,
+    val chromaticAberration: Boolean = true,
     val depthEffect: Boolean = false,
     /** [Color.Unspecified] means adaptive: dark grey on dark. */
     val surfaceTintColor: Color = Color(0xFF1A1A1A),
@@ -81,9 +81,9 @@ data class GlassEffectConfig(
      *  defaults match those shared values so it looks identical until
      *  explicitly customized. */
     val sidePanelVibrancy: Float = 1.2f,
-    val sidePanelBlurRadius: Float = 2f,
-    val sidePanelLensHeight: Float = 0.4f,
-    val sidePanelLensAmount: Float = 0.6f,
+    val sidePanelBlurRadius: Float = 1f,
+    val sidePanelLensHeight: Float = 0.6f,
+    val sidePanelLensAmount: Float = 0.85f,
     val sidePanelColor: Color = Color.Unspecified,
     val sidePanelSurfaceOpacity: Float = 0.5f,
     val sidePanelTextColor: Color = Color.White,

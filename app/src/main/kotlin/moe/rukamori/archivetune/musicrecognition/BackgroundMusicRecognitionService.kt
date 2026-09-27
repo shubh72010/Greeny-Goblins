@@ -253,11 +253,11 @@ class BackgroundMusicRecognitionService : Service() {
 
     companion object {
         private const val ActionRecognizePlayback =
-            "moe.rukamori.archivetune.action.RECOGNIZE_DEVICE_PLAYBACK"
+            "com.jusdots.jusplayer.action.RECOGNIZE_DEVICE_PLAYBACK"
         private const val ActionRecognizeMicrophone =
-            "moe.rukamori.archivetune.action.RECOGNIZE_MICROPHONE"
+            "com.jusdots.jusplayer.action.RECOGNIZE_MICROPHONE"
         private const val ActionCancel =
-            "moe.rukamori.archivetune.action.CANCEL_BACKGROUND_RECOGNITION"
+            "com.jusdots.jusplayer.action.CANCEL_BACKGROUND_RECOGNITION"
         private const val ExtraResultCode = "media_projection_result_code"
         private const val ExtraResultData = "media_projection_result_data"
 

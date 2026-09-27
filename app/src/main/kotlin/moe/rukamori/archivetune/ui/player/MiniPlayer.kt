@@ -198,7 +198,7 @@ private fun NewMiniPlayer(
                     .height(64.dp)
                     .offset { IntOffset(offsetX.roundToInt(), 0) }
                     .then(
-                        if (useGlass) Modifier.liquidGlass(refractedConfig, RoundedCornerShape(32.dp), blurRadiusDp = 2f, highlightAlpha = 0.85f)
+                        if (useGlass) Modifier.liquidGlass(refractedConfig, RoundedCornerShape(32.dp), blurRadiusDp = 1f, highlightAlpha = 0.85f)
                         else Modifier.clip(RoundedCornerShape(32.dp))
                     ),
         ) {

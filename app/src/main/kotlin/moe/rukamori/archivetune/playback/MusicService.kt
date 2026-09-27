@@ -9207,9 +9207,9 @@ class MusicService :
         private const val DISCORD_HOLD_TIMEOUT_MS = 7_000L
         const val CHANNEL_ID = "music_channel_01"
         const val ACTION_MEDIA_NOTIFICATION_DISMISSED =
-            "moe.rukamori.archivetune.action.MEDIA_NOTIFICATION_DISMISSED"
+            "com.jusdots.jusplayer.action.MEDIA_NOTIFICATION_DISMISSED"
         const val EXTRA_MEDIA_NOTIFICATION_DELETE_INTENT =
-            "moe.rukamori.archivetune.extra.MEDIA_NOTIFICATION_DELETE_INTENT"
+            "com.jusdots.jusplayer.extra.MEDIA_NOTIFICATION_DELETE_INTENT"
         const val NOTIFICATION_ID = 888
         private const val TOGETHER_NOTIFICATION_CHANNEL_ID = "together_room_events"
         private const val TOGETHER_PARTICIPANT_NOTIFICATION_ID = 891
