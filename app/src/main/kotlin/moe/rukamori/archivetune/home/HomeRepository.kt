@@ -40,7 +40,7 @@ class HomeRepository
         val quickPicksDisplayMode: Flow<QuickPicksDisplayMode> =
             context.dataStore.data
                 .map { preferences ->
-                    preferences[QuickPicksDisplayModeKey].toEnum(QuickPicksDisplayMode.CARD)
+                    preferences[QuickPicksDisplayModeKey].toEnum(QuickPicksDisplayMode.LIST)
                 }.distinctUntilChanged()
 
         val showTonalBackdrop: Flow<Boolean> =

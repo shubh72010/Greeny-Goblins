@@ -67,18 +67,11 @@ fun CustomizeBackground(navController: NavController) {
             }
         }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.customize_background_title)) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
+        SettingsEditorialHeader(
+            title = stringResource(R.string.customize_background_title),
+            onBack = { navController.navigateUp() },
+        )
         val screenHeightDp = LocalConfiguration.current.screenHeightDp.toFloat()
 
         Column(

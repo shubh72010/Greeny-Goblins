@@ -229,30 +229,11 @@ private fun AboutScreenContent(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.about),
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateUp,
-                        onLongClick = onNavigateHome,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.back_button_desc),
-                        )
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.about),
+                onBack = onNavigateUp,
                 actions = {
                     if (state is AboutScreenState.Success) {
                         AboutOverflowMenu(
@@ -264,14 +245,10 @@ private fun AboutScreenContent(
                         )
                     }
                 },
-                scrollBehavior = scrollBehavior,
             )
-        },
-    ) { innerPadding ->
         val stateModifier =
             Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .windowInsetsPadding(
                     LocalPlayerAwareWindowInsets.current.only(
                         WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -319,6 +296,7 @@ private fun AboutScreenContent(
                     listState = listState,
                 )
             }
+        }
         }
     }
 

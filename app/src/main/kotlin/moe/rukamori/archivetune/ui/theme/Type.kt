@@ -12,6 +12,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import moe.rukamori.archivetune.R
 
@@ -145,3 +146,17 @@ val AppTypography = buildTypography(AppFontFamily)
 val SystemTypography = buildTypography(FontFamily.Default)
 
 fun typographyFor(fontFamily: FontFamily) = buildTypography(fontFamily)
+
+val Typography.heroNumber: TextStyle
+    get() =
+        displayLarge.copy(
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.05).em,
+        )
+
+val Typography.heroTitle: TextStyle
+    get() =
+        displaySmall.copy(
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.035).em,
+        )

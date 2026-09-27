@@ -325,19 +325,9 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
         }
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.content)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
+    SettingsEditorialHeader(
+        title = stringResource(R.string.content),
+        onBack = { navController.navigateUp() },
     )
 
     if (showWordsDialog) {
@@ -386,3 +376,4 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
         )
     }
 }
+

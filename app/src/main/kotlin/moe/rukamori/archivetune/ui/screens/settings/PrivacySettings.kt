@@ -150,24 +150,7 @@ fun PrivacySettings(navController: NavController, highlight: String? = null) {
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.privacy)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
 
         Column(
@@ -177,6 +160,10 @@ fun PrivacySettings(navController: NavController, highlight: String? = null) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.privacy),
+                onBack = { navController.navigateUp() },
+            )
             PreferenceGroup(title = stringResource(R.string.listen_history)) {
                 item {
                     HighlightablePreference(highlightKey = "pause_history", highlight = highlight) {

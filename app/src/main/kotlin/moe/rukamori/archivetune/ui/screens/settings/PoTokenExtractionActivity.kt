@@ -373,19 +373,9 @@ class PoTokenExtractionActivity : ComponentActivity() {
                 )
             }
 
-            TopAppBar(
-                title = { Text(stringResource(R.string.extracting_from_url)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = { closeCanceled() },
-                        onLongClick = { closeCanceled() },
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
+            SettingsEditorialHeader(
+                title = stringResource(R.string.extracting_from_url),
+                onBack = { closeCanceled() },
             )
 
         }

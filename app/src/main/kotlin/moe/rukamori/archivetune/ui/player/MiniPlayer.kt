@@ -180,7 +180,7 @@ private fun NewMiniPlayer(
 
     val glassConfig = LocalGlassEffectConfig.current
     val useGlass = glassConfig.isEnabledFor(GlassComponent.MINI_PLAYER) && isGlassAllowed()
-    val refractedConfig = remember(glassConfig) { glassConfig.copy(lensHeight = 0.85f, lensAmount = 1f, chromaticAberration = true, depthEffect = true) }
+    val refractedConfig = remember(glassConfig) { glassConfig.copy(lensHeight = 0.75f, lensAmount = 1f, chromaticAberration = true, depthEffect = true, surfaceOpacity = 0.35f, vibrancy = 1f) }
     SwipeableMiniPlayerBox(
         modifier = modifier,
         swipeSensitivity = swipeSensitivity,
@@ -198,7 +198,7 @@ private fun NewMiniPlayer(
                     .height(64.dp)
                     .offset { IntOffset(offsetX.roundToInt(), 0) }
                     .then(
-                        if (useGlass) Modifier.liquidGlass(refractedConfig, RoundedCornerShape(32.dp), highlightAlpha = 0.3f)
+                        if (useGlass) Modifier.liquidGlass(refractedConfig, RoundedCornerShape(32.dp), blurRadiusDp = 2f, highlightAlpha = 0.85f)
                         else Modifier.clip(RoundedCornerShape(32.dp))
                     ),
         ) {

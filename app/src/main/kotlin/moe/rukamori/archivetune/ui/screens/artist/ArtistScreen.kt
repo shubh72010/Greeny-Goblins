@@ -15,8 +15,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -311,12 +309,6 @@ fun ArtistScreen(
             } else {
                 0f
             }
-        }
-    }
-
-    val transparentAppBar by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset < 100
         }
     }
 
@@ -1271,19 +1263,7 @@ item(key = "header") {
 
     // Top App Bar
     TopAppBar(
-        title = {
-            val animatedAlpha by animateFloatAsState(
-                targetValue = if (!transparentAppBar) 1f else 0f,
-                animationSpec = tween(200),
-                label = "titleAlpha",
-            )
-            Text(
-                text = artistPage?.artist?.title ?: libraryArtist?.artist?.name ?: "",
-                modifier = Modifier.alpha(animatedAlpha),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
+        title = {},
         navigationIcon = {
             IconButton(
                 onClick = navController::navigateUp,
@@ -1330,12 +1310,7 @@ item(key = "header") {
                 )
             }
         },
-        colors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            } else {
-                TopAppBarDefaults.topAppBarColors()
-            },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
     )
 }
 

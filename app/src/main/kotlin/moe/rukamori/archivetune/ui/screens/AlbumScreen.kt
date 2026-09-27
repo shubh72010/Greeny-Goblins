@@ -265,18 +265,6 @@ fun AlbumScreen(
         }
     }
 
-    val showTopBarTitle by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0
-        }
-    }
-
-    val transparentAppBar by remember {
-        derivedStateOf {
-            !selection && !showTopBarTitle
-        }
-    }
-
     Box(
         modifier =
             Modifier
@@ -1020,20 +1008,13 @@ fun AlbumScreen(
 
         // Top App Bar
         val topAppBarColors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
-                )
-            } else {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                )
-            }
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                scrolledContainerColor = Color.Transparent,
+                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+            )
 
         TopAppBar(
             modifier = Modifier.align(Alignment.TopCenter),
@@ -1044,17 +1025,10 @@ fun AlbumScreen(
                     val count = wrappedSongs.count { it.isSelected }
                     Text(
                         text = pluralStringResource(R.plurals.n_song, count, count),
-                        style = MaterialTheme.typography.titleLarge,
-                    )
-                } else if (showTopBarTitle) {
-                    Text(
-                        text = albumWithSongs?.album?.title.orEmpty(),
-                        style = MaterialTheme.typography.titleLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            },
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    }
+                },
             navigationIcon = {
                 IconButton(
                     onClick = {

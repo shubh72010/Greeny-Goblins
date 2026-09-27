@@ -136,10 +136,6 @@ fun SpotifyPlaylistScreen(
     val lazyListState = rememberLazyListState()
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
 
-    val showTopBarTitle by remember {
-        derivedStateOf { lazyListState.firstVisibleItemIndex > 0 }
-    }
-
     var isSearching by rememberSaveable { mutableStateOf(false) }
     var resolvingTrackId by remember { mutableStateOf<String?>(null) }
     var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
@@ -223,25 +219,14 @@ fun SpotifyPlaylistScreen(
         }
     }
 
-    val transparentAppBar by remember {
-        derivedStateOf { !disableBlur && !showTopBarTitle && !isSearching }
-    }
-
     val topAppBarColors =
-        if (transparentAppBar) {
-            TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent,
-                scrolledContainerColor = Color.Transparent,
-                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                titleContentColor = MaterialTheme.colorScheme.onBackground,
-                actionIconContentColor = MaterialTheme.colorScheme.onBackground,
-            )
-        } else {
-            TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-                scrolledContainerColor = MaterialTheme.colorScheme.surface,
-            )
-        }
+        TopAppBarDefaults.topAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+            navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+            titleContentColor = MaterialTheme.colorScheme.onBackground,
+            actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+        )
 
     LaunchedEffect(isSearching) {
         if (isSearching) focusRequester.requestFocus()
@@ -758,12 +743,6 @@ fun SpotifyPlaylistScreen(
                             Modifier
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester),
-                    )
-                } else if (showTopBarTitle) {
-                    Text(
-                        text = playlist?.name ?: stringResource(R.string.spotify_playlists),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             },

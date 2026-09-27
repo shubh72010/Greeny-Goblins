@@ -817,8 +817,19 @@ object ThemePalettes {
             neutral = Color(0xFFFF0000),
         )
 
+    val InkJade =
+        ThemePalette(
+            id = "ink_jade",
+            nameResId = R.string.palette_ink_jade,
+            primary = Color(0xFFDAEE76),
+            secondary = Color(0xFFEDE6D8),
+            tertiary = Color(0xFF5EA77D),
+            neutral = Color(0xFF1C1B20),
+        )
+
     val allPalettes: List<ThemePalette> =
         listOf(
+            InkJade,
             Default,
             OceanBlue,
             ArcticBlue,
@@ -1002,20 +1013,6 @@ fun PalettePickerScreen(navController: NavController) {
         }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.color_palette)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
-        },
         floatingActionButton = {
             Column(
                 horizontalAlignment = Alignment.End,
@@ -1051,6 +1048,10 @@ fun PalettePickerScreen(navController: NavController) {
                     .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.color_palette),
+                onBack = { navController.navigateUp() },
+            )
             Spacer(modifier = Modifier.height(16.dp))
             SimpleThemePreview(
                 palette = selectedSeedPalette,
@@ -1187,37 +1188,6 @@ fun ThemeCreatorScreen(navController: NavController) {
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = stringResource(R.string.theme_creator_title)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(painter = painterResource(R.drawable.arrow_back), contentDescription = null)
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = {
-                            primary = ThemePalettes.Default.primary
-                            secondary = ThemePalettes.Default.secondary
-                            tertiary = ThemePalettes.Default.tertiary
-                            neutral = ThemePalettes.Default.neutral
-                            themeName = ""
-                        },
-                        shapes = ButtonDefaults.shapes(),
-                    ) {
-                        Text(text = stringResource(R.string.reset))
-                    }
-                    TextButton(onClick = { applyThemeToPrefs() }, shapes = ButtonDefaults.shapes()) {
-                        Text(text = stringResource(R.string.save))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
-        },
         floatingActionButton = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1260,6 +1230,10 @@ fun ThemeCreatorScreen(navController: NavController) {
                     .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
                     .verticalScroll(rememberScrollState()),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.theme_creator_title),
+                onBack = { navController.navigateUp() },
+            )
             SimpleThemePreview(
                 palette = currentPalette,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),

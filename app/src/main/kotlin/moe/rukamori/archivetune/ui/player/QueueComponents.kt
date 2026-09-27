@@ -85,6 +85,8 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.bottomSheetDraggable
+import moe.rukamori.archivetune.ui.component.isPlayerGlassEnabled
+import moe.rukamori.archivetune.ui.component.playerLiquidGlass
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
@@ -1072,6 +1074,7 @@ fun QueueCollapsedContentV4(
     onShowLyrics: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val usePlayerGlass = isPlayerGlassEnabled()
     Column(modifier = modifier.fillMaxWidth()) {
         if (showCodecOnPlayer && currentFormat != null) {
             val container = currentFormat.containerLabel()
@@ -1109,7 +1112,8 @@ fun QueueCollapsedContentV4(
                         .height(buttonSize)
                         .weight(1f)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(textBackgroundColor.copy(alpha = 0.1f))
+                        .background(if (usePlayerGlass) Color.Transparent else textBackgroundColor.copy(alpha = 0.1f))
+                        .playerLiquidGlass(RoundedCornerShape(16.dp), usePlayerGlass)
                         .clickable { onExpandQueue() },
                 contentAlignment = Alignment.Center,
             ) {
@@ -1143,12 +1147,14 @@ fun QueueCollapsedContentV4(
                         .size(buttonSize)
                         .clip(CircleShape)
                         .background(
-                            if (sleepTimerEnabled) {
+                            if (usePlayerGlass) {
+                                Color.Transparent
+                            } else if (sleepTimerEnabled) {
                                 textBackgroundColor.copy(alpha = 0.2f)
                             } else {
                                 textBackgroundColor.copy(alpha = 0.1f)
                             },
-                        ).clickable { onSleepTimerClick() },
+                        ).playerLiquidGlass(CircleShape, usePlayerGlass).clickable { onSleepTimerClick() },
                 contentAlignment = Alignment.Center,
             ) {
                 AnimatedContent(
@@ -1188,7 +1194,8 @@ fun QueueCollapsedContentV4(
                         .height(buttonSize)
                         .weight(1f)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(textBackgroundColor.copy(alpha = 0.1f))
+                        .background(if (usePlayerGlass) Color.Transparent else textBackgroundColor.copy(alpha = 0.1f))
+                        .playerLiquidGlass(RoundedCornerShape(16.dp), usePlayerGlass)
                         .clickable { onShowLyrics() },
                 contentAlignment = Alignment.Center,
             ) {

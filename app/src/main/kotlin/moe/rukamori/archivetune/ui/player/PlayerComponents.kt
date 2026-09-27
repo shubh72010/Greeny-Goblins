@@ -120,6 +120,8 @@ import moe.rukamori.archivetune.ui.component.BottomSheetState
 import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
 import moe.rukamori.archivetune.ui.component.ResizableIconButton
+import moe.rukamori.archivetune.ui.component.isPlayerGlassEnabled
+import moe.rukamori.archivetune.ui.component.playerLiquidGlass
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.theme.PlayerBackgroundColorUtils
 import moe.rukamori.archivetune.ui.theme.PlayerSliderColors
@@ -264,6 +266,7 @@ fun PlayerTopActions(
 ) {
     val haptic = LocalHapticFeedback.current
     val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsState()
+    val usePlayerGlass = isPlayerGlassEnabled()
 
     when (playerDesignStyle) {
         PlayerDesignStyle.V2 -> {
@@ -427,11 +430,12 @@ fun PlayerTopActions(
                         context.startActivity(Intent.createChooser(intent, null))
                     },
                     shape = RoundedCornerShape(14.dp),
-                    color = textBackgroundColor.copy(alpha = 0.12f),
+                    color = if (usePlayerGlass) Color.Transparent else textBackgroundColor.copy(alpha = 0.12f),
                     modifier =
                         Modifier
                             .height(44.dp)
-                            .width(44.dp),
+                            .width(44.dp)
+                            .playerLiquidGlass(RoundedCornerShape(14.dp), usePlayerGlass),
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
@@ -447,7 +451,9 @@ fun PlayerTopActions(
                     onClick = { playerConnection.toggleLike() },
                     shape = RoundedCornerShape(14.dp),
                     color =
-                        if (currentSongLiked) {
+                        if (usePlayerGlass) {
+                            Color.Transparent
+                        } else if (currentSongLiked) {
                             MaterialTheme.colorScheme.error.copy(alpha = 0.25f)
                         } else {
                             textBackgroundColor.copy(alpha = 0.12f)
@@ -455,7 +461,8 @@ fun PlayerTopActions(
                     modifier =
                         Modifier
                             .height(44.dp)
-                            .width(44.dp),
+                            .width(44.dp)
+                            .playerLiquidGlass(RoundedCornerShape(14.dp), usePlayerGlass),
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
@@ -499,11 +506,12 @@ fun PlayerTopActions(
                         }
                     },
                     shape = RoundedCornerShape(14.dp),
-                    color = textBackgroundColor.copy(alpha = 0.12f),
+                    color = if (usePlayerGlass) Color.Transparent else textBackgroundColor.copy(alpha = 0.12f),
                     modifier =
                         Modifier
                             .height(44.dp)
-                            .width(44.dp),
+                            .width(44.dp)
+                            .playerLiquidGlass(RoundedCornerShape(14.dp), usePlayerGlass),
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                         Icon(
@@ -906,6 +914,7 @@ fun PlayerPlaybackControls(
     val haptic = LocalHapticFeedback.current
     val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsState()
     val view = LocalView.current
+    val usePlayerGlass = isPlayerGlassEnabled()
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
 
     val cinematicPlayPauseCorner by animateDpAsState(
@@ -942,13 +951,14 @@ fun PlayerPlaybackControls(
                         enabled = canSkipPrevious,
                         colors =
                             IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = textButtonColor,
+                                containerColor = if (usePlayerGlass) Color.Transparent else textButtonColor,
                                 contentColor = iconButtonColor,
                             ),
                         modifier =
                             Modifier
                                 .size(width = sideButtonWidth, height = sideButtonHeight)
-                                .clip(RoundedCornerShape(32.dp)),
+                                .clip(RoundedCornerShape(32.dp))
+                                .playerLiquidGlass(RoundedCornerShape(32.dp), usePlayerGlass),
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.skip_previous),
@@ -971,13 +981,14 @@ fun PlayerPlaybackControls(
                         },
                         colors =
                             IconButtonDefaults.filledIconButtonColors(
-                                containerColor = textButtonColor,
+                                containerColor = if (usePlayerGlass) Color.Transparent else textButtonColor,
                                 contentColor = iconButtonColor,
                             ),
                         modifier =
                             Modifier
                                 .size(width = playButtonWidth, height = playButtonHeight)
-                                .clip(RoundedCornerShape(32.dp)),
+                                .clip(RoundedCornerShape(32.dp))
+                                .playerLiquidGlass(RoundedCornerShape(32.dp), usePlayerGlass),
                     ) {
                         if (isLoading) {
                             CircularWavyProgressIndicator(
@@ -1010,13 +1021,14 @@ fun PlayerPlaybackControls(
                         enabled = canSkipNext,
                         colors =
                             IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = textButtonColor,
+                                containerColor = if (usePlayerGlass) Color.Transparent else textButtonColor,
                                 contentColor = iconButtonColor,
                             ),
                         modifier =
                             Modifier
                                 .size(width = sideButtonWidth, height = sideButtonHeight)
-                                .clip(RoundedCornerShape(32.dp)),
+                                .clip(RoundedCornerShape(32.dp))
+                                .playerLiquidGlass(RoundedCornerShape(32.dp), usePlayerGlass),
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.skip_next),
@@ -1046,6 +1058,7 @@ fun PlayerPlaybackControls(
                             Modifier
                                 .size(40.dp)
                                 .clip(RoundedCornerShape(10.dp))
+                                .playerLiquidGlass(RoundedCornerShape(10.dp), usePlayerGlass)
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     playerConnection.player.shuffleModeEnabled = !shuffleModeEnabled
@@ -1068,7 +1081,8 @@ fun PlayerPlaybackControls(
                             Modifier
                                 .size(52.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(textBackgroundColor.copy(alpha = 0.08f))
+                                .background(if (usePlayerGlass) Color.Transparent else textBackgroundColor.copy(alpha = 0.08f))
+                                .playerLiquidGlass(RoundedCornerShape(14.dp), usePlayerGlass)
                                 .clickable(enabled = canSkipPrevious) {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     playerConnection.seekToPrevious()
@@ -1088,7 +1102,8 @@ fun PlayerPlaybackControls(
                             Modifier
                                 .size(70.dp)
                                 .clip(RoundedCornerShape(50))
-                                .background(textBackgroundColor)
+                                .background(if (usePlayerGlass) Color.Transparent else textBackgroundColor)
+                                .playerLiquidGlass(RoundedCornerShape(50), usePlayerGlass)
                                 .clickable {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     if (playbackState == STATE_ENDED) {
@@ -1127,7 +1142,8 @@ fun PlayerPlaybackControls(
                             Modifier
                                 .size(52.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(textBackgroundColor.copy(alpha = 0.08f))
+                                .background(if (usePlayerGlass) Color.Transparent else textBackgroundColor.copy(alpha = 0.08f))
+                                .playerLiquidGlass(RoundedCornerShape(14.dp), usePlayerGlass)
                                 .clickable(enabled = canSkipNext) {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     playerConnection.seekToNext()
@@ -1147,6 +1163,7 @@ fun PlayerPlaybackControls(
                             Modifier
                                 .size(40.dp)
                                 .clip(RoundedCornerShape(10.dp))
+                                .playerLiquidGlass(RoundedCornerShape(10.dp), usePlayerGlass)
                                 .clickable {
                                     if (enableHapticFeedback) {
                                         view.performHapticFeedback(
@@ -1227,10 +1244,17 @@ fun PlayerPlaybackControls(
                             },
                             shape = RoundedCornerShape(smallRadius),
                             color =
-                                textBackgroundColor.copy(
-                                    alpha = if (shuffleModeEnabled) 0.2f else 0.08f,
-                                ),
-                            modifier = Modifier.size(small),
+                                if (usePlayerGlass) {
+                                    Color.Transparent
+                                } else {
+                                    textBackgroundColor.copy(
+                                        alpha = if (shuffleModeEnabled) 0.2f else 0.08f,
+                                    )
+                                },
+                            modifier =
+                                Modifier
+                                    .size(small)
+                                    .playerLiquidGlass(RoundedCornerShape(smallRadius), usePlayerGlass),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -1257,8 +1281,11 @@ fun PlayerPlaybackControls(
                             },
                             enabled = canSkipPrevious,
                             shape = RoundedCornerShape(largeRadius),
-                            color = textBackgroundColor.copy(alpha = 0.15f),
-                            modifier = Modifier.size(large),
+                            color = if (usePlayerGlass) Color.Transparent else textBackgroundColor.copy(alpha = 0.15f),
+                            modifier =
+                                Modifier
+                                    .size(large)
+                                    .playerLiquidGlass(RoundedCornerShape(largeRadius), usePlayerGlass),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -1288,20 +1315,26 @@ fun PlayerPlaybackControls(
                             }
                         },
                         shape = RoundedCornerShape(cinematicPlayPauseCorner),
-                        color = textButtonColor,
+                        color = if (usePlayerGlass) Color.Transparent else textButtonColor,
                         modifier =
                             Modifier
                                 .padding(horizontal = 20.dp)
-                                .size(88.dp),
+                                .size(88.dp)
+                                .playerLiquidGlass(
+                                    shape = RoundedCornerShape(cinematicPlayPauseCorner),
+                                    enabled = usePlayerGlass,
+                                    surfaceTintColor = Color(0xFFF0F0F0),
+                                ),
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
+                            val playIconColor = if (usePlayerGlass) Color(0xFF141414) else icBackgroundColor
                             if (isLoading) {
                                 CircularWavyProgressIndicator(
                                     modifier = Modifier.size(40.dp),
-                                    color = icBackgroundColor,
+                                    color = playIconColor,
                                 )
                             } else {
                                 Icon(
@@ -1314,7 +1347,7 @@ fun PlayerPlaybackControls(
                                             },
                                         ),
                                     contentDescription = null,
-                                    tint = icBackgroundColor,
+                                    tint = playIconColor,
                                     modifier = Modifier.size(44.dp),
                                 )
                             }
@@ -1332,8 +1365,11 @@ fun PlayerPlaybackControls(
                             },
                             enabled = canSkipNext,
                             shape = RoundedCornerShape(largeRadius),
-                            color = textBackgroundColor.copy(alpha = 0.15f),
-                            modifier = Modifier.size(large),
+                            color = if (usePlayerGlass) Color.Transparent else textBackgroundColor.copy(alpha = 0.15f),
+                            modifier =
+                                Modifier
+                                    .size(large)
+                                    .playerLiquidGlass(RoundedCornerShape(largeRadius), usePlayerGlass),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -1365,10 +1401,17 @@ fun PlayerPlaybackControls(
                             },
                             shape = RoundedCornerShape(smallRadius),
                             color =
-                                textBackgroundColor.copy(
-                                    alpha = if (repeatMode != Player.REPEAT_MODE_OFF) 0.2f else 0.08f,
-                                ),
-                            modifier = Modifier.size(small),
+                                if (usePlayerGlass) {
+                                    Color.Transparent
+                                } else {
+                                    textBackgroundColor.copy(
+                                        alpha = if (repeatMode != Player.REPEAT_MODE_OFF) 0.2f else 0.08f,
+                                    )
+                                },
+                            modifier =
+                                Modifier
+                                    .size(small)
+                                    .playerLiquidGlass(RoundedCornerShape(smallRadius), usePlayerGlass),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -1416,6 +1459,7 @@ fun PlayerPlaybackControls(
                         modifier =
                             Modifier
                                 .size(32.dp)
+                                .playerLiquidGlass(RoundedCornerShape(16.dp), usePlayerGlass)
                                 .padding(4.dp)
                                 .align(Alignment.Center)
                                 .alpha(if (repeatMode == Player.REPEAT_MODE_OFF) 0.5f else 1f),
@@ -1439,6 +1483,7 @@ fun PlayerPlaybackControls(
                         modifier =
                             Modifier
                                 .size(32.dp)
+                                .playerLiquidGlass(RoundedCornerShape(16.dp), usePlayerGlass)
                                 .align(Alignment.Center),
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1454,7 +1499,12 @@ fun PlayerPlaybackControls(
                         Modifier
                             .size(72.dp)
                             .clip(RoundedCornerShape(playPauseRoundness))
-                            .background(textButtonColor)
+                            .background(if (usePlayerGlass) Color.Transparent else textButtonColor)
+                            .playerLiquidGlass(
+                                shape = RoundedCornerShape(playPauseRoundness),
+                                enabled = usePlayerGlass,
+                                surfaceTintColor = Color(0xFFF0F0F0),
+                            )
                             .clickable {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 if (playbackState == STATE_ENDED) {
@@ -1465,13 +1515,14 @@ fun PlayerPlaybackControls(
                                 }
                             },
                 ) {
+                    val playIconColor = if (usePlayerGlass) Color(0xFF141414) else iconButtonColor
                     if (isLoading) {
                         CircularWavyProgressIndicator(
                             modifier =
                                 Modifier
                                     .align(Alignment.Center)
                                     .size(36.dp),
-                            color = iconButtonColor,
+                            color = playIconColor,
                         )
                     } else {
                         Image(
@@ -1488,7 +1539,7 @@ fun PlayerPlaybackControls(
                                     },
                                 ),
                             contentDescription = null,
-                            colorFilter = ColorFilter.tint(iconButtonColor),
+                            colorFilter = ColorFilter.tint(playIconColor),
                             modifier =
                                 Modifier
                                     .align(Alignment.Center)
@@ -1507,6 +1558,7 @@ fun PlayerPlaybackControls(
                         modifier =
                             Modifier
                                 .size(32.dp)
+                                .playerLiquidGlass(RoundedCornerShape(16.dp), usePlayerGlass)
                                 .align(Alignment.Center),
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1564,11 +1616,12 @@ fun PlayerPlaybackControls(
                                     topEnd = 8.dp,
                                     bottomEnd = 8.dp,
                                 ),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            color = if (usePlayerGlass) Color.Transparent else MaterialTheme.colorScheme.secondaryContainer,
                             modifier =
                                 Modifier
                                     .weight(1f)
-                                    .height(56.dp),
+                                    .height(56.dp)
+                                    .playerLiquidGlass(RoundedCornerShape(topStart = 22.dp, bottomStart = 22.dp, topEnd = 8.dp, bottomEnd = 8.dp), usePlayerGlass),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -1599,19 +1652,25 @@ fun PlayerPlaybackControls(
                                 }
                             },
                             shape = RoundedCornerShape(28.dp),
-                            color = textButtonColor,
+                            color = if (usePlayerGlass) Color.Transparent else textButtonColor,
                             modifier =
                                 Modifier
-                                    .size(width = 88.dp, height = 80.dp),
+                                    .size(width = 88.dp, height = 80.dp)
+                                    .playerLiquidGlass(
+                                        shape = RoundedCornerShape(28.dp),
+                                        enabled = usePlayerGlass,
+                                        surfaceTintColor = Color(0xFFF0F0F0),
+                                    ),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center,
                             ) {
+                                val playIconColor = if (usePlayerGlass) Color(0xFF141414) else iconButtonColor
                                 if (isLoading) {
                                     CircularWavyProgressIndicator(
                                         modifier = Modifier.size(40.dp),
-                                        color = iconButtonColor,
+                                        color = playIconColor,
                                     )
                                 } else {
                                     Icon(
@@ -1624,7 +1683,7 @@ fun PlayerPlaybackControls(
                                                 },
                                             ),
                                         contentDescription = null,
-                                        tint = iconButtonColor,
+                                        tint = playIconColor,
                                         modifier = Modifier.size(44.dp),
                                     )
                                 }
@@ -1646,11 +1705,12 @@ fun PlayerPlaybackControls(
                                     topEnd = 22.dp,
                                     bottomEnd = 22.dp,
                                 ),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            color = if (usePlayerGlass) Color.Transparent else MaterialTheme.colorScheme.secondaryContainer,
                             modifier =
                                 Modifier
                                     .weight(1f)
-                                    .height(56.dp),
+                                    .height(56.dp)
+                                    .playerLiquidGlass(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = 22.dp, bottomEnd = 22.dp), usePlayerGlass),
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -1689,12 +1749,14 @@ fun PlayerPlaybackControls(
                         },
                         shape = RoundedCornerShape(50),
                         color =
-                            if (shuffleModeEnabled) {
+                            if (usePlayerGlass) {
+                                Color.Transparent
+                            } else if (shuffleModeEnabled) {
                                 MaterialTheme.colorScheme.tertiaryContainer
                             } else {
                                 textBackgroundColor.copy(alpha = 0.08f)
                             },
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(40.dp).playerLiquidGlass(RoundedCornerShape(50), usePlayerGlass),
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -1728,12 +1790,14 @@ fun PlayerPlaybackControls(
                         },
                         shape = RoundedCornerShape(50),
                         color =
-                            if (repeatMode != Player.REPEAT_MODE_OFF) {
+                            if (usePlayerGlass) {
+                                Color.Transparent
+                            } else if (repeatMode != Player.REPEAT_MODE_OFF) {
                                 MaterialTheme.colorScheme.tertiaryContainer
                             } else {
                                 textBackgroundColor.copy(alpha = 0.08f)
                             },
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(40.dp).playerLiquidGlass(RoundedCornerShape(50), usePlayerGlass),
                     ) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
@@ -2678,11 +2742,12 @@ private fun V8ActionButton(
     iconSize: androidx.compose.ui.unit.Dp,
     onClick: () -> Unit,
 ) {
+    val usePlayerGlass = isPlayerGlassEnabled()
     Surface(
         onClick = onClick,
         shape = CircleShape,
-        color = containerColor,
-        modifier = Modifier.size(48.dp),
+        color = if (usePlayerGlass) Color.Transparent else containerColor,
+        modifier = Modifier.size(48.dp).playerLiquidGlass(CircleShape, usePlayerGlass),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -2814,6 +2879,7 @@ private fun V8TransportControls(
     onNextClick: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
+    val usePlayerGlass = isPlayerGlassEnabled()
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -2840,16 +2906,24 @@ private fun V8TransportControls(
             },
             shape = CircleShape,
             color = Color.Transparent,
-            modifier = Modifier.size(72.dp),
+            modifier =
+                Modifier
+                    .size(72.dp)
+                    .playerLiquidGlass(
+                        shape = CircleShape,
+                        enabled = usePlayerGlass,
+                        surfaceTintColor = Color(0xFFF0F0F0),
+                    ),
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
+                val playIconColor = if (usePlayerGlass) Color(0xFF141414) else foreground
                 if (isLoading) {
                     CircularWavyProgressIndicator(
                         modifier = Modifier.size(44.dp),
-                        color = foreground,
+                        color = playIconColor,
                     )
                 } else {
                     Icon(
@@ -2867,7 +2941,7 @@ private fun V8TransportControls(
                             } else {
                                 stringResource(R.string.play)
                             },
-                        tint = foreground,
+                        tint = playIconColor,
                         modifier = Modifier.size(52.dp),
                     )
                 }
@@ -2899,12 +2973,13 @@ private fun V8TransportButton(
     iconSize: androidx.compose.ui.unit.Dp,
     onClick: () -> Unit,
 ) {
+    val usePlayerGlass = isPlayerGlassEnabled()
     Surface(
         onClick = onClick,
         enabled = enabled,
         shape = CircleShape,
         color = Color.Transparent,
-        modifier = Modifier.size(touchSize),
+        modifier = Modifier.size(touchSize).playerLiquidGlass(CircleShape, usePlayerGlass),
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -3785,6 +3860,7 @@ fun V10FigmaControls(
 ) {
     val haptic = LocalHapticFeedback.current
     val scheme = MaterialTheme.colorScheme
+    val usePlayerGlass = isPlayerGlassEnabled()
     // glass over dark scrim = feeling, play keeps theme primary for identity
     val pill = Color.White.copy(alpha = 0.14f)
     val pillStrong = Color.White.copy(alpha = 0.18f)
@@ -3827,11 +3903,11 @@ fun V10FigmaControls(
             Surface(
                 onClick = { playerConnection.toggleLike() },
                 shape = CircleShape,
-                color = likeContainer,
+                color = if (usePlayerGlass) Color.Transparent else likeContainer,
                 tonalElevation = if (currentSongLiked) 6.dp else 2.dp,
                 shadowElevation = if (currentSongLiked) 6.dp else 2.dp,
                 border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder),
-                modifier = Modifier.size(56.dp),
+                modifier = Modifier.size(56.dp).playerLiquidGlass(CircleShape, usePlayerGlass),
             ) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Icon(
@@ -3882,11 +3958,11 @@ fun V10FigmaControls(
                 onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); playerConnection.seekToPrevious() },
                 enabled = canSkipPrevious,
                 shape = RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp, topEnd = 14.dp, bottomEnd = 14.dp),
-                color = pill,
+                color = if (usePlayerGlass) Color.Transparent else pill,
                 tonalElevation = 2.dp,
                 shadowElevation = 3.dp,
                 border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder),
-                modifier = Modifier.weight(1f).height(52.dp),
+                modifier = Modifier.weight(1f).height(52.dp).playerLiquidGlass(RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp, topEnd = 14.dp, bottomEnd = 14.dp), usePlayerGlass),
             ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.skip_previous), null, tint = pillOn.copy(alpha = if (canSkipPrevious) 1f else 0.38f), modifier = Modifier.size(28.dp)) } }
             Surface(
                 onClick = {
@@ -3894,11 +3970,11 @@ fun V10FigmaControls(
                     if (playbackState == STATE_ENDED) { playerConnection.player.seekTo(0, 0); playerConnection.player.playWhenReady = true } else playerConnection.player.togglePlayPause()
                 },
                 shape = RoundedCornerShape(playCorner),
-                color = scheme.primary,
+                color = if (usePlayerGlass) Color.Transparent else scheme.primary,
                 contentColor = scheme.onPrimary,
                 tonalElevation = 4.dp,
                 shadowElevation = 8.dp,
-                modifier = Modifier.size(62.dp),
+                modifier = Modifier.size(62.dp).playerLiquidGlass(RoundedCornerShape(playCorner), usePlayerGlass),
             ) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     if (isLoading) CircularWavyProgressIndicator(Modifier.size(30.dp), color = scheme.onPrimary)
@@ -3909,22 +3985,22 @@ fun V10FigmaControls(
                 onClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); playerConnection.seekToNext() },
                 enabled = canSkipNext,
                 shape = RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp, topEnd = 28.dp, bottomEnd = 28.dp),
-                color = pill,
+                color = if (usePlayerGlass) Color.Transparent else pill,
                 tonalElevation = 2.dp,
                 shadowElevation = 3.dp,
                 border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder),
-                modifier = Modifier.weight(1f).height(52.dp),
+                modifier = Modifier.weight(1f).height(52.dp).playerLiquidGlass(RoundedCornerShape(topStart = 14.dp, bottomStart = 14.dp, topEnd = 28.dp, bottomEnd = 28.dp), usePlayerGlass),
             ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.skip_next), null, tint = pillOn.copy(alpha = if (canSkipNext) 1f else 0.38f), modifier = Modifier.size(28.dp)) } }
         }
         // QUEUE / MENU / LYRICS – segmented pill row, theme-matched
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Surface(onClick = onQueueClick, shape = RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp, topEnd = 12.dp, bottomEnd = 12.dp), color = pillVariant, tonalElevation = 2.dp, shadowElevation = 2.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.weight(1f).height(52.dp)) {
+            Surface(onClick = onQueueClick, shape = RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp, topEnd = 12.dp, bottomEnd = 12.dp), color = if (usePlayerGlass) Color.Transparent else pillVariant, tonalElevation = 2.dp, shadowElevation = 2.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.weight(1f).height(52.dp).playerLiquidGlass(RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp, topEnd = 12.dp, bottomEnd = 12.dp), usePlayerGlass)) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.queue_music), null, tint = onScrim, modifier = Modifier.size(22.dp)) }
             }
-            Surface(onClick = onMenuClick, shape = CircleShape, color = pill, tonalElevation = 2.dp, shadowElevation = 3.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.size(52.dp)) {
+            Surface(onClick = onMenuClick, shape = CircleShape, color = if (usePlayerGlass) Color.Transparent else pill, tonalElevation = 2.dp, shadowElevation = 3.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.size(52.dp).playerLiquidGlass(CircleShape, usePlayerGlass)) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.more_horiz), null, tint = pillOn, modifier = Modifier.size(22.dp)) }
             }
-            Surface(onClick = onLyricsClick, shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp, topEnd = 28.dp, bottomEnd = 28.dp), color = pillVariant, tonalElevation = 2.dp, shadowElevation = 2.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.weight(1f).height(52.dp)) {
+            Surface(onClick = onLyricsClick, shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp, topEnd = 28.dp, bottomEnd = 28.dp), color = if (usePlayerGlass) Color.Transparent else pillVariant, tonalElevation = 2.dp, shadowElevation = 2.dp, border = androidx.compose.foundation.BorderStroke(1.dp, pillBorder), modifier = Modifier.weight(1f).height(52.dp).playerLiquidGlass(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp, topEnd = 28.dp, bottomEnd = 28.dp), usePlayerGlass)) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(painterResource(R.drawable.lyrics), null, tint = onScrim, modifier = Modifier.size(20.dp)) }
             }
         }
@@ -3942,6 +4018,7 @@ fun PlayerBackground(
     playerCustomBlur: Float,
     playerCustomContrast: Float,
     playerCustomBrightness: Float,
+    modifier: Modifier = Modifier,
 ) {
     val effectiveBlurRadius = blurRadius.coerceIn(0f, PlayerBackgroundMaxBlurRadius)
     val shouldApplyBlur = !disableBlur && effectiveBlurRadius > 0f
@@ -3956,7 +4033,7 @@ fun PlayerBackground(
     val backgroundThumbnailUrl = backgroundSwapState.displayUrl
     val styleAppliesBlur =
         effectiveBlurRadius > 0f && effectiveBlurRadius >= 0.5f
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         when (playerBackground) {
             PlayerBackgroundStyle.BLUR -> {
                 AnimatedContent(

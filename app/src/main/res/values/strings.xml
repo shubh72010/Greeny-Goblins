@@ -419,6 +419,7 @@
     <string name="palette_aurora">Aurora</string>
     <string name="palette_candy">Candy</string>
     <string name="palette_rainbow">Rainbow</string>
+    <string name="palette_ink_jade">Ink Jade</string>
     <string name="dark_theme">Dark theme</string>
     <string name="dark_theme_on">On</string>
     <string name="dark_theme_off">Off</string>
@@ -1057,6 +1058,10 @@
     <string name="hidden_playlists">Hidden playlists</string>
     <string name="hidden_playlists_description">Playlists hidden from library appear here</string>
     <string name="no_hidden_playlists">No hidden playlists</string>
+    <string name="music_intelligence">Music Intelligence</string>
+    <string name="music_intelligence_description">Tracks analyzed on this device appear here</string>
+    <string name="no_analyses_yet">Nothing analyzed yet</string>
+    <string name="no_analyses_hint">Play a song past 80% and its audio fingerprint lands here</string>
     <string name="unhide">Unhide</string>
     <string name="cover_art">Cover Art</string>
     <string name="seek_bar">Seek Bar</string>

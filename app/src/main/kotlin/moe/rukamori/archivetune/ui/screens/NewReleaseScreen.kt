@@ -78,18 +78,20 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import moe.rukamori.archivetune.ui.theme.heroNumber
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
 import moe.rukamori.archivetune.innertube.models.AlbumItem
-import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.component.shimmer.GridItemPlaceHolder
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.menu.YouTubeAlbumMenu
+import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.viewmodels.NewReleaseContent
 import moe.rukamori.archivetune.viewmodels.NewReleaseUiState
@@ -483,8 +485,7 @@ private fun NewReleaseSummaryCard(
             )
             Text(
                 text = content.totalReleases.toString(),
-                style = MaterialTheme.typography.displaySmall,
-                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.heroNumber.copy(fontSize = 36.sp),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(Modifier.height(14.dp))

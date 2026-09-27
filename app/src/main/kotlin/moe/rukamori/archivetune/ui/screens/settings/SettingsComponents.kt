@@ -21,10 +21,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,14 +34,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -54,7 +49,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.isSpecified
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -65,114 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
-
-@Composable
-fun SettingsProfileHeader(
-    state: SettingsProfileState,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val title =
-        when {
-            state.isLoading -> stringResource(R.string.loading)
-            state.isLoggedIn -> state.accountName.ifBlank { stringResource(R.string.account) }
-            else -> stringResource(R.string.login)
-        }
-    val subtitle =
-        when {
-            state.isLoggedIn && state.accountEmail.isNotBlank() -> state.accountEmail
-            state.isLoggedIn -> state.accountName.ifBlank { null }
-            else -> null
-        }
-
-    Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                .clickable(onClick = onClick),
-        shape = RoundedCornerShape(SettingsDimensions.BannerCardCornerRadius),
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(SettingsDimensions.ProfileCardAvatarSize)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (state.isLoading) {
-                    CircularWavyProgressIndicator(
-                        modifier = Modifier.size(SettingsDimensions.BannerIconInnerSize),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
-                } else if (state.isLoggedIn && !state.accountImageUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = state.accountImageUrl,
-                        contentDescription = null,
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                    )
-                } else {
-                    Icon(
-                        painter =
-                            painterResource(
-                                if (state.isLoggedIn) R.drawable.account else R.drawable.login,
-                            ),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(SettingsDimensions.ProfileCardAvatarIconSize),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                subtitle?.let { s ->
-                    Text(
-                        text = s,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-
-            Icon(
-                painter = painterResource(R.drawable.navigate_next),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
-                modifier = Modifier.size(SettingsDimensions.ChevronSize),
-            )
-        }
-    }
-}
 
 @Composable
 fun SettingsPermissionBanner(
@@ -181,7 +69,7 @@ fun SettingsPermissionBanner(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(SettingsDimensions.BannerCardCornerRadius),
+        shape = MaterialTheme.shapes.extraLarge,
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -282,7 +170,7 @@ fun SettingsUpdateBanner(
                     indication = null,
                     onClick = onClick,
                 ),
-        shape = RoundedCornerShape(SettingsDimensions.BannerCardCornerRadius),
+        shape = MaterialTheme.shapes.extraLarge,
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -293,44 +181,27 @@ fun SettingsUpdateBanner(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                    .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(SettingsDimensions.BannerIconSize)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.10f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.update),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(SettingsDimensions.BannerIconInnerSize),
-                )
-            }
+            Icon(
+                painter = painterResource(R.drawable.update),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(22.dp),
+            )
 
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            Column(
+            Text(
+                text = "${stringResource(R.string.new_version_available)} · v$latestVersion",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.new_version_available),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Text(
-                    text = "v$latestVersion",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
-                    fontWeight = FontWeight.Medium,
-                )
-            }
+            )
 
             androidx.compose.material3.IconButton(onClick = onDismiss) {
                 Icon(
@@ -349,92 +220,111 @@ fun SettingsGroupCard(
     group: SettingsGroup,
     modifier: Modifier = Modifier,
 ) {
+    val count = group.items.size
     Column(modifier = modifier) {
-        Text(
-            text = group.title.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing * 1.2f,
-            modifier =
-                Modifier.padding(
-                    horizontal = SettingsDimensions.SectionHeaderHorizontalPadding,
-                    vertical = SettingsDimensions.SectionHeaderBottomPadding,
-                ),
+        SettingsGroupHeader(
+            title = group.title,
+            modifier = Modifier.padding(top = SettingsDimensions.GroupHeaderTopPadding),
         )
-
-        Card(
-            shape = RoundedCornerShape(SettingsDimensions.GroupCardCornerRadius),
-            colors =
-                CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        ) {
-            Column {
-                group.items.forEachIndexed { index, item ->
-                    SettingsRow(
-                        item = item,
-                        showDivider = index < group.items.size - 1,
-                    )
-                }
+        Column(verticalArrangement = Arrangement.spacedBy(SettingsDimensions.GroupRowGap)) {
+            group.items.forEachIndexed { index, item ->
+                SettingsSegmentRow(item = item, index = index, count = count)
             }
         }
     }
 }
 
+/**
+ * Editorial section header: a tracked-out label, nothing else.
+ */
 @Composable
-fun SettingsRow(
-    item: SettingsItem,
-    showDivider: Boolean,
+private fun SettingsGroupHeader(
+    title: String,
     modifier: Modifier = Modifier,
 ) {
-    val effectiveAccent =
-        if (item.accentColor.isSpecified) {
-            item.accentColor
-        } else {
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.4.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(bottom = SettingsDimensions.GroupHeaderBottomPadding),
+    )
+}
+
+/**
+ * One row of a connected group panel. The framework's segmented list item keeps
+ * every row fully rounded, so corners are cut explicitly here: big radius on the
+ * panel's outer edges, tight radius on the interior seams.
+ */
+@Composable
+fun SettingsSegmentRow(
+    item: SettingsItem,
+    index: Int,
+    count: Int,
+    modifier: Modifier = Modifier,
+    query: String = "",
+    groupLabel: String? = null,
+) {
+    val accent =
+        item.accentColor.takeOrElse {
             MaterialTheme.colorScheme.primary
+        }
+    val primary = MaterialTheme.colorScheme.primary
+    val subtitle = item.subtitle
+    // Browse mode stays single-line; subtitles only earn their space in search results.
+    val showSubtitle = subtitle != null && query.isNotBlank()
+    // Monochrome by default so nothing competes; the update row alone keeps its accent.
+    val iconTint = if (item.showUpdateIndicator) accent else MaterialTheme.colorScheme.onSurfaceVariant
+    val chipColor =
+        if (item.showUpdateIndicator) {
+            accent.copy(alpha = 0.14f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest
         }
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.98f else 1f,
+        targetValue = if (isPressed) SettingsAnimations.PressScale else 1f,
         animationSpec = SettingsAnimations.pressSpring(),
-        label = "rowScale",
-    )
-    val bgAlpha by animateFloatAsState(
-        targetValue = if (isPressed) 0.06f else 0f,
-        animationSpec = SettingsAnimations.pressSpring(),
-        label = "rowBgAlpha",
+        label = "segmentScale",
     )
 
-    Column(modifier = modifier) {
+    Surface(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }.clip(settingsSegmentShape(index = index, count = count))
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = item.onClick,
+                ),
+        shape = settingsSegmentShape(index = index, count = count),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
         Row(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }.background(MaterialTheme.colorScheme.primary.copy(alpha = bgAlpha))
-                    .focusable()
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        onClick = item.onClick,
-                    ).padding(
-                        horizontal = SettingsDimensions.RowHorizontalPadding,
-                        vertical = SettingsDimensions.RowVerticalPadding,
-                    ),
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier =
                     Modifier
                         .size(SettingsDimensions.RowIconSize)
-                        .clip(CircleShape)
-                        .background(effectiveAccent.copy(alpha = 0.12f)),
+                        .clip(MaterialTheme.shapes.small)
+                        .background(chipColor),
                 contentAlignment = Alignment.Center,
             ) {
                 if (item.showUpdateIndicator) {
@@ -449,7 +339,7 @@ fun SettingsRow(
                         Icon(
                             painter = item.icon,
                             contentDescription = null,
-                            tint = effectiveAccent,
+                            tint = iconTint,
                             modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                         )
                     }
@@ -457,7 +347,7 @@ fun SettingsRow(
                     Icon(
                         painter = item.icon,
                         contentDescription = null,
-                        tint = effectiveAccent,
+                        tint = iconTint,
                         modifier = Modifier.size(SettingsDimensions.RowIconInnerSize),
                     )
                 }
@@ -467,249 +357,96 @@ fun SettingsRow(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
+                    text = highlightQuery(item.title, query, primary),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                item.subtitle?.let { subtitle ->
+                if (showSubtitle) {
                     Spacer(modifier = Modifier.height(1.dp))
                     Text(
-                        text = subtitle,
+                        text = highlightQuery(subtitle, query, primary),
                         style = MaterialTheme.typography.bodySmall,
                         color =
                             if (item.showUpdateIndicator) {
-                                effectiveAccent
+                                accent
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                }
-            }
-
-            item.badge?.let { badge ->
-                Spacer(modifier = Modifier.width(6.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                ) {
-                    Text(
-                        text = badge,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(4.dp))
-
-            Icon(
-                painter = painterResource(R.drawable.navigate_next),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
-                modifier = Modifier.size(SettingsDimensions.ChevronSize),
-            )
-        }
-
-        if (showDivider) {
-            HorizontalDivider(
-                modifier = Modifier.padding(start = SettingsDimensions.DividerStartIndent),
-                thickness = SettingsDimensions.DividerThickness,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-            )
-        }
-    }
-}
-
-@Composable
-fun SettingsSectionLabel(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        letterSpacing = MaterialTheme.typography.labelSmall.letterSpacing * 1.2f,
-        modifier =
-            modifier.padding(
-                horizontal = SettingsDimensions.SectionHeaderHorizontalPadding,
-                vertical = SettingsDimensions.SectionHeaderBottomPadding,
-            ),
-    )
-}
-
-@Composable
-fun SettingsSegmentedItem(
-    item: SettingsItem,
-    index: Int,
-    count: Int,
-    modifier: Modifier = Modifier,
-    query: String = "",
-    groupLabel: String? = null,
-) {
-    val effectiveAccent =
-        if (item.accentColor.isSpecified) {
-            item.accentColor
-        } else {
-            MaterialTheme.colorScheme.primary
-        }
-    val iconContentCandidate = contentColorFor(effectiveAccent)
-    val iconContentColor =
-        if (iconContentCandidate.isSpecified) {
-            iconContentCandidate
-        } else {
-            MaterialTheme.colorScheme.surface
-        }
-    val shape = remember(index, count) { segmentedSettingsItemShape(index, count) }
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) SettingsAnimations.PressScale else 1f,
-        animationSpec = SettingsAnimations.pressSpring(),
-        label = "settingsSegmentScale",
-    )
-
-    Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                }.clip(shape)
-                .focusable()
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = item.onClick,
-                ),
-        shape = shape,
-        colors =
-            CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 88.dp)
-                    .padding(horizontal = 22.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(effectiveAccent),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (item.showUpdateIndicator) {
-                    BadgedBox(
-                        badge = {
-                            Badge(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(9.dp),
-                            )
-                        },
-                    ) {
-                        Icon(
-                            painter = item.icon,
-                            contentDescription = null,
-                            tint = iconContentColor,
-                            modifier = Modifier.size(26.dp),
-                        )
-                    }
-                } else {
-                    Icon(
-                        painter = item.icon,
-                        contentDescription = null,
-                        tint = iconContentColor,
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(18.dp))
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                val primary = MaterialTheme.colorScheme.primary
-                val titleHighlighted = remember(item.title, query, primary) { highlightQuery(item.title, query, primary) }
-                if (query.isBlank()) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                } else {
-                    Text(
-                        text = titleHighlighted,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                item.subtitle?.let { subtitle ->
-                    Spacer(modifier = Modifier.height(2.dp))
-                    val subHighlighted = remember(subtitle, query, primary) { highlightQuery(subtitle, query, primary) }
-                    if (query.isBlank()) {
+                    if (groupLabel != null) {
                         Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    } else {
-                        Text(
-                            text = subHighlighted,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = groupLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = primary.copy(alpha = 0.7f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
-                if (query.isNotBlank() && groupLabel != null) {
-                    Text(
-                        text = groupLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
 
             item.badge?.let { badge ->
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(50),
                     color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 ) {
                     Text(
                         text = badge,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
             }
+            Icon(
+                painter = painterResource(R.drawable.navigate_next),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f),
+                modifier = Modifier.size(SettingsDimensions.ChevronSize),
+            )
+        }
+    }
+}
+
+private fun settingsSegmentShape(
+    index: Int,
+    count: Int,
+): Shape {
+    val large = 28.dp
+    val small = 6.dp
+    return when {
+        count <= 1 -> {
+            RoundedCornerShape(large)
+        }
+
+        index == 0 -> {
+            RoundedCornerShape(
+                topStart = large,
+                topEnd = large,
+                bottomEnd = small,
+                bottomStart = small,
+            )
+        }
+
+        index == count - 1 -> {
+            RoundedCornerShape(
+                topStart = small,
+                topEnd = small,
+                bottomEnd = large,
+                bottomStart = large,
+            )
+        }
+
+        else -> {
+            RoundedCornerShape(small)
         }
     }
 }
@@ -751,129 +488,3 @@ internal fun highlightQuery(text: String, query: String, highlightColor: Color):
     }
 }
 
-private fun segmentedSettingsItemShape(
-    index: Int,
-    count: Int,
-): Shape {
-    val large = 28.dp
-    val small = 6.dp
-    return when {
-        count <= 1 -> {
-            RoundedCornerShape(large)
-        }
-
-        index == 0 -> {
-            RoundedCornerShape(
-                topStart = large,
-                topEnd = large,
-                bottomEnd = small,
-                bottomStart = small,
-            )
-        }
-
-        index == count - 1 -> {
-            RoundedCornerShape(
-                topStart = small,
-                topEnd = small,
-                bottomEnd = large,
-                bottomStart = large,
-            )
-        }
-
-        else -> {
-            RoundedCornerShape(small)
-        }
-    }
-}
-
-@Composable
-fun SettingsFlatItem(
-    item: SettingsItem,
-    modifier: Modifier = Modifier,
-) {
-    val effectiveAccent =
-        if (item.accentColor.isSpecified) {
-            item.accentColor
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        }
-
-    Surface(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clickable(onClick = item.onClick),
-        color = Color.Transparent,
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (item.showUpdateIndicator) {
-                BadgedBox(
-                    badge = {
-                        Badge(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(8.dp),
-                        )
-                    },
-                    modifier = Modifier.padding(start = 8.dp, end = 16.dp),
-                ) {
-                    Icon(
-                        painter = item.icon,
-                        contentDescription = null,
-                        tint = effectiveAccent,
-                    )
-                }
-            } else {
-                Icon(
-                    painter = item.icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp, end = 16.dp),
-                )
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    maxLines = if (item.subtitle == null) 2 else 1,
-                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                item.subtitle?.let { subtitle ->
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color =
-                            if (item.showUpdateIndicator) {
-                                effectiveAccent
-                            } else {
-                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-
-            item.badge?.let { badge ->
-                Spacer(modifier = Modifier.width(6.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                ) {
-                    Text(
-                        text = badge,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
-                }
-            }
-        }
-    }
-}

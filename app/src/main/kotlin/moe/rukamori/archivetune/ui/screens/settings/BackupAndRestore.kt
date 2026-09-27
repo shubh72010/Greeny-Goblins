@@ -221,22 +221,6 @@ fun BackupAndRestore(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.backup_restore)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -256,6 +240,10 @@ fun BackupAndRestore(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.backup_restore),
+                onBack = { navController.navigateUp() },
+            )
             PreferenceGroup(title = stringResource(R.string.internal_service)) {
                 item {
                     PreferenceEntry(

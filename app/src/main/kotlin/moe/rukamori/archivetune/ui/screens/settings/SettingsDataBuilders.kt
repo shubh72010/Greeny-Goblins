@@ -31,7 +31,7 @@ fun buildSettingsGroups(
     buildList {
         add(
             SettingsGroup(
-                title = stringResource(R.string.settings),
+                title = stringResource(R.string.general),
                 items =
                     listOf(
                         SettingsItem(

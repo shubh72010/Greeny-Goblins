@@ -85,6 +85,8 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.together.isConnectedToSession
+import moe.rukamori.archivetune.ui.component.isPlayerGlassEnabled
+import moe.rukamori.archivetune.ui.component.playerLiquidGlass
 import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
 import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
@@ -429,8 +431,9 @@ private fun MiniPlayerTransportButton(
         view.isHapticFeedbackEnabled = enableHapticFeedback
     }
 
+    val usePlayerGlass = isPlayerGlassEnabled()
     val containerColor =
-        if (isPrimary) colors.primaryButtonContainer else Color.Transparent
+        if (usePlayerGlass) Color.Transparent else if (isPrimary) colors.primaryButtonContainer else Color.Transparent
     val borderColor =
         if (enabled) colors.buttonBorder else colors.buttonBorder.copy(alpha = 0.12f)
     val iconTint =
@@ -441,10 +444,12 @@ private fun MiniPlayerTransportButton(
         modifier =
             Modifier
                 .then(modifier)
-                .size(if (isPrimary) 40.dp else 36.dp)
-                .clip(CircleShape)
-                .background(containerColor)
-                .border(width = 1.dp, color = borderColor, shape = CircleShape)
+                 .size(if (isPrimary) 40.dp else 36.dp)
+                 .clip(CircleShape)
+                 .background(containerColor)
+                 .playerLiquidGlass(CircleShape, usePlayerGlass)
+                 .border(width = 1.dp, color = borderColor, shape = CircleShape)
+
                 .clickable(enabled = enabled, onClick = {
                     if (enableHapticFeedback) {
                         view.performHapticFeedback(

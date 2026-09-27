@@ -48,24 +48,7 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
 
     var showListenBrainzTokenEditor = remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.integration)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
 
         Column(
@@ -75,6 +58,10 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.integration),
+                onBack = { navController.navigateUp() },
+            )
             PreferenceGroup(title = stringResource(R.string.general)) {
                 item {
                     PreferenceEntry(

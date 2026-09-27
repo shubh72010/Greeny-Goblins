@@ -277,18 +277,6 @@ fun CachePlaylistScreen(
         }
     }
 
-    val showTopBarTitle by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0
-        }
-    }
-
-    val transparentAppBar by remember {
-        derivedStateOf {
-            !disableBlur && !selection && !showTopBarTitle
-        }
-    }
-
     val headerItems by remember {
         derivedStateOf {
             if (filteredSongs.isNotEmpty() && !isSearching) 2 else 0
@@ -719,8 +707,8 @@ fun CachePlaylistScreen(
         TopAppBar(
             colors =
                 TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (transparentAppBar) Color.Transparent else MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
                 ),
             title = {
                 when {
@@ -757,13 +745,6 @@ fun CachePlaylistScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .focusRequester(focusRequester),
-                        )
-                    }
-
-                    showTopBarTitle -> {
-                        Text(
-                            text = stringResource(R.string.cached_playlist),
-                            style = MaterialTheme.typography.titleLarge,
                         )
                     }
                 }

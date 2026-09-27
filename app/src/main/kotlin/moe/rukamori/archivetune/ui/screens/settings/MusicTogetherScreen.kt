@@ -164,36 +164,6 @@ fun MusicTogetherScreen(
     }
 
     Scaffold(
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = { Text(stringResource(R.string.music_together)) },
-                navigationIcon = {
-                    AtIconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                        modifier =
-                            Modifier
-                                .padding(horizontal = 4.dp)
-                                .size(40.dp),
-                        colors =
-                            IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            ),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = Color.Transparent,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                scrollBehavior = scrollBehavior,
-            )
-        },
         contentWindowInsets = WindowInsets.safeDrawing,
         containerColor = MaterialTheme.colorScheme.surface,
         modifier =
@@ -201,11 +171,15 @@ fun MusicTogetherScreen(
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.music_together),
+                onBack = { navController.navigateUp() },
+            )
         Box(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
+                    .weight(1f)
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -233,6 +207,7 @@ fun MusicTogetherScreen(
                     )
                 }
             }
+        }
         }
     }
 }

@@ -95,6 +95,8 @@ import coil3.request.allowHardware
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import moe.rukamori.archivetune.ui.theme.heroNumber
+import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.db.entities.Album
@@ -102,7 +104,7 @@ import moe.rukamori.archivetune.db.entities.Artist
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongWithStats
 import moe.rukamori.archivetune.ui.component.LocalMenuState
-import moe.rukamori.archivetune.ui.menu.ArtistMenu
+import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.menu.SongMenu
 import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
 import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
@@ -656,15 +658,13 @@ private fun IntroRecapCard(
         ) {
             Text(
                 text = card.year.toString(),
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 76.sp),
-                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.heroNumber.copy(fontSize = 76.sp),
                 color = Color.White,
                 lineHeight = 70.sp,
             )
             Text(
                 text = stringResource(R.string.year_in_music_recap_word),
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 72.sp),
-                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.heroNumber.copy(fontSize = 72.sp),
                 color = Color.White,
                 lineHeight = 66.sp,
             )
@@ -729,8 +729,7 @@ private fun TotalsRecapCard(
             )
             Text(
                 text = makeTimeString(card.totalListeningTime),
-                style = MaterialTheme.typography.displayLarge.copy(fontSize = 60.sp),
-                fontWeight = FontWeight.Black,
+                style = MaterialTheme.typography.heroNumber.copy(fontSize = 60.sp),
                 color = RecapYellow,
                 lineHeight = 56.sp,
             )
@@ -1054,8 +1053,7 @@ private fun SummaryRecapCard(
                 )
                 Text(
                     text = formatListeningMinutes(card.totalListeningTime),
-                    style = MaterialTheme.typography.displaySmall.copy(fontSize = 44.sp),
-                    fontWeight = FontWeight.Black,
+                    style = MaterialTheme.typography.heroNumber.copy(fontSize = 44.sp),
                     color = RecapInk,
                     lineHeight = 40.sp,
                 )

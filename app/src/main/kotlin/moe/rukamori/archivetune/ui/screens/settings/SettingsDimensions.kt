@@ -25,8 +25,8 @@ object SettingsDimensions {
     val RowVerticalPadding = 14.dp
     val RowHorizontalPadding = 16.dp
 
-    val RowIconSize = 36.dp
-    val RowIconInnerSize = 20.dp
+    val RowIconSize = 48.dp
+    val RowIconInnerSize = 24.dp
     val BannerIconSize = 44.dp
     val BannerIconInnerSize = 22.dp
     val ChevronSize = 18.dp
@@ -39,6 +39,13 @@ object SettingsDimensions {
 
     val SectionHeaderBottomPadding = 6.dp
     val SectionHeaderHorizontalPadding = 20.dp
+
+    // Connected group panel: rows read as one unit while staying individually
+    // pressable. Outer corners come from MaterialTheme.shapes (extraLarge), so
+    // the panel tracks the app's shape scheme instead of a frozen constant.
+    val GroupRowGap = 2.dp
+    val GroupHeaderTopPadding = 10.dp
+    val GroupHeaderBottomPadding = 10.dp
 }
 
 object SettingsAnimations {

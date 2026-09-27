@@ -401,24 +401,7 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.player_and_audio)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
 
         Column(
@@ -428,6 +411,10 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.player_and_audio),
+                onBack = { navController.navigateUp() },
+            )
             PreferenceGroup(title = stringResource(R.string.player)) {
                 item {
                     HighlightablePreference(highlightKey = "audio_quality", highlight = highlight) {

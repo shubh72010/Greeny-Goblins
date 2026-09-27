@@ -702,6 +702,7 @@ class MusicService :
     }
 
     lateinit var sleepTimer: SleepTimer
+    private var trackAnalysisOrchestrator: moe.rukamori.archivetune.audio.analysis.TrackAnalysisOrchestrator? = null
 
     @Inject
     @PlayerCache
@@ -1171,6 +1172,13 @@ class MusicService :
                     addListener(this@MusicService)
                     sleepTimer = SleepTimer(scope, this)
                     addListener(sleepTimer)
+                    trackAnalysisOrchestrator =
+                        moe.rukamori.archivetune.audio.analysis.TrackAnalysisOrchestrator(
+                            scope,
+                            this,
+                            database,
+                            isLocalPlayback = { localPlayer.isPlaying },
+                        ).also { it.attach() }
                 }
         playerInitialized.value = true
         widgetUpdater =
@@ -8535,6 +8543,7 @@ class MusicService :
                     visualizerHandler.post {
                         try { visualizerHub.onPcm(hopCopy, sr) } catch (_: Exception) {}
                         try { hapticVisualizer.onPcm(hopCopy, sr) } catch (_: Exception) {}
+                        try { trackAnalysisOrchestrator?.onPcm(hopCopy, sr) } catch (_: Exception) {}
                     }
                 }
                 return DefaultAudioSink
@@ -8988,6 +8997,8 @@ class MusicService :
             localPlayer.removeListener(audioEffectPlayerListener)
             player.removeListener(this)
             player.removeListener(sleepTimer)
+            try { trackAnalysisOrchestrator?.release() } catch (_: Exception) {}
+            trackAnalysisOrchestrator = null
             player.release()
         } catch (_: Exception) {
         }

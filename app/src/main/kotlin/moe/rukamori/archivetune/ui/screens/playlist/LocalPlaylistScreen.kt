@@ -514,12 +514,6 @@ fun LocalPlaylistScreen(
         }
     }
 
-    val showTopBarTitle by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0
-        }
-    }
-
     // Gradient colors state for playlist cover
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
@@ -576,12 +570,6 @@ fun LocalPlaylistScreen(
             } else {
                 0f
             }
-        }
-    }
-
-    val transparentAppBar by remember {
-        derivedStateOf {
-            !disableBlur && !selection && !showTopBarTitle && !isSearching
         }
     }
 
@@ -1536,20 +1524,13 @@ fun LocalPlaylistScreen(
 
         // Top App Bar
         val topAppBarColors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
-                )
-            } else {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                )
-            }
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                scrolledContainerColor = Color.Transparent,
+                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+            )
 
         TopAppBar(
             colors = topAppBarColors,
@@ -1586,8 +1567,6 @@ fun LocalPlaylistScreen(
                                 .fillMaxWidth()
                                 .focusRequester(focusRequester),
                     )
-                } else if (showTopBarTitle) {
-                    Text(playlist?.playlist?.name.orEmpty())
                 }
             },
             navigationIcon = {

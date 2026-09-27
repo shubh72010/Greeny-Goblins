@@ -120,28 +120,7 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
 
     val playerConnection = LocalPlayerConnection.current
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.experiment_settings),
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                    }
-                },
-            )
-        },
-    ) { innerPadding: PaddingValues ->
+    Scaffold { innerPadding: PaddingValues ->
         Column(
             modifier =
                 Modifier
@@ -154,6 +133,10 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
                     ).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.experiment_settings),
+                onBack = { navController.navigateUp() },
+            )
             PreferenceGroup(title = stringResource(R.string.experimental_features)) {
                 item {
                     SwitchPreference(

@@ -194,12 +194,157 @@ fun HomeCategoryChips(
     }
 }
 
+private val FeaturedHeroHeight = 360.dp
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun FeaturedHero(
+    song: Song,
+    mediaMetadata: MediaMetadata?,
+    isPlaying: Boolean,
+    navController: NavController,
+    playerConnection: PlayerConnection,
+    menuState: MenuState,
+    haptic: HapticFeedback,
+    modifier: Modifier = Modifier,
+) {
+    val isActive = song.id == mediaMetadata?.id
+    val context = LocalContext.current
+    val density = LocalDensity.current
+
+    fun play() {
+        if (isActive) {
+            playerConnection.player.togglePlayPause()
+        } else {
+            playerConnection.playQueue(
+                if (song.song.isLocal) {
+                    ListQueue(items = listOf(song.toMediaItem()))
+                } else {
+                    YouTubeQueue.radio(song.toMediaMetadata())
+                },
+            )
+        }
+    }
+
+    fun openMenu() {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        menuState.show {
+            SongMenu(
+                originalSong = song,
+                navController = navController,
+                onDismiss = menuState::dismiss,
+            )
+        }
+    }
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val requestWidthPx = with(density) { maxWidth.roundToPx().coerceAtLeast(1) }
+        val requestHeightPx = with(density) { FeaturedHeroHeight.roundToPx().coerceAtLeast(1) }
+        val imageRequest =
+            remember(song.song.thumbnailUrl, requestWidthPx, requestHeightPx) {
+                ImageRequest
+                    .Builder(context)
+                    .data(song.song.thumbnailUrl)
+                    .size(Size(requestWidthPx, requestHeightPx))
+                    .crossfade(true)
+                    .build()
+            }
+
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(FeaturedHeroHeight)
+                    .padding(horizontal = 16.dp)
+                    .clip(MaterialTheme.shapes.extraLarge)
+                    .focusable()
+                    .combinedClickable(
+                        onClick = ::play,
+                        onLongClick = ::openMenu,
+                    ),
+        ) {
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0f to Color.Transparent,
+                                0.45f to Color.Black.copy(alpha = 0.10f),
+                                1f to Color.Black.copy(alpha = 0.82f),
+                            ),
+                        ),
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 20.dp, end = 96.dp, bottom = 20.dp),
+            ) {
+                Text(
+                    text = song.song.title,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = song.artists.joinToString { it.name },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.78f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            Surface(
+                onClick = ::play,
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = CircleShape,
+                tonalElevation = 2.dp,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                        .size(56.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter =
+                            painterResource(
+                                if (isActive && isPlaying) {
+                                    R.drawable.pause
+                                } else {
+                                    R.drawable.play
+                                },
+                            ),
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeSectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     label: String? = null,
+    supportingText: String? = null,
     thumbnail: (@Composable () -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
@@ -209,9 +354,8 @@ fun HomeSectionHeader(
         modifier =
             modifier
                 .fillMaxWidth()
-                .heightIn(min = 64.dp)
                 .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 8.dp),
     ) {
         thumbnail?.invoke()
         Column(
@@ -222,18 +366,26 @@ fun HomeSectionHeader(
                 Text(
                     text = it,
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLargeEmphasized,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+        supportingText?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         if (onClick != null) {
@@ -394,7 +546,8 @@ fun QuickPicksSection(
                         ) {
                             Text(
                                 text = song.song.title,
-                                style = MaterialTheme.typography.titleLargeEmphasized,
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,

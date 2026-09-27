@@ -247,40 +247,6 @@ fun AodCustomizedScreen(navController: NavController) {
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.aod_customize_title),
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                subtitle = {
-                    Text(
-                        text = stringResource(R.string.aod_customize_subtitle),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-            )
-        },
     ) { paddingValues ->
         LazyColumn(
             modifier =
@@ -294,6 +260,15 @@ fun AodCustomizedScreen(navController: NavController) {
                     ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item(
+                key = "aod_header",
+                contentType = "header",
+            ) {
+                SettingsEditorialHeader(
+                    title = stringResource(R.string.aod_customize_title),
+                    onBack = { navController.navigateUp() },
+                )
+            }
             item(
                 key = "aod_preview",
                 contentType = "preview",

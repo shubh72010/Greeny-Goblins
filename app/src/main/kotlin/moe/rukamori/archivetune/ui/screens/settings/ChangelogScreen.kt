@@ -76,25 +76,8 @@ fun ChangelogScreen(
         loadReleases(forceRefresh = true)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.changelog)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { paddingValues ->
-        Box(
+    Scaffold { paddingValues ->
+        Column(
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -105,6 +88,11 @@ fun ChangelogScreen(
                         ),
                     ),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.changelog),
+                onBack = { navController.navigateUp() },
+            )
+            Box(modifier = Modifier.fillMaxSize()) {
             when {
                 isLoading -> {
                     CircularWavyProgressIndicator(
@@ -166,6 +154,7 @@ fun ChangelogScreen(
                         item { Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding)) }
                     }
                 }
+            }
             }
         }
     }

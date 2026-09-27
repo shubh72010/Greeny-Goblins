@@ -128,38 +128,13 @@ private fun ChiperSettingsContent(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.mori_cipher_settings_title),
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                subtitle = {
-                    Text(stringResource(R.string.mori_cipher_settings_description))
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateUp,
-                        onLongClick = onNavigateToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.back_button_desc),
-                        )
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                scrollBehavior = scrollBehavior,
-            )
-        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.mori_cipher_settings_title),
+                onBack = onNavigateUp,
+            )
         when (state) {
             is ChiperSettingsUiState.Loading -> {
                 CipherLoadingState(
@@ -229,6 +204,7 @@ private fun ChiperSettingsContent(
                             ),
                 )
             }
+        }
         }
     }
 }

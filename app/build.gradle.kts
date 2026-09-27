@@ -41,6 +41,25 @@ val hasReleaseSigningConfig =
         releaseKeyAlias != null &&
         releaseKeyPassword != null
 
+// Settings search index is derived from the settings screens at build time, so a newly
+// added preference becomes searchable without touching a second list.
+val generateSettingsSearchIndex =
+    tasks.register<SettingsSearchIndexTask>("generateSettingsSearchIndex") {
+        settingsSourceDirectory.set(
+            rootProject.layout.projectDirectory.dir(
+                "app/src/main/kotlin/moe/rukamori/archivetune/ui/screens/settings",
+            ),
+        )
+        navigationSourceFile.set(
+            rootProject.layout.projectDirectory.file(
+                "app/src/main/kotlin/moe/rukamori/archivetune/ui/screens/NavigationBuilder.kt",
+            ),
+        )
+        // The hub builds its own conditional list (BuildConfig, permissions, Android version).
+        excludedScreenFunctions.set(listOf("SettingsScreen"))
+        outputDirectory.set(layout.buildDirectory.dir("generated/settingsSearchIndex/kotlin"))
+    }
+
 android {
     namespace = "moe.rukamori.archivetune"
     compileSdk = 37
@@ -246,6 +265,20 @@ android {
         compose = true
         buildConfig = true
         prefab = true
+    }
+
+    // Essentia rebuild path (opt-in, zero impact until prebuilts land):
+    // drop Essentia Android headers + per-ABI libessentia.so into
+    // app/src/main/cpp/third_party/essentia/{include,lib/<abi>}, then delete
+    // the matching app/src/main/jniLibs/<abi>/libessentia_jni.so blob so the
+    // source build is the single provider of that .so. ABIs without a
+    // prebuilt compile the stub (JVM fallback) — see cpp/CMakeLists.txt.
+    if (file("src/main/cpp/third_party/essentia").isDirectory) {
+        externalNativeBuild {
+            cmake {
+                path = file("src/main/cpp/CMakeLists.txt")
+            }
+        }
     }
 
     dependenciesInfo {
@@ -470,6 +503,11 @@ androidComponents {
         variant.sources.manifests.addGeneratedManifestFile(
             generateIconPack,
             GenerateIconPackTask::manifestOutputFile,
+        )
+        // Content is variant-independent, so one task feeds every variant.
+        variant.sources.kotlin?.addGeneratedSourceDirectory(
+            generateSettingsSearchIndex,
+            SettingsSearchIndexTask::outputDirectory,
         )
     }
 }

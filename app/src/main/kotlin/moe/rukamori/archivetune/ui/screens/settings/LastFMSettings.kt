@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
@@ -80,29 +81,19 @@ fun LastFMSettings(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.lastfm_integration)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.lastfm_integration),
+                onBack = { navController.navigateUp() },
+            )
 
         LastFmSettingsContent(
             state = state,
             topPadding = topPadding,
+            modifier = Modifier.weight(1f),
             onOpenServiceEditor = viewModel::openServiceEditor,
             onDismissServiceEditor = viewModel::dismissServiceEditor,
             onServiceProviderChange = viewModel::updateServiceProvider,
@@ -125,6 +116,7 @@ fun LastFMSettings(
             onTimingDelaySecondsChange = viewModel::updateTimingDelaySeconds,
             onSaveTimingEditor = viewModel::saveTimingEditor,
         )
+        }
     }
 }
 
@@ -153,9 +145,10 @@ private fun LastFmSettingsContent(
     onTimingDelayPercentChange: (Float) -> Unit,
     onTimingDelaySecondsChange: (Int) -> Unit,
     onSaveTimingEditor: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        Modifier
+        modifier
             .padding(top = topPadding)
             .windowInsetsPadding(LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
             .verticalScroll(rememberScrollState())

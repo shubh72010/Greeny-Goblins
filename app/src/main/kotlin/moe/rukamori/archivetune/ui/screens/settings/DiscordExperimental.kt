@@ -93,13 +93,9 @@ fun DiscordExperimental(navController: NavController) {
 
     Scaffold { inner ->
         Column(Modifier.fillMaxSize()) {
-            TopAppBar(
-                title = { Text(stringResource(R.string.experiment_settings)) },
-                navigationIcon = {
-                    IconButton(onClick = navController::navigateUp) {
-                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                    }
-                },
+            SettingsEditorialHeader(
+                title = stringResource(R.string.experiment_settings),
+                onBack = { navController.navigateUp() },
             )
 
             LazyColumn(
@@ -244,3 +240,4 @@ private fun discordExperimentalButtonUrlSourceLabel(value: String): String =
         "custom" -> stringResource(R.string.discord_url_source_custom)
         else -> value
     }
+

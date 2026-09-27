@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,8 +30,10 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -290,11 +293,24 @@ fun OnlineSearchScreen(
                 }
             }
 
-            items(
+            itemsIndexed(
                 items = distinctResultItems,
-                key = { item -> "item_${item.id}" },
-                contentType = { item -> item::class },
-            ) { item ->
+                key = { _, item -> "item_${item.id}" },
+                contentType = { _, item -> item::class },
+            ) { index, item ->
+                val itemShape =
+                    remember(index, distinctResultItems.size) {
+                        segmentedSearchItemShape(index, distinctResultItems.size)
+                    }
+                Surface(
+                    shape = itemShape,
+                    color = searchResultContainerColor(pureBlack),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = SearchHorizontalPadding)
+                            .animateItem(),
+                ) {
                 YouTubeListItem(
                     item = item,
                     isActive =
@@ -363,6 +379,8 @@ fun OnlineSearchScreen(
                     },
                     modifier =
                         Modifier
+                            .fillMaxWidth()
+                            .clip(itemShape)
                             .combinedClickable(
                                 onClick = {
                                     when (item) {
@@ -442,8 +460,9 @@ fun OnlineSearchScreen(
                                         }
                                     }
                                 },
-                            ).animateItem(),
+                            ),
                 )
+                }
             }
         }
     }
@@ -456,8 +475,10 @@ private fun SearchSectionHeader(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall,
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.4.sp,
         color =
             if (pureBlack) {
                 Color.White.copy(alpha = 0.72f)
@@ -475,6 +496,14 @@ private fun SearchSectionHeader(
                 ),
     )
 }
+
+@Composable
+private fun searchResultContainerColor(pureBlack: Boolean): Color =
+    if (pureBlack) {
+        Color.White.copy(alpha = 0.08f)
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerLow
+    }
 
 private fun segmentedSearchItemShape(
     index: Int,
@@ -623,7 +652,7 @@ private val SearchContentMaxWidth = 720.dp
 private val SearchHorizontalPadding = 12.dp
 private val SearchRowMinHeight = 64.dp
 private val SearchRowSpacing = 2.dp
-private val SearchGroupOuterCorner = 24.dp
+private val SearchGroupOuterCorner = 28.dp
 private val SearchGroupInnerCorner = 6.dp
 
 private const val YapperEasterEggVideoId = "BSJa1UytM8w"

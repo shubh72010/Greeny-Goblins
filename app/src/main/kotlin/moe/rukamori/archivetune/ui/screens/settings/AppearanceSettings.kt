@@ -333,7 +333,7 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
     val (liquidGlassEnabled, onLiquidGlassEnabledChange) =
         rememberPreference(
             LiquidGlassEnabledKey,
-            defaultValue = false,
+            defaultValue = true,
         )
 
     val (hideArtistPfp, onHideArtistPfpChange) =
@@ -488,24 +488,7 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.appearance)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
 
         Column(
@@ -515,6 +498,10 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.appearance),
+                onBack = { navController.navigateUp() },
+            )
             PreferenceGroup(title = stringResource(R.string.theme)) {
                 item {
                     HighlightablePreference(highlightKey = "dynamic_theme", highlight = highlight) {

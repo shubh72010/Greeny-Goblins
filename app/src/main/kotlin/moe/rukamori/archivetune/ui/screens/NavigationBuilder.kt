@@ -59,6 +59,7 @@ import moe.rukamori.archivetune.ui.screens.settings.CustomizeBackground
 import moe.rukamori.archivetune.ui.screens.settings.DebugSettings
 import moe.rukamori.archivetune.ui.screens.settings.DiscordSettings
 import moe.rukamori.archivetune.ui.screens.settings.HiddenPlaylistsScreen
+import moe.rukamori.archivetune.ui.screens.settings.MusicIntelligenceScreen
 import moe.rukamori.archivetune.ui.screens.settings.IconScreen
 import moe.rukamori.archivetune.ui.screens.settings.IntegrationScreen
 import moe.rukamori.archivetune.ui.screens.settings.InternetSettings
@@ -368,6 +369,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/hidden_playlists") {
         HiddenPlaylistsScreen(navController)
+    }
+    composable("settings/music_intelligence") {
+        MusicIntelligenceScreen(navController)
     }
     composable(
         route = "settings/appearance?highlight={highlight}",

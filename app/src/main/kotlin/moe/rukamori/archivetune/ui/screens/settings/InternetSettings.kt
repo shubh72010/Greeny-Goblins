@@ -173,24 +173,7 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
             else -> stringResource(R.string.ip_rotation_desc)
         }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.internet)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    Scaffold { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
 
         Column(
@@ -200,6 +183,10 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.internet),
+                onBack = { navController.navigateUp() },
+            )
             InternetWarningBox()
 
             PreferenceGroup(title = stringResource(R.string.dns_over_https)) {

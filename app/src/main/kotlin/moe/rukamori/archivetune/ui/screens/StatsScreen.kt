@@ -7,7 +7,6 @@
 
 package moe.rukamori.archivetune.ui.screens
 
-import android.graphics.Color as AndroidColor
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -36,12 +35,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -56,7 +52,6 @@ import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -64,16 +59,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -83,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -90,6 +78,8 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
+import moe.rukamori.archivetune.ui.theme.heroNumber
+import moe.rukamori.archivetune.ui.theme.heroTitle
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.StatPeriod
@@ -106,14 +96,14 @@ import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.ChoiceChipsRow
-import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ItemThumbnail
 import moe.rukamori.archivetune.ui.component.LocalAlbumsGrid
 import moe.rukamori.archivetune.ui.component.LocalArtistsGrid
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
-import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.menu.SongMenu
+import moe.rukamori.archivetune.ui.menu.ArtistMenu
 import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
@@ -124,6 +114,7 @@ import moe.rukamori.archivetune.viewmodels.StatsViewModel
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import kotlin.math.roundToInt
 
 @OptIn(
     ExperimentalMaterial3Api::class,
@@ -238,51 +229,9 @@ fun StatsScreen(
                 .toList()
         }
 
-    val topAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
     Scaffold(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.stats),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                subtitle = {
-                    Text(
-                        text = stringResource(R.string.settings_stats_subtitle),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(painterResource(R.drawable.arrow_back), contentDescription = null)
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = viewModel::showYearPicker,
-                        onLongClick = {},
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.auto_awesome),
-                            contentDescription = stringResource(R.string.year_in_music),
-                        )
-                    }
-                },
-                scrollBehavior = topAppBarScrollBehavior,
-            )
-        },
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.surface,
     ) { scaffoldPadding ->
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -298,6 +247,41 @@ fun StatsScreen(
                         .align(Alignment.TopCenter)
                         .padding(top = scaffoldPadding.calculateTopPadding()),
             ) {
+            item(key = "reportIntro", contentType = "intro") {
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.stats),
+                            style = MaterialTheme.typography.heroTitle,
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_stats_subtitle),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(
+                        onClick = viewModel::showYearPicker,
+                        onLongClick = {},
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.auto_awesome),
+                            contentDescription = stringResource(R.string.year_in_music),
+                        )
+                    }
+                }
+            }
+
             item(key = "rangeControls", contentType = "controls") {
                 StatsFilterPanel(modifier = Modifier.animateItem()) {
                     ChoiceChipsRow(
@@ -334,6 +318,7 @@ fun StatsScreen(
             item(key = "overview", contentType = "overview") {
                 StatsSummarySection(
                     summary = listeningSummary,
+                    listeningByHour = listeningByHour,
                     modifier = Modifier.animateItem(),
                 )
             }
@@ -345,13 +330,9 @@ fun StatsScreen(
                             title = stringResource(R.string.stats_artist_breakdown),
                             supportingText = mostPlayedArtists.take(5).size.toString(),
                         )
-                        SegmentedArtistChart(
+                        StatsArtistBreakdown(
                             artists = mostPlayedArtists.take(5),
-                            totalTimeListened = listeningSummary.totalTimeListened,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                            modifier = Modifier.animateItem(),
                         )
                     }
                 }
@@ -664,18 +645,19 @@ private fun StatsFilterPanel(
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 8.dp),
+            modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = stringResource(R.string.stats_time_range),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
             content()
         }
@@ -694,25 +676,26 @@ private fun StatsSongsHeader(
         modifier =
             modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, top = 24.dp, end = 16.dp, bottom = 10.dp),
+                .padding(start = 20.dp, top = 28.dp, end = 16.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
             )
             Text(
                 text = count.toString(),
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         FilledTonalButton(
             onClick = onShuffle,
             enabled = shuffleEnabled,
+            shape = MaterialTheme.shapes.small,
         ) {
             Icon(
                 painter = painterResource(R.drawable.shuffle),
@@ -796,8 +779,8 @@ private fun StatsSectionHeader(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
         )
         Text(
             text = supportingText,
@@ -841,8 +824,8 @@ private fun RankedSongItem(
             ) {
                 Text(
                     text = rank.toString(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black,
                     color =
                         if (rank <= 3) {
                             MaterialTheme.colorScheme.primary
@@ -850,14 +833,14 @@ private fun RankedSongItem(
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.width(24.dp),
+                    modifier = Modifier.width(32.dp),
                 )
                 ItemThumbnail(
                     thumbnailUrl = song.thumbnailUrl,
                     isActive = isActive,
                     isPlaying = isPlaying,
                     shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.size(56.dp),
+                    modifier = Modifier.size(64.dp),
                 )
             }
         },
@@ -945,6 +928,7 @@ private fun StatsYearPickerDialog(
 @Composable
 private fun StatsSummarySection(
     summary: ListeningSummary,
+    listeningByHour: List<ListeningBySlot>,
     modifier: Modifier = Modifier,
 ) {
     if (summary.totalPlayCount == 0) return
@@ -955,58 +939,53 @@ private fun StatsSummarySection(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         BoxWithConstraints(modifier = Modifier.padding(20.dp)) {
-            val expanded = maxWidth >= 680.dp
-            if (expanded) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    StatsListeningTimeHero(
-                        summary = summary,
-                        modifier = Modifier.weight(1.2f),
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+            val isWide = maxWidth >= 680.dp
+            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                if (isWide) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(28.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        StatMetricCard(
-                            label = stringResource(R.string.stats_total_plays),
-                            value = summary.totalPlayCount.toString(),
+                        StatsListeningTimeHero(
+                            summary = summary,
+                            modifier = Modifier.weight(1f),
                         )
-                        StatMetricCard(
-                            label = stringResource(R.string.stats_unique_songs),
-                            value = summary.uniqueSongsCount.toString(),
+                        StatsSignalBars(
+                            slots = listeningByHour,
+                            modifier = Modifier.weight(1f),
                         )
-                        StatMetricCard(
-                            label = stringResource(R.string.stats_unique_artists),
-                            value = summary.uniqueArtistsCount.toString(),
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                        StatsListeningTimeHero(summary = summary)
+                        StatsSignalBars(
+                            slots = listeningByHour,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    StatsListeningTimeHero(summary = summary)
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatMetricCard(
-                            label = stringResource(R.string.stats_total_plays),
-                            value = summary.totalPlayCount.toString(),
-                            modifier = Modifier.weight(1f),
-                        )
-                        StatMetricCard(
-                            label = stringResource(R.string.stats_unique_songs),
-                            value = summary.uniqueSongsCount.toString(),
-                            modifier = Modifier.weight(1f),
-                        )
-                        StatMetricCard(
-                            label = stringResource(R.string.stats_unique_artists),
-                            value = summary.uniqueArtistsCount.toString(),
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    StatMetricCard(
+                        label = stringResource(R.string.stats_total_plays),
+                        value = summary.totalPlayCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatMetricCard(
+                        label = stringResource(R.string.stats_unique_songs),
+                        value = summary.uniqueSongsCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatMetricCard(
+                        label = stringResource(R.string.stats_unique_artists),
+                        value = summary.uniqueArtistsCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -1018,27 +997,100 @@ private fun StatsListeningTimeHero(
     summary: ListeningSummary,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.primaryContainer,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+        Text(
+            text = stringResource(R.string.stats_total_time_listened),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = makeTimeString(summary.totalTimeListened) ?: "-",
+            style = MaterialTheme.typography.heroNumber.copy(fontSize = 56.sp),
+            color = MaterialTheme.colorScheme.onSurface,
+            lineHeight = 56.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun StatsSignalBars(
+    slots: List<ListeningBySlot>,
+    modifier: Modifier = Modifier,
+) {
+    val slotMap = remember(slots) { slots.associateBy { it.slot } }
+    val maxTime = remember(slots) { slots.maxOfOrNull { it.timeListened }?.coerceAtLeast(1L) ?: 1L }
+    val peakSlot = remember(slots) { slots.maxByOrNull { it.timeListened }?.slot }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = stringResource(R.string.stats_total_time_listened),
+                text = stringResource(R.string.stats_listening_by_hour),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-            Text(
-                text = makeTimeString(summary.totalTimeListened) ?: "-",
-                style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
             )
+            if (peakSlot != null) {
+                val formatter = remember { DateTimeFormatter.ofPattern("ha") }
+                Text(
+                    text =
+                        stringResource(
+                            R.string.stats_peak_hour,
+                            LocalTime.of(peakSlot, 0).format(formatter),
+                        ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
+        Row(
+            modifier = Modifier.fillMaxWidth().height(76.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            repeat(24) { hour ->
+                val fraction =
+                    ((slotMap[hour]?.timeListened ?: 0L).toFloat() / maxTime).coerceIn(0f, 1f)
+                val animatedFraction by animateFloatAsState(
+                    targetValue = fraction,
+                    animationSpec = tween(400),
+                    label = "signal_$hour",
+                )
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    contentAlignment = Alignment.BottomCenter,
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height((68 * animatedFraction).dp.coerceAtLeast(4.dp))
+                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                                .background(
+                                    if (hour == peakSlot) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                            alpha = 0.18f + fraction * 0.24f,
+                                        )
+                                    },
+                                ),
+                    )
+                }
+            }
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -1054,8 +1106,8 @@ private fun StatMetricCard(
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1078,273 +1130,201 @@ private fun StatsHighlightsSection(
 ) {
     if (topArtist == null && topSong == null) return
 
-    Column(
+    Surface(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        if (topArtist != null) {
-            StatsHighlightCard(
-                title = stringResource(R.string.stats_favourite_artist),
-                mainText = topArtist.artist.name,
-                subText = "${topArtist.songCount} ${stringResource(
-                    R.string.songs,
-                ).lowercase()} • ${makeTimeString(topArtist.timeListened?.toLong())}",
-                imageUrl = topArtist.artist.thumbnailUrl,
-                useCircleShape = true,
-                onClick = { navController.navigate("artist/${topArtist.id}") },
-            )
-        }
-        if (topSong != null && topSongEntity != null) {
-            StatsHighlightCard(
-                title = stringResource(R.string.stats_favourite_song),
-                mainText = topSong.title,
-                subText = "${pluralStringResource(
-                    R.plurals.n_time,
-                    topSong.songCountListened,
-                    topSong.songCountListened,
-                )} • ${makeTimeString(topSong.timeListened)}",
-                imageUrl = topSong.thumbnailUrl,
-                useCircleShape = false,
-                onClick = {},
-            )
+        Column {
+            if (topArtist != null) {
+                StatsHighlightRow(
+                    title = stringResource(R.string.stats_favourite_artist),
+                    mainText = topArtist.artist.name,
+                    subText =
+                        "${topArtist.songCount} ${stringResource(
+                            R.string.songs,
+                        ).lowercase()} • ${makeTimeString(topArtist.timeListened?.toLong())}",
+                    imageUrl = topArtist.artist.thumbnailUrl,
+                    useCircleShape = true,
+                    onClick = { navController.navigate("artist/${topArtist.id}") },
+                )
+            }
+            if (topArtist != null && topSong != null && topSongEntity != null) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                )
+            }
+            if (topSong != null && topSongEntity != null) {
+                StatsHighlightRow(
+                    title = stringResource(R.string.stats_favourite_song),
+                    mainText = topSong.title,
+                    subText =
+                        "${pluralStringResource(
+                            R.plurals.n_time,
+                            topSong.songCountListened,
+                            topSong.songCountListened,
+                        )} • ${makeTimeString(topSong.timeListened)}",
+                    imageUrl = topSong.thumbnailUrl,
+                    useCircleShape = false,
+                    onClick = null,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun StatsHighlightCard(
+private fun StatsHighlightRow(
     title: String,
     mainText: String,
     subText: String,
     imageUrl: String?,
     useCircleShape: Boolean,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
-    ElevatedCard(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.elevatedCardColors(),
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = onClick != null) { onClick?.invoke() }
+                .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
             modifier =
                 Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    .size(80.dp)
+                    .clip(
+                        if (useCircleShape) {
+                            rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, imageUrl ?: title)
+                        } else {
+                            rememberThumbnailShape(ThumbnailShapeKind.SONG, 10f, imageUrl ?: title)
+                        },
+                    ),
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier =
-                    Modifier
-                        .size(80.dp)
-                        .clip(
-                            if (useCircleShape) {
-                                rememberThumbnailShape(ThumbnailShapeKind.ARTIST, 0f, imageUrl ?: title)
-                            } else {
-                                rememberThumbnailShape(ThumbnailShapeKind.SONG, 10f, imageUrl ?: title)
-                            },
-                        ),
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = mainText,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = subText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Text(
+                text = mainText,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
 @Composable
-private fun SegmentedArtistChart(
+private fun StatsArtistBreakdown(
     artists: List<Artist>,
-    totalTimeListened: Long,
     modifier: Modifier = Modifier,
 ) {
-    val visibleArtistTime = remember(artists) { artists.sumOf { it.timeListened?.toLong() ?: 0L } }
-    val displayTotalTime =
-        remember(totalTimeListened, visibleArtistTime) {
-            totalTimeListened.takeIf { it > 0L } ?: visibleArtistTime
-        }
-    if (visibleArtistTime == 0L) return
+    val visibleArtists = artists.take(5)
+    val totalTime = visibleArtists.sumOf { it.timeListened?.toLong() ?: 0L }
+    if (totalTime <= 0L) return
 
-    val segmentData =
-        remember(artists, visibleArtistTime) {
-            val rawSegments =
-                artists.mapNotNull { artist ->
-                    val time = artist.timeListened?.toLong() ?: 0L
-                    if (time <= 0L) return@mapNotNull null
-                    artist to (time.toFloat() / visibleArtistTime) * 360f
-                }
-
-            if (rawSegments.isEmpty()) {
-                emptyList()
-            } else {
-                val topArtistId = rawSegments.maxByOrNull { it.second }?.first?.id
-                val retainedSegments =
-                    rawSegments
-                        .filter { (_, sweep) -> sweep >= 1f }
-                        .ifEmpty { listOf(rawSegments.maxBy { it.second }) }
-                val retainedSweep = retainedSegments.sumOf { it.second.toDouble() }.toFloat()
-                val remainderSweep = (360f - retainedSweep).coerceAtLeast(0f)
-                val completedSegments =
-                    retainedSegments.map { (artist, sweep) ->
-                        artist to
-                            if (artist.id == topArtistId) {
-                                sweep + remainderSweep
-                            } else {
-                                sweep
-                            }
-                    }
-
-                var startAngle = -90f
-                completedSegments.map { (artist, sweep) ->
-                    Triple(artist, startAngle, sweep).also {
-                        startAngle += sweep
-                    }
-                }
-            }
-        }
-
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val segmentColors =
-        remember(primaryColor, segmentData.size) {
-            createDistinctArtistColors(
-                seedColor = primaryColor,
-                count = segmentData.size,
-            )
-        }
-
-    ElevatedCard(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.elevatedCardColors(),
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
-        Row(
-            modifier =
-                Modifier
-                    .padding(20.dp)
-                    .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(140.dp)
-                        .drawWithCache {
-                            val strokeWidth = size.width * 0.18f
-                            val inset = strokeWidth / 2f
-                            val arcRect =
-                                Rect(
-                                    left = inset,
-                                    top = inset,
-                                    right = size.width - inset,
-                                    bottom = size.height - inset,
-                                )
-                            onDrawBehind {
-                                segmentData.forEachIndexed { i, (_, startAngle, sweep) ->
-                                    val gapDeg = if (segmentData.size > 1) 2f else 0f
-                                    drawArc(
-                                        color = segmentColors[i % segmentColors.size],
-                                        startAngle = startAngle + gapDeg / 2f,
-                                        sweepAngle = (sweep - gapDeg).coerceAtLeast(0f),
-                                        useCenter = false,
-                                        topLeft = arcRect.topLeft,
-                                        size = Size(arcRect.width, arcRect.height),
-                                        style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
-                                    )
-                                }
-                            }
-                        },
-            )
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.weight(1f),
-            ) {
-                segmentData.forEachIndexed { i, (artist, _, sweep) ->
-                    val percentage = (sweep / 360f * 100).toInt()
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+            visibleArtists.forEachIndexed { index, artist ->
+                val time = artist.timeListened?.toLong() ?: 0L
+                val percentage = ((time.toFloat() / totalTime) * 100f).roundToInt().coerceIn(0, 100)
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(segmentColors[i % segmentColors.size]),
+                        Text(
+                            text = (index + 1).toString(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.width(24.dp),
                         )
                         Text(
                             text = artist.artist.name,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
                         Text(
                             text = "$percentage%",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Black,
+                        )
+                    }
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth(percentage / 100f)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(MaterialTheme.colorScheme.primary),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            text =
+                                joinByBullet(
+                                    pluralStringResource(
+                                        R.plurals.n_time,
+                                        artist.songCount,
+                                        artist.songCount,
+                                    ),
+                                    makeTimeString(time),
+                                ),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = makeTimeString(displayTotalTime) ?: "-",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = stringResource(R.string.stats_total_time_listened),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (index < visibleArtists.lastIndex) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
             }
         }
-    }
-}
-
-private fun createDistinctArtistColors(
-    seedColor: Color,
-    count: Int,
-): List<Color> {
-    if (count <= 0) return emptyList()
-
-    val seedHsv = FloatArray(3)
-    AndroidColor.colorToHSV(seedColor.toArgb(), seedHsv)
-    val saturation = seedHsv[1].coerceAtLeast(0.62f)
-    val brightness = seedHsv[2].coerceIn(0.68f, 0.88f)
-    val hueStep = 360f / count
-
-    return List(count) { index ->
-        Color.hsv(
-            hue = (seedHsv[0] + hueStep * index) % 360f,
-            saturation = saturation,
-            value = brightness,
-        )
     }
 }
 
@@ -1367,18 +1347,19 @@ private fun ListeningByDayChart(
     val slotMap = remember(slots) { slots.associateBy { it.slot } }
     val maxTime = remember(slots) { slots.maxOfOrNull { it.timeListened } ?: 1L }
     val primaryColor = MaterialTheme.colorScheme.primary
-    val containerColor = MaterialTheme.colorScheme.secondaryContainer
+    val mutedBarColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.24f)
 
-    ElevatedCard(
+    Surface(
         modifier = modifier,
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.elevatedCardColors(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = stringResource(R.string.stats_listening_by_day),
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.secondary,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
             )
             Spacer(modifier = Modifier.height(12.dp))
             Row(
@@ -1389,7 +1370,7 @@ private fun ListeningByDayChart(
                 for (day in 0..6) {
                     val time = slotMap[day]?.timeListened ?: 0L
                     val fraction = time.toFloat() / maxTime
-                    val barColor = if (day == currentDayOfWeek) primaryColor else containerColor
+                    val barColor = if (day == currentDayOfWeek) primaryColor else mutedBarColor
                     val animatedFraction by animateFloatAsState(
                         targetValue = fraction,
                         animationSpec = tween(400),
@@ -1438,7 +1419,7 @@ private fun ListeningByHourChart(
     val maxTime = remember(slots) { slots.maxOfOrNull { it.timeListened } ?: 1L }
     val peakSlot = remember(slots) { slots.maxByOrNull { it.timeListened }?.slot }
     val primaryColor = MaterialTheme.colorScheme.primary
-    val containerColor = MaterialTheme.colorScheme.primaryContainer
+    val mutedBarColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.28f)
 
     val peakLabel =
         remember(peakSlot) {
@@ -1453,10 +1434,10 @@ private fun ListeningByHourChart(
             }
         }
 
-    ElevatedCard(
+    Surface(
         modifier = modifier,
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.elevatedCardColors(),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Row(
@@ -1467,7 +1448,8 @@ private fun ListeningByHourChart(
                 Text(
                     text = stringResource(R.string.stats_listening_by_hour),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.secondary,
+                    color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
                 )
                 if (peakLabel != null) {
                     Text(
@@ -1487,7 +1469,7 @@ private fun ListeningByHourChart(
                     val time = slotMap[hour]?.timeListened ?: 0L
                     val fraction = time.toFloat() / maxTime
                     val isPeak = hour == peakSlot
-                    val barColor = if (isPeak) primaryColor else containerColor.copy(alpha = 0.6f + fraction * 0.4f)
+                    val barColor = if (isPeak) primaryColor else mutedBarColor.copy(alpha = 0.28f + fraction * 0.32f)
                     val animatedFraction by animateFloatAsState(
                         targetValue = fraction,
                         animationSpec = tween(400),

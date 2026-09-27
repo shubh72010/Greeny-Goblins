@@ -278,29 +278,11 @@ fun AccountSettings(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = accountLabel,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            SettingsEditorialHeader(
+                title = accountLabel,
+                onBack = { navController.navigateUp() },
                 actions = {
                     OutlinedIconButton(
                         onClick = { showTokenEditor = true },
@@ -342,20 +324,11 @@ fun AccountSettings(
                         }
                     }
                 },
-                windowInsets = TopAppBarDefaults.windowInsets,
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                scrollBehavior = scrollBehavior,
             )
-        },
-    ) { innerPadding ->
         LazyColumn(
             modifier =
                 Modifier
-                    .fillMaxSize()
+                    .weight(1f)
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -493,6 +466,15 @@ fun AccountSettings(
                     ExpressiveDivider()
 
                     ExpressiveActionRow(
+                        icon = painterResource(R.drawable.waves),
+                        title = stringResource(R.string.music_intelligence),
+                        subtitle = stringResource(R.string.music_intelligence_description),
+                        onClick = { navController.navigate("settings/music_intelligence") },
+                    )
+
+                    ExpressiveDivider()
+
+                    ExpressiveActionRow(
                         icon = painterResource(R.drawable.token),
                         title = tokenActionTitle,
                         subtitle = tokenDescription,
@@ -513,6 +495,7 @@ fun AccountSettings(
             item {
                 VersionStamp()
             }
+        }
         }
     }
 

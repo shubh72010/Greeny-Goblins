@@ -247,8 +247,6 @@ fun OnlinePlaylistScreen(
         }
     }
 
-    val showTopBarTitle by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
-
     // Gradient colors state for playlist cover
     var gradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
@@ -305,10 +303,6 @@ fun OnlinePlaylistScreen(
                 0f
             }
         }
-    }
-
-    val transparentAppBar by remember {
-        derivedStateOf { !disableBlur && !selection && !showTopBarTitle }
     }
 
     val headerItems by remember {
@@ -1247,20 +1241,13 @@ fun OnlinePlaylistScreen(
 
         // Top App Bar
         val topAppBarColors =
-            if (transparentAppBar) {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground,
-                )
-            } else {
-                TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                )
-            }
+            TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                scrolledContainerColor = Color.Transparent,
+                navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                actionIconContentColor = MaterialTheme.colorScheme.onBackground,
+            )
 
         TopAppBar(
             colors = topAppBarColors,
@@ -1294,8 +1281,6 @@ fun OnlinePlaylistScreen(
                             ),
                         modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
                     )
-                } else if (showTopBarTitle) {
-                    Text(playlist?.title.orEmpty())
                 }
             },
             navigationIcon = {

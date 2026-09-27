@@ -289,22 +289,6 @@ fun StorageSettings(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.storage)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
-            )
-        },
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -329,6 +313,10 @@ fun StorageSettings(
                     bottom = SettingsDimensions.ScreenBottomPadding,
                 ),
         ) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.storage),
+                onBack = { navController.navigateUp() },
+            )
             StorageFolderSection(
                 state = screenState,
                 smartTrimmer = smartTrimmer,

@@ -828,7 +828,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Liquid Glass — toggle, off by default (hotfix: translucent fallback only, no backdrop to avoid circular RenderNode crash)
-                val liquidGlassEnabled by rememberPreference(LiquidGlassEnabledKey, defaultValue = false)
+                val liquidGlassEnabled by rememberPreference(LiquidGlassEnabledKey, defaultValue = true)
                 val glassConfig = remember(liquidGlassEnabled) { GlassEffectConfig(globalEnabled = liquidGlassEnabled) }
                 val appBackdrop = rememberLayerBackdrop()
                 androidx.compose.runtime.CompositionLocalProvider(
@@ -1719,12 +1719,15 @@ class MainActivity : ComponentActivity() {
                                                             contentDescription = null,
                                                             modifier =
                                                                 Modifier
-                                                                    .size(35.dp)
-                                                                    .padding(end = 3.dp),
+                                                                    .size(30.dp)
+                                                                    .padding(end = 6.dp),
                                                         )
                                                         Text(
                                                             text = stringResource(R.string.app_name),
-                                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                                            style =
+                                                                MaterialTheme.typography.headlineSmall.copy(
+                                                                    fontWeight = FontWeight.Black,
+                                                                ),
                                                             maxLines = 1,
                                                             overflow = TextOverflow.Ellipsis,
                                                         )

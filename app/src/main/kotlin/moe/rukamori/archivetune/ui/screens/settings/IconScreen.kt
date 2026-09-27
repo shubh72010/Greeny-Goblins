@@ -197,36 +197,12 @@ private fun IconScreenContent(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            MediumFlexibleTopAppBar(
-                title = {
-                    Text(text = stringResource(R.string.app_icon))
-                },
-                subtitle = {
-                    Text(text = stringResource(R.string.app_icon_subtitle))
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateUp,
-                        onLongClick = onNavigateHome,
-                        modifier = Modifier.padding(start = 5.dp),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.back_button_desc),
-                        )
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                scrollBehavior = scrollBehavior,
-            )
-        },
     ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.app_icon),
+                onBack = onNavigateUp,
+            )
         when (state) {
             IconScreenState.Loading -> {
                 IconScreenLoading(
@@ -283,6 +259,7 @@ private fun IconScreenContent(
                             .playerAwareInsets(),
                 )
             }
+        }
         }
     }
 }

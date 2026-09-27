@@ -72,6 +72,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -184,9 +185,13 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.component.BottomSheet
 import moe.rukamori.archivetune.ui.component.BottomSheetState
+import moe.rukamori.archivetune.ui.component.LocalAppBackdrop
 import moe.rukamori.archivetune.ui.component.LocalBottomSheetPageState
 import moe.rukamori.archivetune.ui.component.LocalMenuState
+import moe.rukamori.archivetune.ui.component.isPlayerGlassEnabled
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
+import moe.rukamori.archivetune.ui.component.backdrop.backdrops.layerBackdrop
+import moe.rukamori.archivetune.ui.component.backdrop.backdrops.rememberLayerBackdrop
 import moe.rukamori.archivetune.ui.menu.PlayerMenu
 import moe.rukamori.archivetune.ui.screens.settings.DarkMode
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
@@ -307,11 +312,26 @@ fun BottomSheetPlayer(
     val bottomSheetPageState = LocalBottomSheetPageState.current
 
     val playerConnection = LocalPlayerConnection.current ?: return
+    val playerBackdrop = rememberLayerBackdrop()
+    val usePlayerGlass = isPlayerGlassEnabled()
 
     val playerDesignStyle by rememberEnumPreference(
         key = PlayerDesignStyleKey,
         defaultValue = PlayerDesignStyle.V4,
     )
+    val playerUsesPlayerBackground =
+        playerDesignStyle !in setOf(
+            PlayerDesignStyle.V5,
+            PlayerDesignStyle.V7,
+            PlayerDesignStyle.V9,
+            PlayerDesignStyle.V10,
+        )
+    val playerGlassBackdrop =
+        if (usePlayerGlass && playerUsesPlayerBackground) {
+            playerBackdrop
+        } else {
+            LocalAppBackdrop.current
+        }
     val canvasSource by rememberEnumPreference(
         key = CanvasSourceKey,
         defaultValue = CanvasSource.YOUTUBE,
@@ -1155,33 +1175,35 @@ fun BottomSheetPlayer(
         }
 
         val controlsContent: @Composable ColumnScope.(MediaMetadata) -> Unit = { mediaMetadata ->
-            PlayerControlsContent(
-                mediaMetadata = mediaMetadata,
-                playerDesignStyle = playerDesignStyle,
-                sliderStyle = sliderStyle,
-                playbackState = playbackState,
-                isPlaying = isPlaying,
-                isLoading = isLoading,
-                repeatMode = repeatMode,
-                canSkipPrevious = canSkipPrevious,
-                canSkipNext = canSkipNext,
-                textButtonColor = textButtonColor,
-                iconButtonColor = iconButtonColor,
-                textBackgroundColor = TextBackgroundColor,
-                icBackgroundColor = icBackgroundColor,
-                sliderPosition = sliderPosition,
-                position = position,
-                duration = duration,
-                playerConnection = playerConnection,
-                navController = navController,
-                state = state,
-                menuState = menuState,
-                bottomSheetPageState = bottomSheetPageState,
-                context = context,
-                onSliderValueChange = onSliderValueChange,
-                onSliderValueChangeFinished = onSliderValueChangeFinished,
-                currentFormat = if (playerDesignStyle == PlayerDesignStyle.V7) currentFormat else null,
-            )
+            CompositionLocalProvider(LocalAppBackdrop provides playerGlassBackdrop) {
+                PlayerControlsContent(
+                    mediaMetadata = mediaMetadata,
+                    playerDesignStyle = playerDesignStyle,
+                    sliderStyle = sliderStyle,
+                    playbackState = playbackState,
+                    isPlaying = isPlaying,
+                    isLoading = isLoading,
+                    repeatMode = repeatMode,
+                    canSkipPrevious = canSkipPrevious,
+                    canSkipNext = canSkipNext,
+                    textButtonColor = textButtonColor,
+                    iconButtonColor = iconButtonColor,
+                    textBackgroundColor = TextBackgroundColor,
+                    icBackgroundColor = icBackgroundColor,
+                    sliderPosition = sliderPosition,
+                    position = position,
+                    duration = duration,
+                    playerConnection = playerConnection,
+                    navController = navController,
+                    state = state,
+                    menuState = menuState,
+                    bottomSheetPageState = bottomSheetPageState,
+                    context = context,
+                    onSliderValueChange = onSliderValueChange,
+                    onSliderValueChangeFinished = onSliderValueChangeFinished,
+                    currentFormat = if (playerDesignStyle == PlayerDesignStyle.V7) currentFormat else null,
+                )
+            }
         }
 
         if (!state.isCollapsed &&
@@ -1202,6 +1224,7 @@ fun BottomSheetPlayer(
                 playerCustomBlur = playerCustomBlur,
                 playerCustomContrast = playerCustomContrast,
                 playerCustomBrightness = playerCustomBrightness,
+                modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
             )
         }
 
@@ -1322,7 +1345,8 @@ fun BottomSheetPlayer(
                                     ).nestedScroll(state.preUpPostDownNestedScrollConnection),
                         ) {
                             enrichedMetadata?.let { metadata ->
-                                V8PlayerControlsContent(
+                                CompositionLocalProvider(LocalAppBackdrop provides playerGlassBackdrop) {
+                                    V8PlayerControlsContent(
                                     mediaMetadata = metadata,
                                     queueTitle = "",
                                     playbackState = playbackState,
@@ -1346,7 +1370,8 @@ fun BottomSheetPlayer(
                                     onSliderValueChangeFinished = onSliderValueChangeFinished,
                                     onVolumeChange = onPlayerVolumeChange,
                                     landscape = true,
-                                )
+                                    )
+                                }
                             }
 
                             Spacer(Modifier.height(16.dp))
@@ -1366,10 +1391,12 @@ fun BottomSheetPlayer(
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
+                            modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
                         )
 
                         enrichedMetadata?.let { metadata ->
-                            V8PlayerContent(
+                            CompositionLocalProvider(LocalAppBackdrop provides playerGlassBackdrop) {
+                                V8PlayerContent(
                                 mediaMetadata = metadata,
                                 queueTitle = queueTitle,
                                 playbackState = playbackState,
@@ -1403,11 +1430,13 @@ fun BottomSheetPlayer(
                                             WindowInsets.systemBars.only(
                                                 WindowInsetsSides.Top + WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
                                             ),
-                                        ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                            ).nestedScroll(state.preUpPostDownNestedScrollConnection),
                             )
+                            }
                         }
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+
                     ModularExpandedPlayer(
                         playerConnection = playerConnection,
                         isPlaying = isPlaying,
@@ -1650,7 +1679,8 @@ fun BottomSheetPlayer(
                                     .nestedScroll(state.preUpPostDownNestedScrollConnection),
                         ) {
                             enrichedMetadata?.let { metadata ->
-                                V8PlayerControlsContent(
+                                CompositionLocalProvider(LocalAppBackdrop provides playerGlassBackdrop) {
+                                    V8PlayerControlsContent(
                                     mediaMetadata = metadata,
                                     queueTitle = "",
                                     playbackState = playbackState,
@@ -1673,7 +1703,8 @@ fun BottomSheetPlayer(
                                     onSliderValueChange = onSliderValueChange,
                                     onSliderValueChangeFinished = onSliderValueChangeFinished,
                                     onVolumeChange = onPlayerVolumeChange,
-                                )
+                                    )
+                                }
                             }
 
                             Spacer(Modifier.height(24.dp))
@@ -1693,10 +1724,12 @@ fun BottomSheetPlayer(
                         V8PlayerBackdrop(
                             thumbnailUrl = v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
+                            modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
                         )
 
                         enrichedMetadata?.let { metadata ->
-                            V8PlayerContent(
+                            CompositionLocalProvider(LocalAppBackdrop provides playerGlassBackdrop) {
+                                V8PlayerContent(
                                 mediaMetadata = metadata,
                                 queueTitle = queueTitle,
                                 playbackState = playbackState,
@@ -1729,11 +1762,13 @@ fun BottomSheetPlayer(
                                             WindowInsets.systemBars.only(
                                                 WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
                                             ),
-                                        ).nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                            ).nestedScroll(state.preUpPostDownNestedScrollConnection),
                             )
+                            }
                         }
                     }
                 } else if (playerDesignStyle == PlayerDesignStyle.V9) {
+
                     ModularExpandedPlayer(
                         playerConnection = playerConnection,
                         isPlaying = isPlaying,
@@ -1902,23 +1937,25 @@ fun BottomSheetPlayer(
                 }
             }
 
-        Queue(
-            state = queueSheetState,
-            playerBottomSheetState = state,
-            navController = navController,
-            backgroundColor =
-                if (useBlackBackground) {
-                    Color.Black
-                } else {
-                    MaterialTheme.colorScheme.surfaceContainer
-                },
-            onBackgroundColor = queueOnBackgroundColor,
-            TextBackgroundColor = TextBackgroundColor,
-            textButtonColor = textButtonColor,
-            iconButtonColor = iconButtonColor,
-            onShowLyrics = { isLyricsScreenVisible = true },
-            pureBlack = pureBlack,
-        )
+        CompositionLocalProvider(LocalAppBackdrop provides playerGlassBackdrop) {
+            Queue(
+                state = queueSheetState,
+                playerBottomSheetState = state,
+                navController = navController,
+                backgroundColor =
+                    if (useBlackBackground) {
+                        Color.Black
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+                onBackgroundColor = queueOnBackgroundColor,
+                TextBackgroundColor = TextBackgroundColor,
+                textButtonColor = textButtonColor,
+                iconButtonColor = iconButtonColor,
+                onShowLyrics = { isLyricsScreenVisible = true },
+                pureBlack = pureBlack,
+            )
+        }
 
         mediaMetadata?.let { metadata ->
             MikoLyricsTransition(

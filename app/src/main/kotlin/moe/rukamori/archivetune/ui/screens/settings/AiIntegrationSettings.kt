@@ -349,19 +349,9 @@ fun AiIntegrationSettings(
         }
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.ai_integration)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = stringResource(R.string.back_button_desc),
-                )
-            }
-        },
+    SettingsEditorialHeader(
+        title = stringResource(R.string.ai_integration),
+        onBack = { navController.navigateUp() },
     )
 }
 
@@ -687,3 +677,4 @@ private fun ModelPickerPreference(
         isEnabled = isEnabled,
     )
 }
+

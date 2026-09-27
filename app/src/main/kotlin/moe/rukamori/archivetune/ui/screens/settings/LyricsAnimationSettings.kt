@@ -47,24 +47,11 @@ fun LyricsAnimationSettings(navController: NavController) {
     val (fillTransitionWidth, onFillTransitionWidthChange) = rememberPreference(LyricsV2FillTransitionWidthKey, defaultValue = 8f)
     val (lrcBounceEnabled, onLrcBounceEnabledChange) = rememberPreference(LyricsV2LrcBounceEnabledKey, defaultValue = true)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = stringResource(R.string.lyrics_animation_style)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
+    Scaffold { innerPadding ->
+            SettingsEditorialHeader(
+                title = stringResource(R.string.lyrics_animation_style),
+                onBack = { navController.navigateUp() },
             )
-        },
-    ) { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
 
         Column(

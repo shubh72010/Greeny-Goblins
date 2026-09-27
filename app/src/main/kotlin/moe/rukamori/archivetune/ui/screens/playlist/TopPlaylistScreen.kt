@@ -319,18 +319,6 @@ fun TopPlaylistScreen(
         }
     }
 
-    val showTopBarTitle by remember {
-        derivedStateOf {
-            lazyListState.firstVisibleItemIndex > 0
-        }
-    }
-
-    val transparentAppBar by remember {
-        derivedStateOf {
-            !disableBlur && !selection && !showTopBarTitle
-        }
-    }
-
     val headerItems by remember {
         derivedStateOf {
             val currentSongs = songs
@@ -844,8 +832,8 @@ fun TopPlaylistScreen(
         TopAppBar(
             colors =
                 TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (transparentAppBar) Color.Transparent else MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
                 ),
             title = {
                 when {
@@ -882,13 +870,6 @@ fun TopPlaylistScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .focusRequester(focusRequester),
-                        )
-                    }
-
-                    showTopBarTitle -> {
-                        Text(
-                            text = name,
-                            style = MaterialTheme.typography.titleLarge,
                         )
                     }
                 }

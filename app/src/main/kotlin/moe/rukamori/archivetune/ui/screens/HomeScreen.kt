@@ -70,7 +70,7 @@ import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 
 private val HomeFeedMaxWidth = 1_200.dp
-private val HomeSectionSpacing = 18.dp
+private val HomeSectionSpacing = 8.dp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -272,6 +272,7 @@ private fun HomeContent(
 ) {
     val tonalStart = MaterialTheme.colorScheme.primaryContainer
     val tonalMiddle = MaterialTheme.colorScheme.secondaryContainer
+    val remainingQuickPicks = remember(uiState.quickPicks) { uiState.quickPicks.drop(1) }
     Box(modifier = modifier.fillMaxSize()) {
         if (uiState.showTonalBackdrop) {
             Box(
@@ -335,11 +336,30 @@ private fun HomeContent(
 
                     if (uiState.showQuickPicks && uiState.quickPicks.isNotEmpty()) {
                         item(
+                            key = "home_featured",
+                            contentType = "featured",
+                        ) {
+                            FeaturedHero(
+                                song = uiState.quickPicks.first(),
+                                mediaMetadata = mediaMetadata,
+                                isPlaying = isPlaying,
+                                navController = navController,
+                                playerConnection = playerConnection,
+                                menuState = menuState,
+                                haptic = haptic,
+                                modifier = Modifier.animateItem(),
+                            )
+                        }
+                    }
+
+                    if (uiState.showQuickPicks && remainingQuickPicks.isNotEmpty()) {
+                        item(
                             key = "home_quick_picks_header",
                             contentType = "section_header",
                         ) {
                             HomeSectionHeader(
                                 title = stringResource(R.string.quick_picks),
+                                supportingText = remainingQuickPicks.size.toString(),
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -348,7 +368,7 @@ private fun HomeContent(
                             contentType = "quick_picks",
                         ) {
                             QuickPicksSection(
-                                quickPicks = uiState.quickPicks,
+                                quickPicks = remainingQuickPicks,
                                 mediaMetadata = mediaMetadata,
                                 isPlaying = isPlaying,
                                 displayMode = uiState.quickPicksDisplayMode,
@@ -369,6 +389,7 @@ private fun HomeContent(
                         ) {
                             HomeSectionHeader(
                                 title = stringResource(R.string.speed_dial),
+                                supportingText = uiState.speedDialItems.size.toString(),
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -398,6 +419,7 @@ private fun HomeContent(
                         ) {
                             HomeSectionHeader(
                                 title = stringResource(R.string.keep_listening),
+                                supportingText = uiState.keepListening.size.toString(),
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -453,6 +475,7 @@ private fun HomeContent(
                         ) {
                             HomeSectionHeader(
                                 title = stringResource(R.string.forgotten_favorites),
+                                supportingText = uiState.forgottenFavorites.size.toString(),
                                 modifier = Modifier.animateItem(),
                             )
                         }

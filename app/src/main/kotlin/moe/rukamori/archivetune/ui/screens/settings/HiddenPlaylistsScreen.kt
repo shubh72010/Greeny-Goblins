@@ -66,24 +66,12 @@ fun HiddenPlaylistsScreen(navController: NavController) {
 
     val hiddenPlaylists = allPlaylists.filter { it.playlist.isHidden }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.hidden_playlists)) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
+    Scaffold { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.hidden_playlists),
+                onBack = { navController.navigateUp() },
             )
-        },
-    ) { innerPadding ->
         if (hiddenPlaylists.isEmpty()) {
             Column(
                 modifier =
@@ -137,6 +125,7 @@ fun HiddenPlaylistsScreen(navController: NavController) {
                     )
                 }
             }
+        }
         }
     }
 }

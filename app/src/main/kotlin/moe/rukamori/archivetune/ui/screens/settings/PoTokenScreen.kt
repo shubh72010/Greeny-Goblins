@@ -254,35 +254,6 @@ fun PoTokenScreen(
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.po_token_generation),
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.back_button_desc),
-                        )
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                scrollBehavior = scrollBehavior,
-            )
-        },
     ) { innerPadding ->
         LazyColumn(
             modifier =
@@ -300,6 +271,15 @@ fun PoTokenScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            item(
+                key = "po_token_header",
+                contentType = "header",
+            ) {
+                SettingsEditorialHeader(
+                    title = stringResource(R.string.po_token_generation),
+                    onBack = { navController.navigateUp() },
+                )
+            }
             item(
                 key = "po_token_toggle",
                 contentType = "setting",

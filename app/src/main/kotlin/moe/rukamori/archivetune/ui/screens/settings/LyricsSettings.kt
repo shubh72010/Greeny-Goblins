@@ -649,19 +649,9 @@ fun LyricsSettings(
         }
     }
 
-    TopAppBar(
-        title = { Text(stringResource(R.string.lyrics)) },
-        navigationIcon = {
-            IconButton(
-                onClick = navController::navigateUp,
-                onLongClick = navController::backToMain,
-            ) {
-                Icon(
-                    painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
+    SettingsEditorialHeader(
+        title = stringResource(R.string.lyrics),
+        onBack = { navController.navigateUp() },
     )
 }
 
@@ -1136,3 +1126,4 @@ private fun PaxsenixProviderRow(
         }
     }
 }
+

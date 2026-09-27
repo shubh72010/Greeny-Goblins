@@ -41,6 +41,9 @@ import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.ListeningBySlot
 import moe.rukamori.archivetune.db.entities.ListeningTotals
 import moe.rukamori.archivetune.db.entities.LyricsEntity
+import moe.rukamori.archivetune.db.entities.AnalysisWithSong
+import moe.rukamori.archivetune.db.entities.MusicAnalysisEntity
+import moe.rukamori.archivetune.db.entities.MusicAnalysisSampleEntity
 import moe.rukamori.archivetune.db.entities.LyricsHistoryEntity
 import moe.rukamori.archivetune.db.entities.PlayCountEntity
 import moe.rukamori.archivetune.db.entities.Playlist
@@ -751,6 +754,35 @@ interface DatabaseDao {
     @Transaction
     @Query("SELECT * FROM format WHERE id = :id")
     fun format(id: String?): Flow<FormatEntity?>
+
+    @Query("SELECT * FROM music_analysis WHERE videoId = :videoId")
+    suspend fun getMusicAnalysis(videoId: String): MusicAnalysisEntity?
+
+    @Query(
+        """
+        SELECT music_analysis.*,
+               song.title AS songTitle,
+               song.thumbnailUrl AS artworkUrl
+        FROM music_analysis LEFT JOIN song ON song.id = music_analysis.videoId
+        ORDER BY analyzedAt DESC
+        """,
+    )
+    fun allMusicAnalyses(): Flow<List<AnalysisWithSong>>
+
+    @Query("SELECT COUNT(*) FROM music_analysis WHERE videoId = :videoId AND analysisVersion >= :minVersion")
+    suspend fun hasMusicAnalysis(videoId: String, minVersion: Int): Int
+
+    @Upsert
+    suspend fun upsertMusicAnalysis(analysis: MusicAnalysisEntity)
+
+    @Upsert
+    suspend fun upsertMusicAnalysisSample(sample: MusicAnalysisSampleEntity)
+
+    @Query("SELECT * FROM music_analysis_sample WHERE videoId = :videoId ORDER BY fraction ASC")
+    suspend fun getMusicAnalysisSamples(videoId: String): List<MusicAnalysisSampleEntity>
+
+    @Query("DELETE FROM music_analysis_sample WHERE videoId = :videoId")
+    suspend fun clearMusicAnalysisSamples(videoId: String)
 
     @Transaction
     @Query("SELECT * FROM lyrics WHERE id = :id")

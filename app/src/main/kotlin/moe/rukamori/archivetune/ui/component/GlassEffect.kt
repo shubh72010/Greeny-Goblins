@@ -528,3 +528,40 @@ fun Modifier.liquidGlass(
         loopBucket = loopBucket,
     )
 }
+
+@Composable
+fun Modifier.playerLiquidGlass(
+    shape: CornerBasedShape,
+    enabled: Boolean = true,
+    surfaceTintColor: Color = Color.Unspecified,
+): Modifier {
+    val config = LocalGlassEffectConfig.current
+    val buttonConfig =
+        remember(config) {
+            config.copy(
+                lensHeight = (config.lensHeight * 0.35f).coerceAtMost(0.18f),
+                lensAmount = (config.lensAmount * 0.35f).coerceAtMost(0.25f),
+                chromaticAberration = false,
+                depthEffect = false,
+                surfaceOpacity = config.surfaceOpacity.coerceIn(0.62f, 0.78f),
+                surfaceTintColor = if (surfaceTintColor.isSpecified) surfaceTintColor else config.surfaceTintColor,
+            )
+        }
+    return if (enabled && config.isEnabledFor(GlassComponent.PLAYER) && isGlassAllowed()) {
+        liquidGlass(
+            config = buttonConfig,
+            shape = shape,
+            blurRadiusDp = config.blurRadius.coerceAtLeast(3.5f),
+            highlightAlpha = 0.28f,
+            backdropScale = 1f,
+        )
+    } else {
+        this
+    }
+}
+
+@Composable
+fun isPlayerGlassEnabled(): Boolean {
+    val config = LocalGlassEffectConfig.current
+    return config.isEnabledFor(GlassComponent.PLAYER) && isGlassAllowed()
+}

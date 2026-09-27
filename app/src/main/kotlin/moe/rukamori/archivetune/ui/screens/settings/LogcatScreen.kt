@@ -214,19 +214,6 @@ private fun LogcatScreenContent(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            LogcatTopBar(
-                model = model,
-                onNavigateBack = onNavigateBack,
-                onNavigateBackLongClick = onNavigateBackLongClick,
-                onTogglePaused = onTogglePaused,
-                onSetMenuExpanded = onSetMenuExpanded,
-                onClear = onClear,
-                onShare = onShare,
-                onExport = onExport,
-                scrollBehavior = scrollBehavior,
-            )
-        },
         floatingActionButton = {
             AnimatedVisibility(
                 visible = model?.isAutoScrollPaused == true && model.entries.isNotEmpty(),
@@ -251,11 +238,22 @@ private fun LogcatScreenContent(
             SnackbarHost(hostState = snackbarHostState)
         },
     ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            LogcatTopBar(
+                model = model,
+                onNavigateBack = onNavigateBack,
+                onNavigateBackLongClick = onNavigateBackLongClick,
+                onTogglePaused = onTogglePaused,
+                onSetMenuExpanded = onSetMenuExpanded,
+                onClear = onClear,
+                onShare = onShare,
+                onExport = onExport,
+                scrollBehavior = scrollBehavior,
+            )
         Box(
             modifier =
                 Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
+                    .weight(1f)
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -308,6 +306,7 @@ private fun LogcatScreenContent(
                 }
             }
         }
+        }
     }
 
     LaunchedEffect(model?.entries?.size, model?.isAutoScrollPaused) {
@@ -330,32 +329,9 @@ private fun LogcatTopBar(
     onExport: () -> Unit,
     scrollBehavior: androidx.compose.material3.TopAppBarScrollBehavior,
 ) {
-    MediumFlexibleTopAppBar(
-        title = {
-            Text(
-                text = stringResource(R.string.debug_logs),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        subtitle = {
-            Text(
-                text = stringResource(R.string.filter_all_logs),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        navigationIcon = {
-            ArchiveTuneIconButton(
-                onClick = onNavigateBack,
-                onLongClick = onNavigateBackLongClick,
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.arrow_back),
-                    contentDescription = null,
-                )
-            }
-        },
+    SettingsEditorialHeader(
+        title = stringResource(R.string.debug_logs),
+        onBack = onNavigateBack,
         actions = {
             IconButton(
                 onClick = onTogglePaused,
@@ -425,7 +401,6 @@ private fun LogcatTopBar(
                 }
             }
         },
-        scrollBehavior = scrollBehavior,
     )
 }
 

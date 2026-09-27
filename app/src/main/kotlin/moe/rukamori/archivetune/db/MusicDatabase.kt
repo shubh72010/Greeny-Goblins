@@ -37,6 +37,8 @@ import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
 import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.LyricsEntity
 import moe.rukamori.archivetune.db.entities.LyricsHistoryEntity
+import moe.rukamori.archivetune.db.entities.MusicAnalysisEntity
+import moe.rukamori.archivetune.db.entities.MusicAnalysisSampleEntity
 import moe.rukamori.archivetune.db.entities.PlayCountEntity
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
@@ -60,7 +62,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 33
+private const val CURRENT_VERSION = 36
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -129,6 +131,8 @@ class MusicDatabase(
         PlaylistTagMap::class,
         LibraryTopMixEntity::class,
         LibraryTopMixSongMap::class,
+        MusicAnalysisEntity::class,
+        MusicAnalysisSampleEntity::class,
     ],
     views = [
         SortedSongArtistMap::class,
@@ -158,6 +162,7 @@ class MusicDatabase(
         AutoMigration(from = 19, to = 20, spec = Migration19To20::class),
         AutoMigration(from = 20, to = 21, spec = Migration20To21::class),
         AutoMigration(from = 21, to = 22),
+        AutoMigration(from = 35, to = 36),
     ],
 )
 @TypeConverters(Converters::class)

@@ -50,16 +50,13 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,11 +78,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -95,7 +88,6 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
-import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.Updater
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -164,7 +156,7 @@ fun SettingsScreen(
         remember(settingsGroups) {
             settingsGroups.flatMap { it.items }
         }
-    val deepItems = buildDeepSettingsSearchItems(navController)
+    val deepItems = buildGeneratedSettingsSearchItems(navController)
     val itemGroupMap = remember(settingsGroups, deepItems) {
         buildMap<String, String> {
             settingsGroups.forEach { g -> g.items.forEach { put(it.key, g.title) } }
@@ -172,15 +164,17 @@ fun SettingsScreen(
             deepItems.forEach { put(it.key, it.subtitle ?: "") }
         }
     }
-    // pool for search: top-level + deep toggleables
-    val searchPool = remember(settingsItems, deepItems) { settingsItems + deepItems }
+    val searchPool =
+        remember(settingsItems, deepItems) {
+            (settingsItems + deepItems).distinctBy { it.key }
+        }
     val trimmedQuery = query.trim()
     val tokens = remember(trimmedQuery) {
         trimmedQuery.lowercase().split(Regex("\\s+")).filter { it.isNotBlank() }
     }
     val rankedItems = remember(searchPool, tokens, itemGroupMap, settingsItems) {
         if (tokens.isEmpty()) {
-            settingsItems.map { ScoredItem(it, 0, itemGroupMap[it.key]) }
+            searchPool.map { ScoredItem(it, 0, itemGroupMap[it.key]) }
         } else {
             searchPool.mapNotNull { item ->
                 val score = scoreSettingsItem(item, tokens, itemGroupMap[item.key])
@@ -210,37 +204,9 @@ fun SettingsScreen(
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.settings),
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = stringResource(R.string.back_button_desc),
-                        )
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                scrollBehavior = scrollBehavior,
-            )
-        },
     ) { innerPadding ->
         LazyColumn(
             state = listState,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier =
                 Modifier
                     .fillMaxSize()
@@ -255,6 +221,13 @@ fun SettingsScreen(
                     bottom = SettingsDimensions.ScreenBottomPadding,
                 ),
         ) {
+            item(key = "settings_header", contentType = "header") {
+                SettingsEditorialHeader(
+                    title = stringResource(R.string.settings),
+                    onBack = { navController.navigateUp() },
+                    modifier = Modifier.padding(horizontal = SettingsDimensions.ScreenHorizontalPadding),
+                )
+            }
             if (hasUpdate && !isUpdateDismissed) {
                 item(key = "update", contentType = "settings_banner") {
                     SettingsUpdateBanner(
@@ -349,15 +322,8 @@ fun SettingsScreen(
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                             ),
                         )
-                        // result count — body handles empty state, so header only shows count when has hits
-                        AnimatedVisibility(visible = tokens.isNotEmpty() && filteredItems.isNotEmpty()) {
-                            Text(
-                                text = "${filteredItems.size} ${if (filteredItems.size == 1) "result" else "results"}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 16.dp, top = 6.dp),
-                            )
-                        }
+                        // result count removed: the result list is self-evident and the
+                        // old inline string was hardcoded English (no translation).
                         @OptIn(ExperimentalLayoutApi::class)
                         AnimatedVisibility(visible = tokens.isEmpty() && recentQueries.isNotEmpty() && isSearchFocused) {
                             FlowRow(
@@ -402,7 +368,23 @@ fun SettingsScreen(
                 }
             }
 
-            if (filteredItems.isEmpty() && tokens.isNotEmpty()) {
+            if (tokens.isEmpty()) {
+                settingsGroups.forEach { group ->
+                    item(
+                        key = "group_${group.title}",
+                        contentType = "settings_group",
+                    ) {
+                        SettingsGroupCard(
+                            group = group,
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = SettingsDimensions.ScreenHorizontalPadding,
+                                    vertical = SettingsDimensions.SectionSpacing / 2,
+                                ),
+                        )
+                    }
+                }
+            } else if (filteredItems.isEmpty()) {
                 item(key = "no_results", contentType = "settings_empty") {
                     Column(
                         modifier = Modifier
@@ -438,14 +420,15 @@ fun SettingsScreen(
                         if (trimmedQuery.isNotBlank()) pushRecent(trimmedQuery)
                         scored.item.onClick()
                     }
-                    SettingsSegmentedItem(
+                    SettingsSegmentRow(
                         item = scored.item.copy(onClick = onClickWithRecent),
                         index = index,
                         count = rankedItems.size,
                         query = queryLower,
                         groupLabel = scored.groupTitle,
                         modifier = Modifier
-                            .padding(horizontal = 26.dp)
+                            .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                            .padding(bottom = SettingsDimensions.GroupRowGap)
                             .animateItem(),
                     )
                 }

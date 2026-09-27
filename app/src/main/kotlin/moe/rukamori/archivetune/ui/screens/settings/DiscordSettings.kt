@@ -383,25 +383,11 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.discord_integration),
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = navController::navigateUp,
-                        onLongClick = navController::backToMain,
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.arrow_back),
-                            contentDescription = null,
-                        )
-                    }
-                },
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            SettingsEditorialHeader(
+                title = stringResource(R.string.discord_integration),
+                onBack = { navController.navigateUp() },
                 actions = {
                     var threeDotMenuExpanded by remember { mutableStateOf(false) }
 
@@ -431,19 +417,11 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                         )
                     }
                 },
-                colors =
-                    TopAppBarDefaults.largeTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    ),
-                scrollBehavior = scrollBehavior,
             )
-        },
-    ) { innerPadding ->
         LazyColumn(
             modifier =
                 Modifier
-                    .fillMaxSize()
+                    .weight(1f)
                     .windowInsetsPadding(
                         LocalPlayerAwareWindowInsets.current.only(
                             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
@@ -703,6 +681,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     isPlaying = playerConnection.player.isPlaying,
                 )
             }
+        }
         }
 
         if (showLogoutConfirm) {
