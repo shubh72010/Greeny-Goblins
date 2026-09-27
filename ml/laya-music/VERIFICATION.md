@@ -1,17 +1,35 @@
-# Dataset verification (2026-09-24)
+# Dataset verification (v1 2026-09-24, v2 2026-09-27)
 
-Checked `laya-music-synthetic-v1.jsonl` against three public references plus
-internal statistics. Verdict: **no changes needed.**
+**v2 verdict: the state schema was wrong and is now replaced.** v1's
+`energy`/`valence`/`danceability`/`acousticness`/`instrumentalness` columns
+looked like Spotify's audio features and were checked against Spotify's
+definitions — but nothing in the app computes them, so §1 below was verifying
+fiction. v2's `state` is a partition of `MusicAnalysisEntity`: the 11 columns
+`DspAnalyzer` + `FeatureAggregator` actually write. §2 (label space) and §3
+(label semantics) are unaffected — those are about the taxonomy, not the
+features — and §4 is re-measured on v2.
 
-## 1. Spotify Audio Features (developer.spotify.com)
+## 1. State schema: app DSP, not Spotify (v2)
 
-| Our usage | Spotify definition | Match |
+| `state` key | Source | Bound |
 |---|---|---|
-| energy = intensity/activity, paired with bpm + rhythmicity | "fast, loud, noisy" = high; Bach prelude = low | ✅ |
-| valence high = EUPHORIC (0.80) | high valence "e.g. happy, cheerful, **euphoric**" — their word | ✅ |
-| danceability ↔ tempo + rhythmicity + beat strength | tempo, rhythm stability, beat strength, regularity | ✅ |
-| acousticness 1.0 = acoustic (MELANCHOLIC 0.80, EUPHORIC 0.08) | confidence 1.0 = acoustic | ✅ |
-| instrumentalness > 0.5 = instrumental (FOCUS 0.88; rest ≤ 0.45) | documented > 0.5 threshold | ✅ |
+| rms | peak-normalized window RMS | 0–1 |
+| bass / mids / treble | band-energy shares (<250 / <2k / <8k Hz), divided by band total | 0–1, sum = 1 |
+| brightness | spectral centroid / (rate/2) | 0–1 |
+| spectralFlux | positive spectral difference × 40 | 0–1 |
+| onsetDensity | onsets per second / 8 | 0–1 |
+| rhythmicity | resonating comb-filter score / 2 | 0–1 |
+| bpm | Essentia BeatTrackerDegara, octave-resolved against the JVM comb pass | int 60–200 |
+| chromaKey / chromaScale | Krumhansl (JVM) or Essentia KeyExtractor, pitch class + mode | 0–11 / major·minor, nullable |
+
+`generate_synthetic.py check_entity()` parses the entity and aborts the build if
+these two lists drift, so this table cannot silently rot. Everything the v1 table
+credited to Spotify now has to be earned from these 9 numbers: `energy` ←
+rms + spectralFlux + onsetDensity, `valence` ← brightness + bass/treble balance,
+`acousticness`/`instrumentalness` have **no** DSP counterpart in the app and are
+simply not observable at inference time (vocals-instrumental separation needs a
+source-separation model — out of scope; FOCUS vs MELANCHOLIC absorbs the loss,
+they are the pair the probe confuses most).
 
 ## 2. Russell circumplex (Russell 1980; Griffiths et al. 2021 MER setup)
 
@@ -28,28 +46,39 @@ the same quadrant-covering strategy MER literature uses:
 | FOCUS | −0.01 | −0.36 | neutral-valence low-arousal (S, near sleepy 270°) |
 
 Known literature caveat (Collier 2007; Ilie & Thompson 2006): V/A alone don't
-explain all affective variance — which is why our state carries 7 extra
-features (brightness, rhythmicity, bass/mids/treble, bpm, key) beyond V/A.
+explain all affective variance — which is why `state` carries timbral and
+rhythmic detail (brightness, spectralFlux, onsetDensity, rhythmicity,
+bass/mids/treble, bpm) rather than collapsing to two scalars.
 
 ## 3. DEAM (Aljanaki et al. 2017, 1802 songs, static V/A on 1–9 scale)
 
-Our valence maps plausibly: EUPHORIC 0.80 ≈ 7.4/9, DARK 0.20 ≈ 2.6/9.
-DEAM notes arousal annotates more reliably than valence — our energy
-(arousal proxy) spans 0.25–0.88 with clean separation, so the reliable axis
-carries the most signal.
+Valence maps plausibly: EUPHORIC ≈ 7.4/9, DARK ≈ 2.6/9. DEAM notes arousal
+annotates more reliably than valence — and the arousal proxy is exactly where
+the app's DSP is strongest (rms, spectralFlux, onsetDensity, rhythmicity), so
+the reliable axis is the well-observed one.
 
-## 4. Internal statistics (measured, seed 42)
+## 4. Internal statistics (re-measured on v2, seed 42)
 
-- Means recover centroids within 0.01; std ≈ 0.07 as designed.
-- Clipping at 0.0/1.0 bounds: 119/12000 ≈ 1% (extreme centroids only). Fine.
-- Min inter-centroid distance 0.33 (EUPHORIC–ENERGETIC) vs noise
-  displacement σ√d ≈ 0.22: separable but adjacent — realistic, and the
-  boundary is covered by `eval-hard.jsonl`.
-- BPM ranges overlap across adjacent moods (e.g. CHILL ≤111, ENERGETIC ≥106):
-  realistic, not a bug. No absurd values (60–153 overall).
-- Cross-feature coherence: DARK = lowest brightness (0.30) + highest bass
-  (0.85); EUPHORIC = highest brightness (0.84) + treble (0.82). "Dark" and
-  "bright" mean what they should.
+- Means recover the centroids; bands sum to 1.0 on every row; no value clipped
+  at a bound.
+- Nearest-centroid probe (`check_separable`): **0.709** on the 1200 training
+  rows, 0.350 on the 60 boundary rows. The confusion matrix is confined to the
+  `ADJACENT` pairs — CHILL↔DARK, MELANCHOLIC↔FOCUS and the
+  EUPHORIC↔ENERGETIC / CHILL↔FOCUS neighbours. 0.709 is the separability
+  ceiling of 8 DSP scalars, not a tuning failure: those pairs are genuinely
+  indistinguishable without more features, and inflating the centroids past it
+  would just teach the head a world that doesn't exist.
+- `check_separable` asserts train ≥ 0.65 and hard ≤ 0.6, so the corpus can't
+  silently become unlearnable noise (over-wide σ) nor a toy (centroids
+  stretched past real overlap).
+- BPM ranges overlap across adjacent moods (MELANCHOLIC 74±5 vs CHILL 92±5.5),
+  overall 61–142 — no absurd values, and the 60–200 clamp is never hit.
+- Cross-feature coherence: DARK = highest bass share (0.68) + lowest brightness
+  (0.14); EUPHORIC = highest brightness (0.40) + highest treble (0.20) +
+  densest onsets (5.0/s). "Dark" and "bright" mean what they should.
+- `chromaScale` stays only mood-*biased* (minor 0.21 EUPHORIC → 0.75
+  MELANCHOLIC), never deterministic, and the probe deliberately excludes it —
+  a head must not shortcut the label off key.
 
 ## 5. One judgment call, kept as-is
 

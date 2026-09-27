@@ -9,11 +9,11 @@ the epoch note in cell 4.
 ## 0. Prepare data (this folder)
 
 ```bash
-python3 validate.py laya-music-human-v1.jsonl --expect-human --min-per-mood 40
-python3 to_notebook_format.py laya-music-human-v1.jsonl > music_train.json
+python3 validate.py laya-music-human-v2.jsonl --expect-human --min-per-mood 40
+python3 to_notebook_format.py laya-music-human-v2.jsonl > music_train.json
 # optional pre-train pass:
-python3 to_notebook_format.py laya-music-synthetic-v1.jsonl > music_pretrain.json
-python3 to_notebook_format.py eval-hard.jsonl > music_eval.json   # eval only, NEVER train
+python3 to_notebook_format.py laya-music-synthetic-v2.jsonl > music_pretrain.json
+python3 to_notebook_format.py eval-hard-v2.jsonl > music_eval.json   # eval only, NEVER train
 ```
 
 Upload `music_train.json` (and `music_eval.json`) to Kaggle as a dataset.

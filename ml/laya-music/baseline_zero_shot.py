@@ -18,7 +18,7 @@ TAXONOMY_FILE = "taxonomy-v1.json"
 
 def main():
     args = sys.argv[1:]
-    path = args[0] if args and not args[0].startswith("--") else "laya-music-synthetic-v1.jsonl"
+    path = args[0] if args and not args[0].startswith("--") else "laya-music-synthetic-v2.jsonl"
     n = int(args[args.index("--n") + 1]) if "--n" in args else 20
 
     try:

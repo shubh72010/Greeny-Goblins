@@ -18,9 +18,9 @@ scoring rewards — use soft labels for every disagreement-log row.
 Otherwise labels become one-hot with label = argmax.
 
 Usage:
-  python3 to_notebook_format.py laya-music-human-v1.jsonl > music_train.json
-  python3 to_notebook_format.py laya-music-synthetic-v1.jsonl > music_pretrain.json
-  python3 to_notebook_format.py eval-hard.jsonl > music_eval.json
+  python3 to_notebook_format.py laya-music-human-v2.jsonl > music_train.json
+  python3 to_notebook_format.py laya-music-synthetic-v2.jsonl > music_pretrain.json
+  python3 to_notebook_format.py eval-hard-v2.jsonl > music_eval.json
 """
 import json
 import sys
