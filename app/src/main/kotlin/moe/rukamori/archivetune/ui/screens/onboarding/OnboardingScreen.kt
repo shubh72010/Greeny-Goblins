@@ -14,7 +14,12 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -64,6 +69,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -80,6 +86,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.common.collect.ImmutableList
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.ContentLanguageKey
+import moe.rukamori.archivetune.constants.LanguageCodeToName
+import moe.rukamori.archivetune.constants.SYSTEM_DEFAULT
 import moe.rukamori.archivetune.onboarding.OnboardingCommunityActionUiModel
 import moe.rukamori.archivetune.onboarding.OnboardingEvent
 import moe.rukamori.archivetune.onboarding.OnboardingPageId
@@ -89,11 +98,14 @@ import moe.rukamori.archivetune.onboarding.OnboardingPermissionUiModel
 import moe.rukamori.archivetune.onboarding.OnboardingScreenState
 import moe.rukamori.archivetune.onboarding.OnboardingUiState
 import moe.rukamori.archivetune.onboarding.OnboardingViewModel
+import moe.rukamori.archivetune.ui.screens.settings.applyContentLanguage
+import moe.rukamori.archivetune.utils.rememberPreference
 
 @Composable
 fun OnboardingRoute(
     modifier: Modifier = Modifier,
     viewModel: OnboardingViewModel = hiltViewModel(),
+    onOpenLogin: () -> Unit = {},
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -122,6 +134,8 @@ fun OnboardingRoute(
                     }
                 }
 
+                OnboardingEvent.OpenLogin -> onOpenLogin()
+
                 is OnboardingEvent.OpenUri -> {
                     runCatching {
                         context.startActivity(Intent(Intent.ACTION_VIEW, event.url.toUri()))
@@ -138,6 +152,7 @@ fun OnboardingRoute(
         onComplete = viewModel::complete,
         onPermissionAction = viewModel::onPermissionAction,
         onCommunityAction = viewModel::onCommunityAction,
+        onOpenLogin = viewModel::openLogin,
         modifier = modifier,
     )
 }
@@ -150,11 +165,12 @@ fun OnboardingScreen(
     onComplete: () -> Unit,
     onPermissionAction: (OnboardingPermissionAction) -> Unit,
     onCommunityAction: (OnboardingCommunityActionUiModel) -> Unit,
+    onOpenLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = OnboardingScrim,
+        containerColor = MaterialTheme.colorScheme.primary.darken(0.1f),
     ) { padding ->
         when (state) {
             OnboardingScreenState.Loading -> {
@@ -188,6 +204,7 @@ fun OnboardingScreen(
                     onBack = onBack,
                     onPermissionAction = onPermissionAction,
                     onCommunityAction = onCommunityAction,
+                    onOpenLogin = onOpenLogin,
                     contentPadding = padding,
                 )
             }
@@ -254,6 +271,7 @@ private fun OnboardingSuccessContent(
     onBack: () -> Unit,
     onPermissionAction: (OnboardingPermissionAction) -> Unit,
     onCommunityAction: (OnboardingCommunityActionUiModel) -> Unit,
+    onOpenLogin: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     val pagerState =
@@ -286,6 +304,25 @@ private fun OnboardingSuccessContent(
         when (uiState.pages[pageIndex].id) {
             OnboardingPageId.WELCOME -> {
                 WelcomePage(
+                    uiState = uiState,
+                    pageIndex = pageIndex,
+                    onBack = onBack,
+                    onNext = onNext,
+                )
+            }
+
+            OnboardingPageId.ACCOUNT -> {
+                AccountPage(
+                    uiState = uiState,
+                    pageIndex = pageIndex,
+                    onBack = onBack,
+                    onNext = onNext,
+                    onOpenLogin = onOpenLogin,
+                )
+            }
+
+            OnboardingPageId.LANGUAGE -> {
+                LanguagePage(
                     uiState = uiState,
                     pageIndex = pageIndex,
                     onBack = onBack,
@@ -340,6 +377,12 @@ private fun WelcomePage(
                     .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            Icon(
+                painter = painterResource(R.drawable.app_icon_small),
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = Color.White,
+            )
             Text(
                 text = stringResource(page.titleResId),
                 style = MaterialTheme.typography.displaySmall,
@@ -362,31 +405,37 @@ private fun WelcomePage(
     }
 }
 
-/** Sunset glow shared by every onboarding page: maroon base, red-orange halo, amber core. */
+/** Living glow shared by every onboarding page: Material You hues on a dark base. */
 @Composable
 private fun OnboardingAmbientBackground(
     showMesh: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val scheme = MaterialTheme.colorScheme
+    // Fixed dark luminance (white copy always reads), dynamic hue.
+    val scrim = scheme.primary.darken(0.1f)
+    val halo = scheme.primary
+    val core = scheme.tertiary
+    val ember = scheme.primary.darken(0.35f)
+
+    // One slow clock; every blob drifts off it with its own speed/phase/amp.
+    val driftTransition = rememberInfiniteTransition(label = "onboardingDrift")
+    val driftProgress by driftTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(durationMillis = 14000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart,
+            ),
+        label = "driftTime",
+    )
+    val time = driftProgress * (2 * Math.PI).toFloat()
+
     BoxWithConstraints(
-        modifier = modifier.fillMaxSize().background(OnboardingScrim),
+        modifier = modifier.fillMaxSize().background(scrim),
     ) {
         val density = LocalDensity.current
-        val haloCenter =
-            with(density) {
-                Offset(maxWidth.toPx() * 0.62f, maxHeight.toPx() * 0.14f)
-            }
-        val haloRadius = with(density) { maxWidth.toPx() * 1.05f }
-        val coreCenter =
-            with(density) {
-                Offset(maxWidth.toPx() * 0.5f, maxHeight.toPx() * 0.30f)
-            }
-        val coreRadius = with(density) { maxWidth.toPx() * 0.62f }
-        val lowCenter =
-            with(density) {
-                Offset(maxWidth.toPx() * 0.08f, maxHeight.toPx() * 0.94f)
-            }
-        val lowRadius = with(density) { maxWidth.toPx() * 0.8f }
         val widthPx = with(density) { maxWidth.toPx() }
         val heightPx = with(density) { maxHeight.toPx() }
         val meshAlpha by animateFloatAsState(
@@ -395,50 +444,43 @@ private fun OnboardingAmbientBackground(
             label = "onboardingMesh",
         )
 
+        // Layer 2: one static blur diffusing every Layer 1 circle below.
         Box(
-            modifier =
-                Modifier.fillMaxSize().background(
-                    Brush.radialGradient(
-                        0f to OnboardingHalo.copy(alpha = 0.85f),
-                        0.45f to OnboardingHalo.copy(alpha = 0.32f),
-                        1f to Color.Transparent,
-                        center = haloCenter,
-                        radius = haloRadius,
-                    ),
-                ),
+            modifier = Modifier.fillMaxSize().blur(OnboardingBlurRadius),
+        ) {
+        // Layer 1: the only moving layer — bare light circles.
+        // Near the top edge: breathes in place, never travels off-canvas.
+        LightCircle(
+            center = Offset(widthPx * 0.62f, heightPx * 0.14f),
+            radius = widthPx * 0.45f,
+            color = halo,
+            drift = Offset.Zero,
+            pulse = driftPulse(time, 1f, 0f),
         )
-        Box(
-            modifier =
-                Modifier.fillMaxSize().background(
-                    Brush.radialGradient(
-                        0f to OnboardingCore.copy(alpha = 0.9f),
-                        0.5f to OnboardingCore.copy(alpha = 0.28f),
-                        1f to Color.Transparent,
-                        center = coreCenter,
-                        radius = coreRadius,
-                    ),
-                ),
+        LightCircle(
+            center = Offset(widthPx * 0.5f, heightPx * 0.30f),
+            radius = widthPx * 0.32f,
+            color = core,
+            drift = Offset(driftDx(time, 2f, 2.1f, widthPx), driftDy(time, 2f, 2.1f, heightPx)),
+            pulse = driftPulse(time, 2f, 2.1f),
         )
-        Box(
-            modifier =
-                Modifier.fillMaxSize().background(
-                    Brush.radialGradient(
-                        0f to OnboardingHalo.copy(alpha = 0.35f),
-                        1f to Color.Transparent,
-                        center = lowCenter,
-                        radius = lowRadius,
-                    ),
-                ),
+        // Corner dweller: breathes in place, never travels off-canvas.
+        LightCircle(
+            center = Offset(widthPx * 0.08f, heightPx * 0.94f),
+            radius = widthPx * 0.35f,
+            color = halo,
+            drift = Offset.Zero,
+            pulse = driftPulse(time, 3f, 4.2f),
         )
-        // Dense blob mesh, faded in from the second page on: overlapping
-        // shapes melting into the dark, same recipe as the base glow.
+
+        // Dense circle cluster, faded in from the second page on.
         if (meshAlpha > 0.01f) {
-            val meshBlobs =
+            val meshCircles =
                 listOf(
-                    Triple(0.28f to 0.10f, 0.55f, OnboardingHalo),
-                    Triple(0.74f to 0.05f, 0.50f, OnboardingCore),
-                    Triple(0.55f to 0.24f, 0.60f, OnboardingEmber),
-                    Triple(0.10f to 0.30f, 0.45f, OnboardingHalo),
+                    Triple(Triple(0.28f, 0.10f, 0.30f), halo, Triple(2f, 1.1f, 0f)),
+                    Triple(Triple(0.74f, 0.05f, 0.27f), core, Triple(3f, 3.0f, 0f)),
+                    Triple(Triple(0.55f, 0.24f, 0.32f), ember, Triple(1f, 5.2f, 1f)),
+                    Triple(Triple(0.10f, 0.30f, 0.24f), scheme.secondary, Triple(2f, 0.6f, 0f)),
                 )
             Box(
                 modifier =
@@ -446,23 +488,21 @@ private fun OnboardingAmbientBackground(
                         .fillMaxSize()
                         .graphicsLayer { alpha = meshAlpha },
             ) {
-                meshBlobs.forEach { (position, radiusFraction, color) ->
-                    val center = Offset(widthPx * position.first, heightPx * position.second)
-                    val radius = widthPx * radiusFraction
-                    Box(
-                        modifier =
-                            Modifier.fillMaxSize().background(
-                                Brush.radialGradient(
-                                    0f to color,
-                                    0.55f to color.copy(alpha = 0.6f),
-                                    1f to Color.Transparent,
-                                    center = center,
-                                    radius = radius,
-                                ),
-                            ),
+                meshCircles.forEach { (geom, color, motion) ->
+                    LightCircle(
+                        center = Offset(widthPx * geom.first, heightPx * geom.second),
+                        radius = widthPx * geom.third,
+                        color = color,
+                        drift =
+                            Offset(
+                                driftDx(time, motion.first, motion.second, widthPx),
+                                driftDy(time, motion.first, motion.second, heightPx),
+                            ) * motion.third,
+                        pulse = driftPulse(time, motion.first, motion.second),
                     )
                 }
             }
+        }
         }
         // Darken the bottom so body copy stays legible over the glow.
         Box(
@@ -475,6 +515,204 @@ private fun OnboardingAmbientBackground(
                     ),
                 ),
         )
+    }
+}
+
+/** Layer 1: one bare light circle. Layer 2 blurs it, so it stays a hard shape here. */
+@Composable
+private fun LightCircle(
+    center: Offset,
+    radius: Float,
+    color: Color,
+    drift: Offset,
+    pulse: Float,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationX = drift.x
+                    translationY = drift.y
+                    alpha = pulse
+                }.background(
+                    Brush.radialGradient(
+                        0f to color,
+                        0.62f to color,
+                        1f to Color.Transparent,
+                        center = center,
+                        radius = radius,
+                    ),
+                ),
+    )
+}
+
+private fun driftDx(
+    time: Float,
+    speed: Float,
+    phase: Float,
+    widthPx: Float,
+): Float = (kotlin.math.sin(time * speed + phase) * widthPx * 0.08f)
+
+private fun driftDy(
+    time: Float,
+    speed: Float,
+    phase: Float,
+    heightPx: Float,
+): Float = (kotlin.math.cos(time * speed + phase) * heightPx * 0.05f)
+
+private fun driftPulse(
+    time: Float,
+    speed: Float,
+    phase: Float,
+): Float = 0.92f + 0.08f * kotlin.math.sin(time * speed + phase)
+
+private fun Color.darken(fraction: Float): Color = Color(red * fraction, green * fraction, blue * fraction, alpha = 1f)
+
+@Composable
+private fun AccountPage(
+    uiState: OnboardingUiState,
+    pageIndex: Int,
+    onBack: () -> Unit,
+    onNext: () -> Unit,
+    onOpenLogin: () -> Unit,
+) {
+    val page = uiState.pages[pageIndex]
+
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.Bottom,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .widthIn(max = OnboardingContentMaxWidth)
+                    .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Surface(
+                modifier = Modifier.size(72.dp),
+                shape = MaterialShapes.Sunny.toShape(0),
+                color = Color.White.copy(alpha = 0.12f),
+                contentColor = Color.White,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(page.iconResId),
+                        contentDescription = null,
+                        modifier = Modifier.size(30.dp),
+                    )
+                }
+            }
+            Text(
+                text = stringResource(page.titleResId),
+                style = MaterialTheme.typography.displaySmall,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(page.subtitleResId),
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White.copy(alpha = 0.72f),
+            )
+            if (uiState.isLoggedIn) {
+                PassivePill(text = stringResource(R.string.onboarding_account_logged_in))
+            }
+        }
+        OnboardingInlineActions(
+            currentPage = pageIndex,
+            pageCount = uiState.pages.size,
+            onBack = onBack,
+            onNext = onNext,
+            topAction = {
+                if (!uiState.isLoggedIn) {
+                    OnboardingNextButton(
+                        text = stringResource(R.string.onboarding_account_login),
+                        onClick = onOpenLogin,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LanguagePage(
+    uiState: OnboardingUiState,
+    pageIndex: Int,
+    onBack: () -> Unit,
+    onNext: () -> Unit,
+) {
+    val page = uiState.pages[pageIndex]
+    val (contentLanguage, onContentLanguageChange) = rememberPreference(ContentLanguageKey, SYSTEM_DEFAULT)
+    val options = remember { listOf(SYSTEM_DEFAULT) + LanguageCodeToName.keys.toList() }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = OnboardingPagePadding,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap),
+    ) {
+        item(key = page.id.name, contentType = "header") {
+            ExpressivePageHeader(
+                iconResId = page.iconResId,
+                titleResId = page.titleResId,
+                subtitleResId = page.subtitleResId,
+            )
+        }
+        itemsIndexed(
+            items = options,
+            key = { _, code -> code },
+            contentType = { _, _ -> "language" },
+        ) { index, code ->
+            val selected = contentLanguage == code
+            val onClick =
+                remember(code, onContentLanguageChange) {
+                    {
+                        applyContentLanguage(code)
+                        onContentLanguageChange(code)
+                    }
+                }
+            SegmentedListItem(
+                onClick = onClick,
+                shapes = ListItemDefaults.segmentedShapes(index = index, count = options.size),
+                modifier =
+                    Modifier
+                        .widthIn(max = OnboardingContentMaxWidth)
+                        .fillMaxWidth()
+                        .heightIn(min = 64.dp),
+                colors = ListItemDefaults.segmentedColors(containerColor = Color.White.copy(alpha = 0.1f)),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                trailingContent = {
+                    if (selected) {
+                        Icon(
+                            painter = painterResource(R.drawable.check),
+                            contentDescription = null,
+                            tint = Color.White,
+                        )
+                    }
+                },
+            ) {
+                Text(
+                    text = LanguageCodeToName.getOrElse(code) { stringResource(R.string.system_default) },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (selected) Color.White else Color.White.copy(alpha = 0.7f),
+                )
+            }
+        }
+        item(key = "language-actions", contentType = "actions") {
+            OnboardingInlineActions(
+                currentPage = pageIndex,
+                pageCount = uiState.pages.size,
+                onBack = onBack,
+                onNext = onNext,
+            )
+        }
     }
 }
 
@@ -634,8 +872,8 @@ private fun CommunitySpotlight(actions: ImmutableList<OnboardingCommunityActionU
                             .weight(1f)
                             .aspectRatio(1f),
                     shape = MaterialTheme.shapes.large,
-                    color = OnboardingCore,
-                    contentColor = OnboardingEmber,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -758,17 +996,18 @@ private fun PermissionRow(
 
 @Composable
 private fun PermissionIcon(permission: OnboardingPermissionUiModel) {
+    val scheme = MaterialTheme.colorScheme
     val containerColor =
         when (permission.status) {
-            OnboardingPermissionStatus.ALLOWED -> Color.White
-            OnboardingPermissionStatus.NEEDS_ACTION -> OnboardingCore
+            OnboardingPermissionStatus.ALLOWED -> scheme.primaryContainer
+            OnboardingPermissionStatus.NEEDS_ACTION -> scheme.tertiary
             OnboardingPermissionStatus.ALLOWED_BY_INSTALL -> Color.White.copy(alpha = 0.14f)
             OnboardingPermissionStatus.UNAVAILABLE -> Color.White.copy(alpha = 0.08f)
         }
     val contentColor =
         when (permission.status) {
-            OnboardingPermissionStatus.ALLOWED -> OnboardingEmber
-            OnboardingPermissionStatus.NEEDS_ACTION -> OnboardingEmber
+            OnboardingPermissionStatus.ALLOWED -> scheme.onPrimaryContainer
+            OnboardingPermissionStatus.NEEDS_ACTION -> scheme.onTertiary
             OnboardingPermissionStatus.ALLOWED_BY_INSTALL -> Color.White
             OnboardingPermissionStatus.UNAVAILABLE -> Color.White.copy(alpha = 0.5f)
         }
@@ -848,8 +1087,8 @@ private fun CommunityRow(
             Surface(
                 modifier = Modifier.size(56.dp),
                 shape = MaterialTheme.shapes.large,
-                color = OnboardingCore,
-                contentColor = OnboardingEmber,
+                color = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary,
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -889,6 +1128,7 @@ private fun OnboardingInlineActions(
     pageCount: Int,
     onBack: () -> Unit,
     onNext: () -> Unit,
+    topAction: @Composable () -> Unit = {},
 ) {
     val showBack = currentPage > 0
     val isLastPage = currentPage >= pageCount - 1
@@ -913,6 +1153,7 @@ private fun OnboardingInlineActions(
             pageCount = pageCount,
             modifier = Modifier.fillMaxWidth(),
         )
+        topAction()
         AnimatedVisibility(
             visible = !showBack,
             enter =
@@ -1055,7 +1296,4 @@ private fun OnboardingPermissionStatus.labelResId(): Int =
 private val OnboardingContentMaxWidth = 680.dp
 private val OnboardingPagePadding = PaddingValues(horizontal = 24.dp, vertical = 28.dp)
 private val OnboardingActionButtonPadding = PaddingValues(horizontal = 20.dp, vertical = 14.dp)
-private val OnboardingScrim = Color(0xFF260600)
-private val OnboardingHalo = Color(0xFFE8480C)
-private val OnboardingCore = Color(0xFFFFC53D)
-private val OnboardingEmber = Color(0xFF7A1500)
+private val OnboardingBlurRadius = 64.dp

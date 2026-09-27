@@ -35,6 +35,7 @@ data class OnboardingUiState(
     val pages: ImmutableList<OnboardingPageUiModel>,
     val permissions: ImmutableList<OnboardingPermissionUiModel>,
     val communityActions: ImmutableList<OnboardingCommunityActionUiModel>,
+    val isLoggedIn: Boolean,
 )
 
 @Immutable
@@ -47,6 +48,8 @@ data class OnboardingPageUiModel(
 
 enum class OnboardingPageId {
     WELCOME,
+    ACCOUNT,
+    LANGUAGE,
     PERMISSIONS,
     COMMUNITY,
 }
@@ -106,6 +109,7 @@ data class OnboardingCommunityActionUiModel(
 
 data class OnboardingData(
     val shouldShowOnboarding: Boolean,
+    val isLoggedIn: Boolean,
     val permissions: ImmutableList<OnboardingPermissionData>,
 )
 
@@ -115,6 +119,8 @@ sealed interface OnboardingEvent {
     ) : OnboardingEvent
 
     data object OpenInstallPackagesSettings : OnboardingEvent
+
+    data object OpenLogin : OnboardingEvent
 
     data class OpenUri(
         val url: String,

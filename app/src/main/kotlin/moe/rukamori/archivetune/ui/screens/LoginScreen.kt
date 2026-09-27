@@ -64,6 +64,8 @@ fun LoginScreen(
     navController: NavController,
     startUrl: String? = null,
     viewModel: LoginViewModel = hiltViewModel(),
+    onCompleted: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
 
@@ -77,7 +79,11 @@ fun LoginScreen(
             when (event) {
                 LoginEvent.Completed -> {
                     Toast.makeText(context, loginSuccessMessage, Toast.LENGTH_SHORT).show()
-                    navController.navigateUp()
+                    if (onCompleted != null) {
+                        onCompleted()
+                    } else {
+                        navController.navigateUp()
+                    }
                 }
             }
         }
@@ -153,7 +159,7 @@ fun LoginScreen(
         title = { Text(stringResource(R.string.login)) },
         navigationIcon = {
             IconButton(
-                onClick = navController::navigateUp,
+                onClick = { onBack?.invoke() ?: navController.navigateUp() },
                 onLongClick = navController::backToMain,
             ) {
                 Icon(

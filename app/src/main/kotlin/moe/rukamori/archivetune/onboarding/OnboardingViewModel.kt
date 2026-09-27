@@ -90,6 +90,12 @@ class OnboardingViewModel
             }
         }
 
+        fun openLogin() {
+            viewModelScope.launch {
+                mutableEvents.emit(OnboardingEvent.OpenLogin)
+            }
+        }
+
         fun onPermissionResult() {
             refreshSignals.update { it + 1 }
         }

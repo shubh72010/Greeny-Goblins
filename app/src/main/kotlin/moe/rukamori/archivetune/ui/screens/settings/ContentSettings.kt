@@ -129,17 +129,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                         LanguageCodeToName.getOrElse(it) { stringResource(R.string.system_default) }
                     },
                     onValueSelected = { newValue ->
-                        val locale = Locale.getDefault()
-                        val languageTag = locale.toLanguageTag().replace("-Hant", "")
-
-                        YouTube.locale =
-                            YouTube.locale.copy(
-                                hl =
-                                    newValue.takeIf { it != SYSTEM_DEFAULT }
-                                        ?: locale.language.takeIf { it in LanguageCodeToName }
-                                        ?: languageTag.takeIf { it in LanguageCodeToName }
-                                        ?: "en",
-                            )
+                        applyContentLanguage(newValue)
 
                         onContentLanguageChange(newValue)
                     },
@@ -375,5 +365,20 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
             },
         )
     }
+}
+
+/** Applies a content-language code to the InnerTube locale; shared with onboarding. */
+fun applyContentLanguage(code: String) {
+    val locale = Locale.getDefault()
+    val languageTag = locale.toLanguageTag().replace("-Hant", "")
+
+    YouTube.locale =
+        YouTube.locale.copy(
+            hl =
+                code.takeIf { it != SYSTEM_DEFAULT }
+                    ?: locale.language.takeIf { it in LanguageCodeToName }
+                    ?: languageTag.takeIf { it in LanguageCodeToName }
+                    ?: "en",
+        )
 }
 

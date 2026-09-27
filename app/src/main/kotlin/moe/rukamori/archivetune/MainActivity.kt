@@ -161,6 +161,7 @@ import androidx.media3.common.Timeline
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.window.core.layout.WindowSizeClass
@@ -262,7 +263,9 @@ import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
 import moe.rukamori.archivetune.ui.player.BottomSheetPlayer
+import moe.rukamori.archivetune.ui.screens.LOGIN_ROUTE
 import moe.rukamori.archivetune.ui.screens.LOGIN_URL_ARGUMENT
+import moe.rukamori.archivetune.ui.screens.LoginScreen
 import moe.rukamori.archivetune.ui.screens.Screens
 import moe.rukamori.archivetune.ui.screens.buildLoginRoute
 import moe.rukamori.archivetune.ui.screens.navigationBuilder
@@ -823,7 +826,34 @@ class MainActivity : ComponentActivity() {
                     }
 
                 if (shouldShowOnboarding) {
-                    OnboardingRoute(viewModel = onboardingViewModel)
+                    var showOnboardingLogin by remember { mutableStateOf(false) }
+                    if (showOnboardingLogin) {
+                        // Login lives in the main nav graph, which isn't composed yet —
+                        // host it alone until it completes, then fall back to onboarding.
+                        BackHandler { showOnboardingLogin = false }
+                        val loginNavController = rememberNavController()
+                        CompositionLocalProvider(
+                            LocalPlayerAwareWindowInsets provides WindowInsets.systemBars,
+                        ) {
+                            NavHost(
+                                navController = loginNavController,
+                                startDestination = LOGIN_ROUTE,
+                            ) {
+                                composable(LOGIN_ROUTE) {
+                                    LoginScreen(
+                                        navController = loginNavController,
+                                        onCompleted = { showOnboardingLogin = false },
+                                        onBack = { showOnboardingLogin = false },
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        OnboardingRoute(
+                            viewModel = onboardingViewModel,
+                            onOpenLogin = { showOnboardingLogin = true },
+                        )
+                    }
                     return@ArchiveTuneTheme
                 }
 

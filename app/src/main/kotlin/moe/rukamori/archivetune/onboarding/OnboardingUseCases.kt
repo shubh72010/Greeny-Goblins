@@ -22,14 +22,17 @@ class ObserveOnboardingDataUseCase
         private val repository: OnboardingRepository,
     ) {
         operator fun invoke(refreshSignals: Flow<Int>): Flow<OnboardingData> =
-            repository
-                .observeShouldShowOnboarding()
-                .combine(refreshSignals) { shouldShowOnboarding, _ ->
-                    OnboardingData(
-                        shouldShowOnboarding = shouldShowOnboarding,
-                        permissions = repository.currentPermissions(),
-                    )
-                }.flowOn(Dispatchers.IO)
+            combine(
+                repository.observeShouldShowOnboarding(),
+                repository.observeIsLoggedIn(),
+                refreshSignals,
+            ) { shouldShowOnboarding, isLoggedIn, _ ->
+                OnboardingData(
+                    shouldShowOnboarding = shouldShowOnboarding,
+                    isLoggedIn = isLoggedIn,
+                    permissions = repository.currentPermissions(),
+                )
+            }.flowOn(Dispatchers.IO)
     }
 
 class BuildOnboardingUiStateUseCase
@@ -41,12 +44,13 @@ class BuildOnboardingUiStateUseCase
         ): OnboardingUiState =
             OnboardingUiState(
                 shouldShowOnboarding = data.shouldShowOnboarding,
-                currentPage = currentPage.coerceIn(0, pages.lastIndex),
+                currentPage = currentPage.coerceIn(0, pages(data.isLoggedIn).lastIndex),
                 variantLabelResId = variantLabelResId(),
                 versionName = BuildConfig.VERSION_NAME,
-                pages = pages,
+                pages = pages(data.isLoggedIn),
                 permissions = ImmutableList.copyOf(data.permissions.map { it.toUiModel() }),
                 communityActions = communityActions,
+                isLoggedIn = data.isLoggedIn,
             )
 
         private fun variantLabelResId(): Int =
@@ -113,27 +117,48 @@ class BuildOnboardingUiStateUseCase
         private companion object {
             const val DISTRIBUTION_GMS = "gms"
 
-            val pages =
-                ImmutableList.of(
-                    OnboardingPageUiModel(
-                        id = OnboardingPageId.WELCOME,
-                        titleResId = R.string.onboarding_welcome_title,
-                        subtitleResId = R.string.onboarding_welcome_subtitle,
-                        iconResId = R.drawable.app_icon_small,
-                    ),
+            fun pages(isLoggedIn: Boolean): ImmutableList<OnboardingPageUiModel> {
+                val list =
+                    mutableListOf(
+                        OnboardingPageUiModel(
+                            id = OnboardingPageId.WELCOME,
+                            titleResId = R.string.onboarding_welcome_title,
+                            subtitleResId = R.string.onboarding_welcome_subtitle,
+                            iconResId = R.drawable.app_icon_small,
+                        ),
+                        OnboardingPageUiModel(
+                            id = OnboardingPageId.ACCOUNT,
+                            titleResId = R.string.onboarding_account_title,
+                            subtitleResId = R.string.onboarding_account_subtitle,
+                            iconResId = R.drawable.person,
+                        ),
+                    )
+                if (!isLoggedIn) {
+                    // Guests pick a content language; login syncs it from the account.
+                    list +=
+                        OnboardingPageUiModel(
+                            id = OnboardingPageId.LANGUAGE,
+                            titleResId = R.string.onboarding_language_title,
+                            subtitleResId = R.string.onboarding_language_subtitle,
+                            iconResId = R.drawable.language,
+                        )
+                }
+                list +=
                     OnboardingPageUiModel(
                         id = OnboardingPageId.PERMISSIONS,
                         titleResId = R.string.onboarding_permissions_title,
                         subtitleResId = R.string.onboarding_permissions_subtitle,
                         iconResId = R.drawable.security,
-                    ),
+                    )
+                list +=
                     OnboardingPageUiModel(
                         id = OnboardingPageId.COMMUNITY,
                         titleResId = R.string.onboarding_community_title,
                         subtitleResId = R.string.onboarding_community_subtitle,
                         iconResId = R.drawable.star,
-                    ),
-                )
+                    )
+                return ImmutableList.copyOf(list)
+            }
 
             val communityActions =
                 ImmutableList.of(

@@ -904,6 +904,13 @@
     <string name="allow">Allow</string>
     <string name="onboarding_welcome_title">Welcome to JusPlayer</string>
     <string name="onboarding_welcome_subtitle">Set up playback, local music, and update permissions before you start listening.</string>
+    <string name="onboarding_account_title">Make it yours</string>
+    <string name="onboarding_account_subtitle">Log in with YouTube to sync your library, playlists, and recommendations.</string>
+    <string name="onboarding_account_login">Log in with YouTube</string>
+    <string name="onboarding_account_skip">Continue without an account</string>
+    <string name="onboarding_account_logged_in">Logged in</string>
+    <string name="onboarding_language_title">Pick your language</string>
+    <string name="onboarding_language_subtitle">JusPlayer will show music, charts, and search results in this language.</string>
     <string name="onboarding_permissions_title">Review permissions</string>
     <string name="onboarding_permissions_subtitle">Grant only what you want now. You can continue and allow permissions later.</string>
     <string name="onboarding_community_title">Stay connected</string>
