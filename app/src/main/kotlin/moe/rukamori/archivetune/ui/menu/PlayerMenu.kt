@@ -45,8 +45,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -131,11 +133,11 @@ import moe.rukamori.archivetune.playback.EqualizerJson
 import moe.rukamori.archivetune.playback.ExoDownloadService
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.BottomSheetState
-import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.ListDialog
 import moe.rukamori.archivetune.ui.component.MenuSurfaceSection
 import moe.rukamori.archivetune.ui.component.NewAction
 import moe.rukamori.archivetune.ui.component.NewActionGrid
+import moe.rukamori.archivetune.ui.component.NewMenuSectionHeader
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.player.CanvasSource
 import moe.rukamori.archivetune.ui.player.label
@@ -376,6 +378,10 @@ fun PlayerMenu(
         mutableStateOf(false)
     }
 
+    var showCanvasSourceDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
     if (showEqualizerDialog) {
         EqualizerDialog(
             onDismiss = { showEqualizerDialog = false },
@@ -482,6 +488,236 @@ fun PlayerMenu(
             volume = deviceMusicVolumeController.volumeFraction,
             onVolumeChange = onPlayerVolumeChange,
         )
+    }
+
+    val playbackParameters by playerConnection.playbackParameters.collectAsState()
+
+    val playerMenuEntries =
+        buildList {
+            if (splitArtists.isNotEmpty() || mediaMetadata.album != null) {
+                add(PlayerMenuHeader(stringResource(R.string.player_menu_section_browse)))
+
+                if (splitArtists.isNotEmpty()) {
+                    add(
+                        PlayerMenuRow(
+                            leading = { Icon(painterResource(R.drawable.artist), null) },
+                            label = stringResource(R.string.view_artist),
+                            onClick = {
+                                if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
+                                    onDismiss()
+                                    playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
+                                    navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
+                                } else {
+                                    showSelectArtistDialog = true
+                                }
+                            },
+                        ),
+                    )
+                }
+
+                if (mediaMetadata.album != null) {
+                    add(
+                        PlayerMenuRow(
+                            leading = { Icon(painterResource(R.drawable.album), null) },
+                            label = stringResource(R.string.view_album),
+                            onClick = {
+                                onDismiss()
+                                playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
+                                navController.navigate("album/${mediaMetadata.album.id}")
+                            },
+                        ),
+                    )
+                }
+            }
+
+            if (!isLocalMedia) {
+                add(PlayerMenuHeader(stringResource(R.string.player_menu_section_download)))
+
+                val cancelDownload = {
+                    DownloadService.sendRemoveDownload(
+                        context,
+                        ExoDownloadService::class.java,
+                        mediaMetadata.id,
+                        false,
+                    )
+                }
+
+                when (download?.state) {
+                    Download.STATE_COMPLETED -> {
+                        add(
+                            PlayerMenuRow(
+                                leading = { Icon(painterResource(R.drawable.offline), null) },
+                                label = stringResource(R.string.remove_download),
+                                destructive = true,
+                                onClick = cancelDownload,
+                            ),
+                        )
+                    }
+
+                    Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
+                        add(
+                            PlayerMenuRow(
+                                leading = { CircularWavyProgressIndicator(Modifier.size(24.dp)) },
+                                label = stringResource(R.string.downloading),
+                                onClick = cancelDownload,
+                            ),
+                        )
+                    }
+
+                    else -> {
+                        add(
+                            PlayerMenuRow(
+                                leading = { Icon(painterResource(R.drawable.download), null) },
+                                label = stringResource(R.string.action_download),
+                                onClick = {
+                                    database.transaction {
+                                        insert(mediaMetadata)
+                                    }
+                                    val downloadRequest =
+                                        DownloadRequest
+                                            .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
+                                            .setCustomCacheKey(mediaMetadata.id)
+                                            .setData(mediaMetadata.title.toByteArray())
+                                            .build()
+                                    DownloadService.sendAddDownload(
+                                        context,
+                                        ExoDownloadService::class.java,
+                                        downloadRequest,
+                                        false,
+                                    )
+                                },
+                            ),
+                        )
+                    }
+                }
+
+                if (externalDownloaderEnabled) {
+                    add(
+                        PlayerMenuRow(
+                            leading = { Icon(painterResource(R.drawable.download), null) },
+                            label = stringResource(R.string.open_with_downloader),
+                            onClick = {
+                                onDismiss()
+                                val url = "https://music.youtube.com/watch?v=${mediaMetadata.id}"
+                                if (externalDownloaderPackage.isBlank()) {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            context.getString(R.string.external_downloader_not_configured),
+                                            Toast.LENGTH_LONG,
+                                        ).show()
+                                    return@PlayerMenuRow
+                                }
+                                val intent =
+                                    android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                        setPackage(externalDownloaderPackage)
+                                        data = android.net.Uri.parse(url)
+                                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: android.content.ActivityNotFoundException) {
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            context.getString(R.string.external_downloader_not_installed),
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
+                                }
+                            },
+                        ),
+                    )
+                }
+            }
+
+            add(PlayerMenuHeader(stringResource(R.string.player_menu_section_playback)))
+
+            if (isQueueTrigger == true && onRemoveFromQueue != null) {
+                add(
+                    PlayerMenuRow(
+                        leading = { Icon(painterResource(R.drawable.delete), null) },
+                        label = stringResource(R.string.remove_from_queue),
+                        destructive = true,
+                        onClick = {
+                            onRemoveFromQueue()
+                            onDismiss()
+                        },
+                    ),
+                )
+            }
+
+            add(
+                PlayerMenuRow(
+                    leading = { Icon(painterResource(R.drawable.info), null) },
+                    label = stringResource(R.string.details),
+                    onClick = {
+                        onShowDetailsDialog()
+                        onDismiss()
+                    },
+                ),
+            )
+
+            onEditLayout?.let { editLayout ->
+                add(
+                    PlayerMenuRow(
+                        leading = { Icon(painterResource(R.drawable.grid_view), null) },
+                        label = stringResource(R.string.modular_layout_editor),
+                        onClick = {
+                            editLayout()
+                            onDismiss()
+                        },
+                    ),
+                )
+            }
+
+            if (isQueueTrigger != true) {
+                add(
+                    PlayerMenuRow(
+                        leading = { Icon(painterResource(R.drawable.equalizer), null) },
+                        label = stringResource(R.string.equalizer),
+                        onClick = { showEqualizerDialog = true },
+                    ),
+                )
+
+                add(
+                    PlayerMenuRow(
+                        leading = { Icon(painterResource(R.drawable.speed), null) },
+                        label = stringResource(R.string.tempo_and_pitch),
+                        supporting = "x${formatMultiplier(playbackParameters.speed)} • x${formatMultiplier(playbackParameters.pitch)}",
+                        onClick = { showPitchTempoDialog = true },
+                    ),
+                )
+
+                add(
+                    PlayerMenuRow(
+                        leading = { Icon(painterResource(R.drawable.slow_motion_video), null) },
+                        label = stringResource(R.string.canvas_source),
+                        supporting = canvasSource.label(),
+                        onClick = { showCanvasSourceDialog = true },
+                    ),
+                )
+            }
+        }
+
+    if (showCanvasSourceDialog) {
+        ListDialog(onDismiss = { showCanvasSourceDialog = false }) {
+            items(CanvasSource.entries) { source ->
+                ListItem(
+                    headlineContent = { Text(text = source.label()) },
+                    trailingContent = {
+                        if (source == canvasSource) {
+                            Icon(
+                                painter = painterResource(R.drawable.check),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    },
+                    modifier = Modifier.clickable { onCanvasSourceChange(source) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+        }
     }
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -670,336 +906,84 @@ fun PlayerMenu(
                             )
                         },
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                    columns = 2,
                 )
             }
         }
         item {
             Spacer(modifier = Modifier.height(12.dp))
         }
-        if (splitArtists.isNotEmpty() || mediaMetadata.album != null) {
-            item {
-                MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
-                    Column {
-                        if (splitArtists.isNotEmpty()) {
-                            ListItem(
-                                headlineContent = { Text(text = stringResource(R.string.view_artist)) },
-                                leadingContent = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.artist),
-                                        contentDescription = null,
-                                    )
-                                },
-                                modifier =
-                                    Modifier.clickable {
-                                        if (splitArtists.size == 1 && splitArtists[0].originalArtist != null) {
-                                            onDismiss()
-                                            playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
-                                            navController.navigate("artist/${splitArtists[0].originalArtist!!.id}")
-                                        } else {
-                                            showSelectArtistDialog = true
-                                        }
-                                    },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            )
-                        }
-
-                        if (splitArtists.isNotEmpty() && mediaMetadata.album != null) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(start = 56.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant,
-                            )
-                        }
-
-                        if (mediaMetadata.album != null) {
-                            ListItem(
-                                headlineContent = { Text(text = stringResource(R.string.view_album)) },
-                                leadingContent = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.album),
-                                        contentDescription = null,
-                                    )
-                                },
-                                modifier =
-                                    Modifier.clickable {
-                                        onDismiss()
-                                        playerBottomSheetState.snapTo(playerBottomSheetState.collapsedBound)
-                                        navController.navigate("album/${mediaMetadata.album.id}")
-                                    },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            )
-                        }
-                    }
-                }
-            }
-            item {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        }
-        if (!isLocalMedia) {
-            item {
-                MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
-                    when (download?.state) {
-                        Download.STATE_COMPLETED -> {
-                            ListItem(
-                                headlineContent = {
-                                    Text(
-                                        text = stringResource(R.string.remove_download),
-                                        color = MaterialTheme.colorScheme.error,
-                                    )
-                                },
-                                leadingContent = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.offline),
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error,
-                                    )
-                                },
-                                modifier =
-                                    Modifier.clickable {
-                                        DownloadService.sendRemoveDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            mediaMetadata.id,
-                                            false,
-                                        )
-                                    },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            )
-                        }
-
-                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                            ListItem(
-                                headlineContent = { Text(text = stringResource(R.string.downloading)) },
-                                leadingContent = {
-                                    CircularWavyProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                },
-                                modifier =
-                                    Modifier.clickable {
-                                        DownloadService.sendRemoveDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            mediaMetadata.id,
-                                            false,
-                                        )
-                                    },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            )
-                        }
-
-                        else -> {
-                            ListItem(
-                                headlineContent = { Text(text = stringResource(R.string.action_download)) },
-                                leadingContent = {
-                                    Icon(
-                                        painter = painterResource(R.drawable.download),
-                                        contentDescription = null,
-                                    )
-                                },
-                                modifier =
-                                    Modifier.clickable {
-                                        database.transaction {
-                                            insert(mediaMetadata)
-                                        }
-                                        val downloadRequest =
-                                            DownloadRequest
-                                                .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
-                                                .setCustomCacheKey(mediaMetadata.id)
-                                                .setData(mediaMetadata.title.toByteArray())
-                                                .build()
-                                        DownloadService.sendAddDownload(
-                                            context,
-                                            ExoDownloadService::class.java,
-                                            downloadRequest,
-                                            false,
-                                        )
-                                    },
-                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            )
-                        }
-                    }
-                    if (externalDownloaderEnabled) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 56.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.open_with_downloader)) },
-                            leadingContent = {
-                                Icon(
-                                    painter = painterResource(R.drawable.download),
-                                    contentDescription = null,
-                                )
-                            },
-                            modifier =
-                                Modifier.clickable {
-                                    onDismiss()
-                                    val url = "https://music.youtube.com/watch?v=${mediaMetadata.id}"
-                                    if (externalDownloaderPackage.isBlank()) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.external_downloader_not_configured),
-                                                Toast.LENGTH_LONG,
-                                            ).show()
-                                        return@clickable
-                                    }
-                                    val intent =
-                                        android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                            setPackage(externalDownloaderPackage)
-                                            data = android.net.Uri.parse(url)
-                                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        }
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (e: android.content.ActivityNotFoundException) {
-                                        Toast
-                                            .makeText(
-                                                context,
-                                                context.getString(R.string.external_downloader_not_installed),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
-                                    }
-                                },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        )
-                    }
-                }
-            }
-        }
         item {
-            MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
-                Column {
-                    if (isQueueTrigger == true && onRemoveFromQueue != null) {
-                        ListItem(
-                            headlineContent = {
-                                Text(
-                                    text = stringResource(R.string.remove_from_queue),
-                                    color = MaterialTheme.colorScheme.error,
-                                )
-                            },
-                            leadingContent = {
-                                Icon(
-                                    painter = painterResource(R.drawable.delete),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                )
-                            },
-                            modifier =
-                                Modifier.clickable {
-                                    onRemoveFromQueue()
-                                    onDismiss()
-                                },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        )
+            PlayerMenuList(entries = playerMenuEntries)
+        }
+    }
+}
 
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 56.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
+private sealed interface PlayerMenuEntry
+
+private data class PlayerMenuHeader(
+    val label: String,
+) : PlayerMenuEntry
+
+private data class PlayerMenuRow(
+    val leading: @Composable () -> Unit,
+    val label: String,
+    val onClick: () -> Unit,
+    val supporting: String? = null,
+    val destructive: Boolean = false,
+) : PlayerMenuEntry
+
+/** One continuous editorial card, matching `ShowMediaInfo`'s `MediaInfoCard`. */
+@Composable
+private fun PlayerMenuList(
+    entries: List<PlayerMenuEntry>,
+    modifier: Modifier = Modifier,
+) {
+    val rows = entries.filterIsInstance<PlayerMenuRow>()
+    if (rows.isEmpty()) return
+
+    ElevatedCard(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            var previousWasRow = false
+
+            entries.forEach { entry ->
+                when (entry) {
+                    is PlayerMenuHeader -> {
+                        NewMenuSectionHeader(text = entry.label)
+                        previousWasRow = false
                     }
 
-                    ListItem(
-                        headlineContent = { Text(text = stringResource(R.string.details)) },
-                        leadingContent = {
-                            Icon(
-                                painter = painterResource(R.drawable.info),
-                                contentDescription = null,
-                            )
-                        },
-                        modifier =
-                            Modifier.clickable {
-                                onShowDetailsDialog()
-                                onDismiss()
-                            },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    )
+                    is PlayerMenuRow -> {
+                        if (previousWasRow) {
+                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        }
+                        previousWasRow = true
 
-                    onEditLayout?.let { editLayout ->
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 56.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
+                        val contentColor =
+                            if (entry.destructive) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
 
                         ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.modular_layout_editor)) },
-                            leadingContent = {
-                                Icon(
-                                    painter = painterResource(R.drawable.grid_view),
-                                    contentDescription = null,
-                                )
-                            },
-                            modifier =
-                                Modifier.clickable {
-                                    editLayout()
-                                    onDismiss()
+                            headlineContent = { Text(text = entry.label) },
+                            supportingContent =
+                                entry.supporting?.let { text ->
+                                    { Text(text = text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                 },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        )
-                    }
-
-                    if (isQueueTrigger != true) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 56.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
-
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.equalizer)) },
-                            leadingContent = {
-                                Icon(
-                                    painter = painterResource(R.drawable.equalizer),
-                                    contentDescription = null,
-                                )
-                            },
-                            modifier = Modifier.clickable { showEqualizerDialog = true },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 56.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
-
-                        ListItem(
-                            headlineContent = { Text(text = stringResource(R.string.tempo_and_pitch)) },
-                            leadingContent = {
-                                Icon(
-                                    painter = painterResource(R.drawable.speed),
-                                    contentDescription = null,
-                                )
-                            },
-                            supportingContent = {
-                                val playbackParameters by playerConnection.playbackParameters.collectAsState()
-                                Text(
-                                    text = "x${formatMultiplier(
-                                        playbackParameters.speed,
-                                    )} • x${formatMultiplier(playbackParameters.pitch)}",
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                            modifier = Modifier.clickable { showPitchTempoDialog = true },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        )
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 56.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
-
-                        EnumListPreference(
-                            title = { Text(stringResource(R.string.canvas_source)) },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.slow_motion_video),
-                                    contentDescription = null,
-                                )
-                            },
-                            selectedValue = canvasSource,
-                            onValueSelected = onCanvasSourceChange,
-                            valueText = { it.label() },
+                            leadingContent = entry.leading,
+                            colors =
+                                ListItemDefaults.colors(
+                                    containerColor = Color.Transparent,
+                                    headlineColor = contentColor,
+                                    leadingIconColor = contentColor,
+                                    supportingColor = contentColor.copy(alpha = 0.7f),
+                                ),
+                            modifier = Modifier.clickable(onClick = entry.onClick),
                         )
                     }
                 }
@@ -1035,15 +1019,22 @@ private fun PlayerVolumeCard(
                     modifier = Modifier.weight(1f),
                 )
 
-                Text(
-                    text = "${(safeVolume * 100).roundToInt()}%",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+                ) {
+                    Text(
+                        text = "${(safeVolume * 100).roundToInt()}%",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    )
+                }
             }
 
             Surface(
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(percent = 50),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -1059,10 +1050,10 @@ private fun PlayerVolumeCard(
                         painter = painterResource(R.drawable.volume_off),
                         contentDescription = stringResource(R.string.minimum_volume),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(20.dp),
                     )
 
-                    VolumeSliderL(
+                    VolumeSlider(
                         value = safeVolume,
                         onValueChange = onVolumeChange,
                         modifier = Modifier.weight(1f),
@@ -1072,7 +1063,7 @@ private fun PlayerVolumeCard(
                         painter = painterResource(R.drawable.volume_up),
                         contentDescription = stringResource(R.string.maximum_volume),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
@@ -1081,8 +1072,7 @@ private fun PlayerVolumeCard(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun VolumeSliderL(
+private fun VolumeSlider(
     value: Float,
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -1105,24 +1095,12 @@ private fun VolumeSliderL(
         },
         onValueChangeFinished = { isDragging = false },
         valueRange = 0f..1f,
-        modifier = modifier.height(36.dp),
-        thumb = {
-            Box(
-                modifier =
-                    Modifier
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary),
-            )
-        },
         colors =
             SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
                 activeTrackColor = MaterialTheme.colorScheme.primary,
                 inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                activeTickColor = Color.Transparent,
-                inactiveTickColor = Color.Transparent,
             ),
+        modifier = modifier,
     )
 }
 
