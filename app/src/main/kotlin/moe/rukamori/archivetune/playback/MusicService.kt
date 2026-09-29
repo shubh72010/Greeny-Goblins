@@ -197,6 +197,11 @@ import moe.rukamori.archivetune.constants.ShowLyricsKey
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.SmartTrimmerKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
+import moe.rukamori.archivetune.constants.SubsonicBaseUrlKey
+import moe.rukamori.archivetune.constants.SubsonicEnabledKey
+import moe.rukamori.archivetune.constants.SubsonicPasswordKey
+import moe.rukamori.archivetune.constants.SubsonicStrictOnlyKey
+import moe.rukamori.archivetune.constants.SubsonicUsernameKey
 import moe.rukamori.archivetune.constants.TogetherClientIdKey
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -257,6 +262,10 @@ import moe.rukamori.archivetune.visualizer.VisualizerHub
 import moe.rukamori.archivetune.scrobbling.LastFmServiceConfig
 import moe.rukamori.archivetune.storage.StorageFolderKind
 import moe.rukamori.archivetune.storage.StorageLocationRepository
+import moe.rukamori.archivetune.subsonic.SubsonicClient
+import moe.rukamori.archivetune.subsonic.SubsonicConfig
+import moe.rukamori.archivetune.subsonic.SubsonicId
+import moe.rukamori.archivetune.subsonic.SubsonicMatchResolver
 import moe.rukamori.archivetune.together.TogetherPlaybackSync
 import moe.rukamori.archivetune.ui.screens.settings.DiscordPresenceManager
 import moe.rukamori.archivetune.ui.screens.settings.ListenBrainzManager
@@ -325,6 +334,9 @@ class MusicService :
 
     @Inject
     internal lateinit var loadWidgetInsightsUseCase: LoadWidgetInsightsUseCase
+
+    @Inject
+    lateinit var subsonicMatchResolver: SubsonicMatchResolver
 
     private lateinit var audioManager: AudioManager
     private var audioFocusRequest: AudioFocusRequest? = null
@@ -565,6 +577,14 @@ class MusicService :
     private var crossfadeProgress = 0f
     private var crossfadePlaybackRequested = false
     private var lyricsPreloadManager: LyricsPreloadManager? = null
+    // Instant visual target during manual (global) crossfade: audio still blends
+    // over durationMs, but UI flips immediately so taps don't look ignored.
+    val globalCrossfadePreviewIndex = MutableStateFlow<Int?>(null)
+    // Optimistic tap target for playQueue: published instantly on tap, held
+    // against stale player events until the player actually lands on it.
+    // Audio timing (fades, buffering) is untouched.
+    private var optimisticPlayMediaId: String? = null
+    private var optimisticPlayStartedAtMs: Long = 0L
 
     // ponytail: deck mixer prototype shares no state with crossfade/queue; separate ExoPlayer until UX validated
     private var deckMixerPlayer: ExoPlayer? = null
@@ -2922,6 +2942,7 @@ class MusicService :
 
         val incomingPlayer = prepareSecondaryCrossfadePlayer(target) ?: return
         val outgoingMediaId = player.currentMediaItem?.mediaId ?: return
+        publishGlobalCrossfadePreview(target)
 
         crossfadeTriggerJob?.cancel()
         crossfadeTriggerJob = null
@@ -3049,6 +3070,7 @@ class MusicService :
                 crossfadeProgress = 0f
                 crossfadePlaybackRequested = false
                 releaseSecondaryCrossfadePlayer()
+                clearGlobalCrossfadePreview(restoreMetadata = true)
                 applyEffectiveVolumeImmediately()
             }
         }
@@ -3058,6 +3080,8 @@ class MusicService :
         crossfadeProgress = 0f
         crossfadeIncomingBaseVolume = 1f
         crossfadePlaybackRequested = false
+        // Handoff landed on the target: preview already matches, just drop it.
+        globalCrossfadePreviewIndex.value = null
         releaseSecondaryCrossfadePlayer()
         applyEffectiveVolumeImmediately()
         updateAudiblePlaybackRecovery()
@@ -3149,11 +3173,13 @@ class MusicService :
     private fun cancelCrossfade(
         resetVolume: Boolean,
         resetPauseAtEnd: Boolean,
+        clearPreview: Boolean = true,
     ) {
         crossfadeTriggerJob?.cancel()
         crossfadeTriggerJob = null
         crossfadeJob?.cancel()
         crossfadeJob = null
+        val hadPreview = globalCrossfadePreviewIndex.value != null
         isCrossfading = false
         crossfadeHandoffInProgress = false
         crossfadeProgress = 0f
@@ -3163,6 +3189,7 @@ class MusicService :
             localPlayer.pauseAtEndOfMediaItems = false
         }
         releaseSecondaryCrossfadePlayer()
+        if (clearPreview && hadPreview) clearGlobalCrossfadePreview(restoreMetadata = true)
         if (resetVolume && ::player.isInitialized) {
             applyEffectiveVolumeImmediately()
         }
@@ -3197,16 +3224,40 @@ class MusicService :
         targetIndex: Int,
         positionMs: Long = 0L,
     ): Boolean {
-        if (!canUseGlobalCrossfade()) return false
         if (targetIndex !in 0 until player.mediaItemCount) return false
-        if (targetIndex == player.currentMediaItemIndex && positionMs == player.currentPosition) return false
         val targetItem = runCatching { player.getMediaItemAt(targetIndex) }.getOrNull() ?: return false
         val target = CrossfadeTarget(index = targetIndex, mediaId = targetItem.mediaId)
+        // Repeat tap on the pending target: swallow it so the Queue fallback
+        // doesn't cut the blend with an abrupt seek.
+        if (isCrossfading && secondaryCrossfadeTarget == target) return true
+        if (!canUseGlobalCrossfade()) {
+            // Retarget mid-blend onto a different song instead of ignoring the tap.
+            if (isCrossfading && secondaryCrossfadeTarget != target && !crossfadeHandoffInProgress) {
+                cancelCrossfade(resetVolume = false, resetPauseAtEnd = true, clearPreview = false)
+            } else {
+                return false
+            }
+            if (!canUseGlobalCrossfade()) return false
+        }
+        if (targetIndex == player.currentMediaItemIndex && positionMs == player.currentPosition) return false
         startGlobalCrossfade(target, globalCrossfadeDuration(), positionMs)
         return true
     }
 
     fun tryGlobalCrossfadeToNext(): Boolean {
+        if (::player.isInitialized && isCrossfading && !crossfadeHandoffInProgress) {
+            val anchor = globalCrossfadePreviewIndex.value ?: player.currentMediaItemIndex
+            val nextIndex =
+                runCatching {
+                    player.currentTimeline.getNextWindowIndex(
+                        anchor,
+                        player.repeatMode,
+                        player.shuffleModeEnabled,
+                    )
+                }.getOrNull() ?: C.INDEX_UNSET
+            if (nextIndex == C.INDEX_UNSET || nextIndex !in 0 until player.mediaItemCount) return false
+            return tryGlobalCrossfadeToIndex(nextIndex, 0L)
+        }
         if (!canUseGlobalCrossfade()) return false
         val nextIndex = player.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET || nextIndex !in 0 until player.mediaItemCount) return false
@@ -3214,10 +3265,64 @@ class MusicService :
     }
 
     fun tryGlobalCrossfadeToPrevious(): Boolean {
+        if (::player.isInitialized && isCrossfading && !crossfadeHandoffInProgress) {
+            val anchor = globalCrossfadePreviewIndex.value ?: player.currentMediaItemIndex
+            val prevIndex =
+                runCatching {
+                    player.currentTimeline.getPreviousWindowIndex(
+                        anchor,
+                        player.repeatMode,
+                        player.shuffleModeEnabled,
+                    )
+                }.getOrNull() ?: C.INDEX_UNSET
+            if (prevIndex == C.INDEX_UNSET || prevIndex !in 0 until player.mediaItemCount) return false
+            return tryGlobalCrossfadeToIndex(prevIndex, 0L)
+        }
         if (!canUseGlobalCrossfade()) return false
         val prevIndex = player.previousMediaItemIndex
         if (prevIndex == C.INDEX_UNSET || prevIndex !in 0 until player.mediaItemCount) return false
         return tryGlobalCrossfadeToIndex(prevIndex, 0L)
+    }
+
+    private fun isGlobalCrossfadePreviewActive(): Boolean =
+        isCrossfading && globalCrossfadePreviewIndex.value != null
+
+    private fun publishOptimisticPlay(metadata: moe.rukamori.archivetune.models.MediaMetadata) {
+        optimisticPlayMediaId = metadata.id
+        optimisticPlayStartedAtMs = android.os.SystemClock.elapsedRealtime()
+        currentMediaMetadata.value = metadata
+    }
+
+    private fun isOptimisticPlayPending(): Boolean {
+        val pending = optimisticPlayMediaId ?: return false
+        val current = if (::player.isInitialized) player.currentMediaItem else null
+        if (current == null ||
+            current.mediaId == pending ||
+            current.metadata?.id == pending ||
+            android.os.SystemClock.elapsedRealtime() - optimisticPlayStartedAtMs > 10_000L
+        ) {
+            optimisticPlayMediaId = null
+            return false
+        }
+        return true
+    }
+
+    private fun publishGlobalCrossfadePreview(target: CrossfadeTarget) {
+        // Crossfade target supersedes any optimistic tap visual.
+        optimisticPlayMediaId = null
+        globalCrossfadePreviewIndex.value = target.index
+        runCatching { player.getMediaItemAt(target.index) }
+            .getOrNull()
+            ?.takeIf { it.mediaId == target.mediaId }
+            ?.metadata
+            ?.let { currentMediaMetadata.value = it }
+    }
+
+    private fun clearGlobalCrossfadePreview(restoreMetadata: Boolean) {
+        globalCrossfadePreviewIndex.value = null
+        if (restoreMetadata && ::player.isInitialized) {
+            runCatching { currentMediaMetadata.value = player.currentMetadata }
+        }
     }
 
     private fun startGlobalCrossfade(
@@ -3226,6 +3331,7 @@ class MusicService :
         startPositionMs: Long,
     ) {
         if (isCrossfading) return
+        publishGlobalCrossfadePreview(target)
         if (!crossfadeEnabled) {
             scope.launch { volumeFadeSeek(target.index, startPositionMs, durationMs) }
             return
@@ -3252,7 +3358,8 @@ class MusicService :
                 try {
                     val requiredBufferedMs = requiredCrossfadeStartBufferMs(durationMs)
                     if (!awaitCrossfadePlayerReady(incomingPlayer, CROSSFADE_READY_TIMEOUT_MS, requiredBufferedMs)) {
-                        cancelCrossfade(resetVolume = false, resetPauseAtEnd = true)
+                        // Keep the instant preview: the fallback still lands on the same target.
+                        cancelCrossfade(resetVolume = false, resetPauseAtEnd = true, clearPreview = false)
                         volumeFadeSeek(target.index, startPositionMs, durationMs.coerceAtMost(600L))
                         return@launch
                     }
@@ -3290,37 +3397,42 @@ class MusicService :
         positionMs: Long,
         durationMs: Long,
     ) {
-        val half = (durationMs / 2).coerceAtLeast(120L)
-        val base = currentEffectivePlayerVolume()
-        val start = android.os.SystemClock.elapsedRealtime()
-        while (true) {
-            val elapsed = android.os.SystemClock.elapsedRealtime() - start
-            if (elapsed >= half) break
-            val p = elapsed.toFloat() / half.toFloat()
-            val vol = base * cos(p * PI / 2).toFloat()
-            if (::player.isInitialized) player.volume = vol.coerceIn(0f, maxSafeGainFactor)
-            delay(16L)
-        }
-        if (::player.isInitialized) player.volume = 0f
-        withContext(Dispatchers.Main) {
-            if (targetIndex in 0 until player.mediaItemCount) {
-                player.seekTo(targetIndex, positionMs)
-                player.playWhenReady = true
-                player.prepare()
+        try {
+            val half = (durationMs / 2).coerceAtLeast(120L)
+            val base = currentEffectivePlayerVolume()
+            val start = android.os.SystemClock.elapsedRealtime()
+            while (true) {
+                val elapsed = android.os.SystemClock.elapsedRealtime() - start
+                if (elapsed >= half) break
+                val p = elapsed.toFloat() / half.toFloat()
+                val vol = base * cos(p * PI / 2).toFloat()
+                if (::player.isInitialized) player.volume = vol.coerceIn(0f, maxSafeGainFactor)
+                delay(16L)
             }
+            if (::player.isInitialized) player.volume = 0f
+            withContext(Dispatchers.Main) {
+                if (targetIndex in 0 until player.mediaItemCount) {
+                    player.seekTo(targetIndex, positionMs)
+                    player.playWhenReady = true
+                    player.prepare()
+                }
+            }
+            delay(80L)
+            val fadeInStart = android.os.SystemClock.elapsedRealtime()
+            val targetVol = currentEffectivePlayerVolume()
+            while (true) {
+                val elapsed = android.os.SystemClock.elapsedRealtime() - fadeInStart
+                if (elapsed >= half) break
+                val p = elapsed.toFloat() / half.toFloat()
+                val vol = targetVol * sin(p * PI / 2).toFloat()
+                if (::player.isInitialized) player.volume = vol.coerceIn(0f, maxSafeGainFactor)
+                delay(16L)
+            }
+            if (::player.isInitialized) player.volume = targetVol
+        } finally {
+            // Primary player has landed on the target: preview already matches it.
+            globalCrossfadePreviewIndex.value = null
         }
-        delay(80L)
-        val fadeInStart = android.os.SystemClock.elapsedRealtime()
-        val targetVol = currentEffectivePlayerVolume()
-        while (true) {
-            val elapsed = android.os.SystemClock.elapsedRealtime() - fadeInStart
-            if (elapsed >= half) break
-            val p = elapsed.toFloat() / half.toFloat()
-            val vol = targetVol * sin(p * PI / 2).toFloat()
-            if (::player.isInitialized) player.volume = vol.coerceIn(0f, maxSafeGainFactor)
-            delay(16L)
-        }
-        if (::player.isInitialized) player.volume = targetVol
     }
 
     private suspend fun volumeFadeSwap(
@@ -4187,6 +4299,9 @@ class MusicService :
         suppressAutoPlayback = false
         currentQueue = queue
         queueTitle = null
+        // Tap feedback is instant: show the tapped song now, audio follows
+        // through the usual fades/buffering underneath (durations untouched).
+        queue.preloadItem?.let { publishOptimisticPlay(it) }
         val permanentShuffle = dataStore.get(PermanentShuffleKey, false)
         if (!permanentShuffle) {
             player.shuffleModeEnabled = false
@@ -4243,7 +4358,10 @@ class MusicService :
             if (initialStatus.title != null) {
                 queueTitle = initialStatus.title
             }
-            if (initialStatus.items.isEmpty()) return@launch
+            if (initialStatus.items.isEmpty()) {
+                optimisticPlayMediaId = null
+                return@launch
+            }
             if (queue.preloadItem != null) {
                 val preloadMediaId = checkNotNull(queue.preloadItem).id.trim()
                 val insertionIndex =
@@ -4265,6 +4383,9 @@ class MusicService :
             } else {
                 val items = initialStatus.items
                 val index = initialStatus.mediaItemIndex
+                // Show the resolved target now; the fade-swap below still takes
+                // its full duration before the audio switches.
+                items.getOrNull(index)?.metadata?.let { publishOptimisticPlay(it) }
                 val shouldFadeQueue = crossfadeEnabled && crossfadeDurationMs >= MIN_CROSSFADE_DURATION_MS &&
                     togetherSessionState.value is moe.rukamori.archivetune.together.TogetherSessionState.Idle &&
                     deckMixerPlayer == null
@@ -4520,6 +4641,7 @@ class MusicService :
         currentQueue = EmptyQueue
         queueTitle = null
         waitingForNetworkConnection.value = false
+        optimisticPlayMediaId = null
         currentMediaMetadata.value = null
         player.playWhenReady = false
         player.stop()
@@ -4554,6 +4676,7 @@ class MusicService :
             return
         }
         suppressAutoPlayback = false
+        if (player.mediaItemCount == 0) optimisticPlayMediaId = null
         val insertionIndex = if (player.mediaItemCount == 0) 0 else player.currentMediaItemIndex + 1
         val playNextShuffleOrder =
             if (player.shuffleModeEnabled && player.mediaItemCount > 0) {
@@ -4593,6 +4716,7 @@ class MusicService :
             return
         }
         suppressAutoPlayback = false
+        if (player.mediaItemCount == 0) optimisticPlayMediaId = null
         player.addMediaItems(items)
         player.prepare()
     }
@@ -6823,7 +6947,10 @@ class MusicService :
         }
 
         val timelineEmpty = player.currentTimeline.isEmpty || player.mediaItemCount == 0 || player.currentMediaItem == null
-        currentMediaMetadata.value = if (timelineEmpty) null else (mediaItem?.metadata ?: player.currentMetadata)
+        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) optimisticPlayMediaId = null
+        if ((!isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()) || crossfadeHandoffInProgress || timelineEmpty) {
+            currentMediaMetadata.value = if (timelineEmpty) null else (mediaItem?.metadata ?: player.currentMetadata)
+        }
 
         widgetUpdater.update()
 
@@ -7022,7 +7149,7 @@ class MusicService :
         ) {
             updateAudiblePlaybackRecovery()
         }
-        if (events.contains(Player.EVENT_MEDIA_METADATA_CHANGED)) {
+        if (events.contains(Player.EVENT_MEDIA_METADATA_CHANGED) && !isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()) {
             currentMediaMetadata.value = player.currentMetadata
         }
         if (events.containsAny(
@@ -7098,7 +7225,9 @@ class MusicService :
         }
 
         if (events.containsAny(EVENT_TIMELINE_CHANGED, EVENT_POSITION_DISCONTINUITY)) {
-            currentMediaMetadata.value = player.currentMetadata
+            if (!isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()) {
+                currentMediaMetadata.value = player.currentMetadata
+            }
             requestDiscordSync(
                 reason = "timeline_or_position_discontinuity",
                 force = true,
@@ -7151,7 +7280,7 @@ class MusicService :
                 Player.EVENT_MEDIA_ITEM_TRANSITION,
             )
         ) {
-            if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)) {
+            if (events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION) && !isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()) {
                 currentMediaMetadata.value = player.currentMetadata
             }
             requestDiscordSync(
@@ -7618,6 +7747,22 @@ class MusicService :
             return dataSpec
         }
         val mediaId = dataSpec.key ?: return dataSpec
+        if (SubsonicId.isSubsonic(mediaId)) {
+            return resolveSubsonicDataSpec(dataSpec = dataSpec, mediaId = mediaId)
+        }
+        if (preferredStreamClient == PlayerStreamClient.SUBSONIC) {
+            // Best-effort: match the queued song against the server library.
+            // No match (or unconfigured) falls through to the InnerTube path below,
+            // unless strict mode is on — then it's an error so the player skips it.
+            resolveSubsonicMatchDataSpec(dataSpec = dataSpec, mediaId = mediaId)?.let { return it }
+            if (dataStore[SubsonicStrictOnlyKey] == true) {
+                throw PlaybackException(
+                    getString(R.string.subsonic_strict_not_on_server),
+                    null,
+                    PlaybackException.ERROR_CODE_REMOTE_ERROR,
+                )
+            }
+        }
         val storedFormat =
             runBlocking(Dispatchers.IO) {
                 database.format(mediaId).first()
@@ -7670,9 +7815,10 @@ class MusicService :
 
         val lowDataModeActive = isLowDataModeActive()
         // Dual-engine MAX: when HIGHEST is selected, fetch both engines and pick best bitrate.
-        // Tie (same bitrate/codec) -> prefer InnerTube (more reliable). Extractor is excluded.
+        // Tie (same bitrate/codec) -> prefer InnerTube (more reliable). Extractor and Subsonic are excluded.
         if (!lowDataModeActive && audioQuality == AudioQuality.HIGHEST &&
-            preferredStreamClient != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR
+            preferredStreamClient != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR &&
+            preferredStreamClient != PlayerStreamClient.SUBSONIC
         ) {
             runCatching {
                 runBlocking(Dispatchers.IO) {
@@ -7891,6 +8037,80 @@ class MusicService :
         return length?.let { nonNullLength ->
             resolvedDataSpec.subrange(0L, nonNullLength)
         } ?: resolvedDataSpec
+    }
+
+    /**
+     * OpenSubsonic source (Navidrome, Airsonic-Advanced, Gonic, …).
+     * Direct authenticated `stream` URL — no InnerTube/dual-engine ranking.
+     * Media3 cache (keyed by namespaced mediaId) still applies.
+     */
+    private fun resolveSubsonicDataSpec(
+        dataSpec: DataSpec,
+        mediaId: String,
+    ): DataSpec {
+        val trackId = SubsonicId.trackIdOf(mediaId)
+        val enabled = runCatching { dataStore[SubsonicEnabledKey] }.getOrNull() == true
+        val baseUrl = runCatching { dataStore[SubsonicBaseUrlKey] }.getOrNull().orEmpty()
+        val username = runCatching { dataStore[SubsonicUsernameKey] }.getOrNull().orEmpty()
+        val password = runCatching { dataStore[SubsonicPasswordKey] }.getOrNull().orEmpty()
+        if (!enabled || trackId.isNullOrBlank() || baseUrl.isBlank() || username.isBlank() || password.isEmpty()) {
+            throw PlaybackException(
+                getString(R.string.subsonic_test_failed),
+                null,
+                PlaybackException.ERROR_CODE_REMOTE_ERROR,
+            )
+        }
+        val streamUrl =
+            SubsonicClient.streamUrl(
+                SubsonicConfig(baseUrl.trim(), username.trim(), password),
+                trackId,
+            )
+        _activeStreamSource.value = "SUBSONIC"
+        scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+        return dataSpec.withUri(streamUrl.toUri())
+    }
+
+    /**
+     * SUBSONIC playback client: match a YouTube queue item against the server
+     * library and stream the server copy. Returns null (fall through to
+     * InnerTube) when unconfigured, unmatched, or on any failure.
+     */
+    private fun resolveSubsonicMatchDataSpec(
+        dataSpec: DataSpec,
+        mediaId: String,
+    ): DataSpec? {
+        val baseUrl = runCatching { dataStore[SubsonicBaseUrlKey] }.getOrNull().orEmpty()
+        val username = runCatching { dataStore[SubsonicUsernameKey] }.getOrNull().orEmpty()
+        val password = runCatching { dataStore[SubsonicPasswordKey] }.getOrNull().orEmpty()
+        if (baseUrl.isBlank() || username.isBlank() || password.isEmpty()) return null
+        val metadata =
+            runCatching {
+                runBlocking {
+                    withContext(Dispatchers.Main.immediate) {
+                        player.findNextMediaItemById(mediaId)?.metadata
+                    }
+                }
+            }.getOrNull() ?: return null
+        val title = metadata.title.takeIf { it.isNotBlank() } ?: return null
+        val artists = metadata.artists.map { it.name }
+        val config = SubsonicConfig(baseUrl.trim(), username.trim(), password)
+        val trackId =
+            runBlocking(Dispatchers.IO) {
+                subsonicMatchResolver.resolveTrackId(
+                    config = config,
+                    videoId = mediaId,
+                    title = title,
+                    artists = artists,
+                )
+            } ?: return null
+        _activeStreamSource.value = "SUBSONIC (match)"
+        scope.launch(Dispatchers.IO) { recoverSong(mediaId) }
+        // Distinct cache key: server bytes must never share a slot with YouTube
+        // bytes cached under the raw videoId (or stale audio would win downstream).
+        return dataSpec.buildUpon()
+            .setUri(SubsonicClient.streamUrl(config, trackId).toUri())
+            .setKey(SubsonicId.matchKeyFor(mediaId))
+            .build()
     }
 
     private fun resolveArchiveTuneExtractorDataSpec(
@@ -9012,7 +9232,7 @@ class MusicService :
         hasBoundClients = true
         cancelIdleStop()
         val result = super.onBind(intent) ?: binder
-        if (player.mediaItemCount > 0 && player.currentMediaItem != null) {
+        if (player.mediaItemCount > 0 && player.currentMediaItem != null && !isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()) {
             currentMediaMetadata.value = player.currentMetadata
             scope.launch {
                 delay(50)

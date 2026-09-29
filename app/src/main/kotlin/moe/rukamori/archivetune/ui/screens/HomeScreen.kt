@@ -66,6 +66,7 @@ import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.ui.component.ExpressivePullToRefreshBox
 import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MenuState
+import moe.rukamori.archivetune.ui.screens.library.SubsonicHomeSections
 import moe.rukamori.archivetune.ui.utils.SnapLayoutInfoProvider
 import moe.rukamori.archivetune.viewmodels.HomeViewModel
 
@@ -379,6 +380,17 @@ private fun HomeContent(
                                 modifier = Modifier.animateItem(),
                             )
                         }
+                    }
+
+                    item(
+                        key = "home_subsonic",
+                        contentType = "subsonic",
+                    ) {
+                        SubsonicHomeSections(
+                            navController = navController,
+                            playerConnection = playerConnection,
+                            modifier = Modifier.animateItem(),
+                        )
                     }
 
                     if (uiState.showSpeedDial && uiState.speedDialItems.isNotEmpty()) {

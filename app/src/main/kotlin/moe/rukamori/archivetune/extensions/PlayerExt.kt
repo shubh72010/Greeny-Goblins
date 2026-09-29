@@ -95,6 +95,25 @@ fun Player.getCurrentQueueIndex(): Int {
     return index
 }
 
+fun Player.getQueueIndexForMediaIndex(mediaIndex: Int): Int {
+    if (currentTimeline.isEmpty || mediaIndex !in 0 until mediaItemCount) {
+        return -1
+    }
+    var index = 0
+    var cursor = mediaIndex
+    while (true) {
+        cursor =
+            currentTimeline.getPreviousWindowIndex(
+                cursor,
+                REPEAT_MODE_OFF,
+                shuffleModeEnabled,
+            )
+        if (cursor == C.INDEX_UNSET) break
+        index++
+    }
+    return index
+}
+
 val Player.currentMetadata: MediaMetadata?
     get() = currentMediaItem?.metadata
 

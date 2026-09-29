@@ -94,7 +94,7 @@ fun buildSettingsGroups(
                             title = stringResource(R.string.integration),
                             subtitle = stringResource(R.string.settings_integration_subtitle),
                             accentColor = MaterialTheme.colorScheme.secondary,
-                            keywords = listOf("integration", "discord", "lastfm", "listenbrainz"),
+                            keywords = listOf("integration", "discord", "lastfm", "listenbrainz", "subsonic", "navidrome", "airsonic", "gonic"),
                             onClick = { navController.navigate("settings/integration") },
                         ),
                         SettingsItem(

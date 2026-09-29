@@ -79,6 +79,7 @@ import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.LibraryFilter
 import moe.rukamori.archivetune.constants.ShowSpotifyPlaylistsKey
 import moe.rukamori.archivetune.constants.ShowTagsInLibraryKey
+import moe.rukamori.archivetune.constants.SubsonicEnabledKey
 import moe.rukamori.archivetune.db.entities.TagEntity
 import moe.rukamori.archivetune.ui.component.TagsManagementDialog
 import moe.rukamori.archivetune.utils.rememberEnumPreference
@@ -92,28 +93,20 @@ fun LibraryScreen(navController: NavController) {
     val allTags by database.allTags().collectAsState(initial = emptyList())
     val (showTagsInLibrary) = rememberPreference(ShowTagsInLibraryKey, defaultValue = true)
     val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, defaultValue = false)
+    val (showSubsonic) = rememberPreference(SubsonicEnabledKey, defaultValue = false)
     val (disableBlur) = rememberPreference(DisableBlurKey, true)
     var showTagsManagementDialog by rememberSaveable { mutableStateOf(false) }
     val activeSelectedTagIds = if (showTagsInLibrary) selectedTagIds else emptySet()
     val libraryFilters =
-        remember(showSpotifyPlaylists) {
-            if (showSpotifyPlaylists) {
-                listOf(
-                    LibraryFilter.LIBRARY,
-                    LibraryFilter.PLAYLISTS,
-                    LibraryFilter.SPOTIFY,
-                    LibraryFilter.SONGS,
-                    LibraryFilter.ARTISTS,
-                    LibraryFilter.ALBUMS,
-                )
-            } else {
-                listOf(
-                    LibraryFilter.LIBRARY,
-                    LibraryFilter.PLAYLISTS,
-                    LibraryFilter.SONGS,
-                    LibraryFilter.ARTISTS,
-                    LibraryFilter.ALBUMS,
-                )
+        remember(showSpotifyPlaylists, showSubsonic) {
+            buildList {
+                add(LibraryFilter.LIBRARY)
+                add(LibraryFilter.PLAYLISTS)
+                if (showSpotifyPlaylists) add(LibraryFilter.SPOTIFY)
+                add(LibraryFilter.SONGS)
+                add(LibraryFilter.ARTISTS)
+                add(LibraryFilter.ALBUMS)
+                if (showSubsonic) add(LibraryFilter.SUBSONIC)
             }
         }
 
@@ -139,6 +132,7 @@ fun LibraryScreen(navController: NavController) {
             LibraryFilter.SONGS -> stringResource(R.string.songs)
             LibraryFilter.ARTISTS -> stringResource(R.string.artists)
             LibraryFilter.ALBUMS -> stringResource(R.string.albums)
+            LibraryFilter.SUBSONIC -> stringResource(R.string.subsonic_integration)
             else -> stringResource(R.string.library_title)
         }
 
@@ -150,6 +144,7 @@ fun LibraryScreen(navController: NavController) {
             LibraryFilter.SONGS -> stringResource(R.string.library_songs_subtitle)
             LibraryFilter.ARTISTS -> stringResource(R.string.library_artists_subtitle)
             LibraryFilter.ALBUMS -> stringResource(R.string.library_albums_subtitle)
+            LibraryFilter.SUBSONIC -> stringResource(R.string.subsonic_enable_description)
             else -> stringResource(R.string.library_subtitle)
         }
 
@@ -294,6 +289,7 @@ fun LibraryScreen(navController: NavController) {
                         LibraryFilter.SONGS -> 102.dp
                         LibraryFilter.ARTISTS -> 116.dp
                         LibraryFilter.ALBUMS -> 110.dp
+                        LibraryFilter.SUBSONIC -> 132.dp
                         else -> 116.dp
                     }
                 val screenWidth = configuration.screenWidthDp.dp
@@ -328,6 +324,7 @@ fun LibraryScreen(navController: NavController) {
                             LibraryFilter.SONGS -> stringResource(R.string.songs)
                             LibraryFilter.ARTISTS -> stringResource(R.string.artists)
                             LibraryFilter.ALBUMS -> stringResource(R.string.albums)
+                            LibraryFilter.SUBSONIC -> stringResource(R.string.subsonic)
                         }
                     val iconRes =
                         when (filter) {
@@ -337,6 +334,7 @@ fun LibraryScreen(navController: NavController) {
                             LibraryFilter.SONGS -> R.drawable.music_note
                             LibraryFilter.ARTISTS -> R.drawable.person
                             LibraryFilter.ALBUMS -> R.drawable.album
+                            LibraryFilter.SUBSONIC -> R.drawable.storage
                         }
                     ExpressiveTabChip(
                         label = label,
@@ -435,6 +433,17 @@ fun LibraryScreen(navController: NavController) {
 
                     LibraryFilter.ALBUMS -> {
                         LibraryAlbumsScreen(
+                            navController = navController,
+                            onDeselect = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            },
+                        )
+                    }
+
+                    LibraryFilter.SUBSONIC -> {
+                        LibrarySubsonicScreen(
                             navController = navController,
                             onDeselect = {
                                 coroutineScope.launch {

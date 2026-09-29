@@ -13,5 +13,6 @@ enum class LibraryFilter {
     ALBUMS,
     PLAYLISTS,
     SPOTIFY,
+    SUBSONIC,
     LIBRARY,
 }

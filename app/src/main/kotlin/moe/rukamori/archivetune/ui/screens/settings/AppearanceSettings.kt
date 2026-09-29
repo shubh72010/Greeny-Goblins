@@ -1099,6 +1099,7 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
                                 LibraryFilter.ALBUMS -> stringResource(R.string.albums)
                                 LibraryFilter.PLAYLISTS -> stringResource(R.string.playlists)
                                 LibraryFilter.SPOTIFY -> stringResource(R.string.spotify_playlists)
+                                LibraryFilter.SUBSONIC -> stringResource(R.string.subsonic)
                                 LibraryFilter.LIBRARY -> stringResource(R.string.filter_library)
                             }
                         },

@@ -34,6 +34,8 @@ import moe.rukamori.archivetune.ui.screens.artist.ArtistScreen
 import moe.rukamori.archivetune.ui.screens.artist.ArtistSongsScreen
 import moe.rukamori.archivetune.ui.screens.library.LibraryScreen
 import moe.rukamori.archivetune.ui.screens.library.LocalSongScreen
+import moe.rukamori.archivetune.ui.screens.library.SubsonicAlbumScreen
+import moe.rukamori.archivetune.ui.screens.library.SubsonicPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.musicrecognition.MusicRecognitionScreen
 import moe.rukamori.archivetune.ui.screens.playlist.AutoPlaylistScreen
 import moe.rukamori.archivetune.ui.screens.playlist.CachePlaylistScreen
@@ -74,6 +76,7 @@ import moe.rukamori.archivetune.ui.screens.settings.PoTokenScreen
 import moe.rukamori.archivetune.ui.screens.settings.PrivacySettings
 import moe.rukamori.archivetune.ui.screens.settings.SettingsScreen
 import moe.rukamori.archivetune.ui.screens.settings.StorageSettings
+import moe.rukamori.archivetune.ui.screens.settings.SubsonicSettings
 import moe.rukamori.archivetune.ui.screens.settings.ThemeCreatorScreen
 import moe.rukamori.archivetune.ui.screens.settings.UpdateScreen
 
@@ -226,6 +229,34 @@ fun NavGraphBuilder.navigationBuilder(
             ),
     ) {
         AlbumScreen(navController, scrollBehavior)
+    }
+    composable(
+        route = "subsonic_album/{encodedAlbumId}",
+        arguments =
+            listOf(
+                navArgument("encodedAlbumId") {
+                    type = NavType.StringType
+                },
+            ),
+    ) { backStackEntry ->
+        SubsonicAlbumScreen(
+            navController = navController,
+            encodedAlbumId = backStackEntry.arguments?.getString("encodedAlbumId"),
+        )
+    }
+    composable(
+        route = "subsonic_playlist/{encodedPlaylistId}",
+        arguments =
+            listOf(
+                navArgument("encodedPlaylistId") {
+                    type = NavType.StringType
+                },
+            ),
+    ) { backStackEntry ->
+        SubsonicPlaylistScreen(
+            navController = navController,
+            encodedPlaylistId = backStackEntry.arguments?.getString("encodedPlaylistId"),
+        )
     }
     composable(
         route = "artist/{artistId}",
@@ -441,6 +472,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("settings/lastfm") {
         LastFMSettings(navController)
+    }
+    composable("settings/subsonic") {
+        SubsonicSettings(navController)
     }
     composable("settings/discord/experimental") {
         moe.rukamori.archivetune.ui.screens.settings

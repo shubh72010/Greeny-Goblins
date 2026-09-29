@@ -25,9 +25,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.getCurrentQueueIndex
+import moe.rukamori.archivetune.extensions.getQueueIndexForMediaIndex
 import moe.rukamori.archivetune.extensions.getQueueWindows
 import moe.rukamori.archivetune.playback.MusicService.MusicBinder
 import moe.rukamori.archivetune.playback.queues.Queue
@@ -109,6 +111,19 @@ class PlayerConnection(
         if (player.mediaItemCount > 0 && service.currentMediaMetadata.value == null) {
             service.currentMediaMetadata.value = player.currentMetadata
         }
+        // Instant visual crossfade: mirror the pending target so queue highlight
+        // and tap guards flip immediately while audio still blends underneath.
+        scope.launch {
+            service.globalCrossfadePreviewIndex.collect { preview ->
+                if (preview != null && preview in 0 until player.mediaItemCount) {
+                    currentMediaItemIndex.value = preview
+                    currentWindowIndex.value = player.getQueueIndexForMediaIndex(preview)
+                } else {
+                    currentMediaItemIndex.value = player.currentMediaItemIndex
+                    currentWindowIndex.value = player.getCurrentQueueIndex()
+                }
+            }
+        }
     }
 
     fun playQueue(queue: Queue) {
@@ -185,8 +200,12 @@ class PlayerConnection(
         mediaItem: MediaItem?,
         reason: Int,
     ) {
-        currentMediaItemIndex.value = player.currentMediaItemIndex
-        currentWindowIndex.value = player.getCurrentQueueIndex()
+        // During an instant-visual crossfade the preview already points at the
+        // target; the primary player only catches up at handoff.
+        if (service.globalCrossfadePreviewIndex.value == null) {
+            currentMediaItemIndex.value = player.currentMediaItemIndex
+            currentWindowIndex.value = player.getCurrentQueueIndex()
+        }
         updateCanSkipPreviousAndNext()
     }
 
@@ -196,15 +215,23 @@ class PlayerConnection(
     ) {
         queueWindows.value = player.getQueueWindows()
         queueTitle.value = service.queueTitle
-        currentMediaItemIndex.value = player.currentMediaItemIndex
-        currentWindowIndex.value = player.getCurrentQueueIndex()
+        if (service.globalCrossfadePreviewIndex.value == null) {
+            currentMediaItemIndex.value = player.currentMediaItemIndex
+            currentWindowIndex.value = player.getCurrentQueueIndex()
+        }
         updateCanSkipPreviousAndNext()
     }
 
     override fun onShuffleModeEnabledChanged(enabled: Boolean) {
         shuffleModeEnabled.value = enabled
         queueWindows.value = player.getQueueWindows()
-        currentWindowIndex.value = player.getCurrentQueueIndex()
+        val preview = service.globalCrossfadePreviewIndex.value
+        currentWindowIndex.value =
+            if (preview != null && preview in 0 until player.mediaItemCount) {
+                player.getQueueIndexForMediaIndex(preview)
+            } else {
+                player.getCurrentQueueIndex()
+            }
         updateCanSkipPreviousAndNext()
     }
 

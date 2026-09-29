@@ -81,6 +81,10 @@ import moe.rukamori.archivetune.constants.PoTokenPlayerKey
 import moe.rukamori.archivetune.constants.SeekExtraSeconds
 import moe.rukamori.archivetune.constants.SkipSilenceKey
 import moe.rukamori.archivetune.constants.StopMusicOnTaskClearKey
+import moe.rukamori.archivetune.constants.SubsonicBaseUrlKey
+import moe.rukamori.archivetune.constants.SubsonicEnabledKey
+import moe.rukamori.archivetune.constants.SubsonicPasswordKey
+import moe.rukamori.archivetune.constants.SubsonicUsernameKey
 import moe.rukamori.archivetune.constants.WakelockKey
 import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.ui.component.ArtistSeparatorsDialog
@@ -287,6 +291,7 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
                 PlayerStreamClient.WEB_REMIX,
                 PlayerStreamClient.ARCHIVETUNE_EXTRACTOR,
                 PlayerStreamClient.JUSPLAYER_ENGINE,
+                PlayerStreamClient.SUBSONIC,
             )
         }
     val selectedPlayerStreamClient =
@@ -296,11 +301,22 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
             PlayerStreamClient.WEB_REMIX
         }
     val audioQualityEnabled = selectedPlayerStreamClient != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR
+    val (subsonicEnabled, _) = rememberPreference(SubsonicEnabledKey, defaultValue = false)
+    val (subsonicBaseUrl, _) = rememberPreference(SubsonicBaseUrlKey, defaultValue = "")
+    val (subsonicUsername, _) = rememberPreference(SubsonicUsernameKey, defaultValue = "")
+    val (subsonicPassword, _) = rememberPreference(SubsonicPasswordKey, defaultValue = "")
+    val isSubsonicAvailable =
+        remember(subsonicEnabled, subsonicBaseUrl, subsonicUsername, subsonicPassword) {
+            subsonicEnabled &&
+                subsonicBaseUrl.isNotBlank() &&
+                subsonicUsername.isNotBlank() &&
+                subsonicPassword.isNotEmpty()
+        }
     val isPlayerStreamClientEnabled =
-        remember(isArchiveTuneExtractorEnabled) {
+        remember(isArchiveTuneExtractorEnabled, isSubsonicAvailable) {
             { client: PlayerStreamClient ->
-                client != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR ||
-                    isArchiveTuneExtractorEnabled
+                (client != PlayerStreamClient.ARCHIVETUNE_EXTRACTOR || isArchiveTuneExtractorEnabled) &&
+                    (client != PlayerStreamClient.SUBSONIC || isSubsonicAvailable)
             }
         }
 
@@ -313,12 +329,16 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { _ -> }
 
-    LaunchedEffect(playerStreamClient, isArchiveTuneExtractorEnabled) {
+    LaunchedEffect(playerStreamClient, isArchiveTuneExtractorEnabled, isSubsonicAvailable) {
         if (
             playerStreamClient !in playerStreamClients ||
             (
                 playerStreamClient == PlayerStreamClient.ARCHIVETUNE_EXTRACTOR &&
                     !isArchiveTuneExtractorEnabled
+            ) ||
+            (
+                playerStreamClient == PlayerStreamClient.SUBSONIC &&
+                    !isSubsonicAvailable
             )
         ) {
             onPlayerStreamClientChange(PlayerStreamClient.WEB_REMIX)
@@ -462,6 +482,10 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
                                     stringResource(R.string.player_stream_client_jusplayer_engine)
                                 }
 
+                                PlayerStreamClient.SUBSONIC -> {
+                                    stringResource(R.string.player_stream_client_subsonic)
+                                }
+
                                 else -> {
                                     stringResource(R.string.player_stream_client_web_remix)
                                 }
@@ -487,6 +511,14 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
 
                                 PlayerStreamClient.JUSPLAYER_ENGINE -> {
                                     stringResource(R.string.player_stream_client_jusplayer_engine_desc)
+                                }
+
+                                PlayerStreamClient.SUBSONIC -> {
+                                    if (isSubsonicAvailable) {
+                                        stringResource(R.string.player_stream_client_subsonic_desc)
+                                    } else {
+                                        stringResource(R.string.player_stream_client_subsonic_login_required)
+                                    }
                                 }
 
                                 else -> {

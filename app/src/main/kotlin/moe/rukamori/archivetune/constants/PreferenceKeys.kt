@@ -275,6 +275,7 @@ enum class PlayerStreamClient {
     IOS,
     TVHTML5,
     ANDROID_MUSIC,
+    SUBSONIC,
 }
 
 val PersistentQueueKey = booleanPreferencesKey("persistentQueue")
@@ -911,6 +912,14 @@ val CanaryReleasesFingerprintKey = stringPreferencesKey("daily_nightly_releases_
 
 val TogetherOnlineEndpointCacheKey = stringPreferencesKey("together_online_endpoint_cache")
 val TogetherOnlineEndpointLastCheckedAtKey = longPreferencesKey("together_online_endpoint_last_checked_at")
+
+// OpenSubsonic source (Navidrome, Airsonic-Advanced, Gonic, Ampache, …) — Phase 1 single server
+val SubsonicEnabledKey = booleanPreferencesKey("subsonic_enabled")
+val SubsonicStrictOnlyKey = booleanPreferencesKey("subsonic_strict_only")
+val SubsonicBaseUrlKey = stringPreferencesKey("subsonic_base_url")
+val SubsonicUsernameKey = stringPreferencesKey("subsonic_username")
+val SubsonicPasswordKey = stringPreferencesKey("subsonic_password")
+val SubsonicMusicFolderKey = stringPreferencesKey("subsonic_music_folder_id")
 
 enum class UpdateChannel {
     STABLE,

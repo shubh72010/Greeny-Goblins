@@ -74,6 +74,18 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
                 }
             }
 
+            PreferenceGroup(title = stringResource(R.string.media_servers)) {
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.subsonic_integration)) },
+                        icon = { Icon(painterResource(R.drawable.storage), null) },
+                        onClick = {
+                            navController.navigate("settings/subsonic")
+                        },
+                    )
+                }
+            }
+
             PreferenceGroup(title = stringResource(R.string.scrobbling)) {
                 item {
                     PreferenceEntry(

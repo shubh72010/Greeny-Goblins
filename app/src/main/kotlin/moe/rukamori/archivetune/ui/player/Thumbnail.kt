@@ -198,9 +198,12 @@ fun Thumbnail(
     // Grid state
     val thumbnailLazyGridState = rememberLazyGridState()
 
-    // Create a playlist using correct shuffle-aware logic
+    // Create a playlist using correct shuffle-aware logic.
+    // Prefer the crossfade-preview-aware index so the pager flips instantly
+    // while audio still blends underneath.
+    val connectionIndex by playerConnection.currentMediaItemIndex.collectAsState()
     val timeline = playerConnection.player.currentTimeline
-    val currentIndex = playerConnection.player.currentMediaItemIndex
+    val currentIndex = connectionIndex.takeIf { it >= 0 } ?: playerConnection.player.currentMediaItemIndex
     val shuffleModeEnabled = playerConnection.player.shuffleModeEnabled
     val previousWindowIndex =
         if (swipeThumbnail && !timeline.isEmpty) {
@@ -319,7 +322,7 @@ fun Thumbnail(
         }
     }
 
-    LaunchedEffect(playerConnection.player.currentMediaItemIndex, currentMediaItem?.mediaId) {
+    LaunchedEffect(currentIndex, currentMediaItem?.mediaId) {
         val index = currentMediaIndex
         if (index >= 0 && index != currentItem) {
             thumbnailLazyGridState.scrollToItem(index)

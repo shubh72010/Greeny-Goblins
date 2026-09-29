@@ -37,6 +37,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
  * - `WEB_REMIX (fallback)` / `WEB_REMIX (fallback cached)` — JPE failed, InnerTube fallback
  * - `ARCHIVETUNE_EXTRACTOR` / `ARCHIVETUNE_EXTRACTOR (cached)`
  * - `WEB_REMIX` / `WEB_REMIX (cached)` / other `PlayerStreamClient` names for normal path
+ * - `SUBSONIC` / `SUBSONIC (match)` — direct server stream or matched server copy
  *
  * Use via:
  * ```
@@ -76,6 +77,14 @@ fun StreamSourceBadge(
                 colorScheme.secondaryContainer,
                 colorScheme.onSecondaryContainer,
                 R.drawable.integration,
+            )
+
+        rawSource.contains("SUBSONIC") ->
+            Quadruple(
+                "Subsonic",
+                colorScheme.tertiaryContainer,
+                colorScheme.onTertiaryContainer,
+                R.drawable.storage,
             )
 
         rawSource.contains("WEB_REMIX") && rawSource.contains("fallback") ->
