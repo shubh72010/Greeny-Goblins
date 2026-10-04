@@ -3,9 +3,7 @@ package moe.rukamori.archivetune.ui.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
@@ -28,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -36,13 +33,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.ui.screens.onboarding.OnboardingAmbientBackground
 import kotlin.math.PI
 import kotlin.math.sin
 
 private const val INTRO_MS = 1500
 
 /**
- * Full-screen startup veil: brand icon over a 3-tone blurred gradient with a
+ * Full-screen startup veil: brand icon over the shared onboarding glow plus a
  * wave, shown until the service binds, then exits upward.
  *
  * Choreography (single 1500ms clock): 0-250ms icon fades in; 250-700ms it
@@ -72,35 +70,15 @@ fun StartupCover(
         exit = slideOutVertically(targetOffsetY = { -it }, animationSpec = tween(600)) + fadeOut(tween(400)),
     ) {
         Box(
-            modifier = modifier.fillMaxSize().background(Color(0xFF0B0B10)),
+            modifier = modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
-            // Slow drift so the veil stays alive if loading outlasts the intro.
-            val drift by rememberInfiniteTransition(label = "startupDrift").animateFloat(
-                initialValue = 0f,
-                targetValue = (2 * PI).toFloat(),
-                animationSpec = androidx.compose.animation.core.infiniteRepeatable(tween(6000, easing = LinearEasing)),
-                label = "drift",
-            )
+            // Same living glow as onboarding (theme hues, real blur) — no second implementation.
+            // Static: the blur composes once and stays GPU-cached; only icon/wave/sweep animate.
+            OnboardingAmbientBackground(showMesh = false, animate = false)
             Canvas(Modifier.fillMaxSize()) {
                 val w = size.width
                 val h = size.height
-                // 3-tone "blur": overlapping radial blobs (no RenderEffect, works back to API 26).
-                drawCircle(
-                    brush = Brush.radialGradient(listOf(Color(0xFF7C4DFF).copy(alpha = 0.55f), Color.Transparent), radius = w * 0.7f),
-                    radius = w * 0.7f,
-                    center = Offset(w * 0.5f + sin(drift) * 40f, h * 0.28f),
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(listOf(Color(0xFF00E5C0).copy(alpha = 0.4f), Color.Transparent), radius = w * 0.6f),
-                    radius = w * 0.6f,
-                    center = Offset(w * 0.15f, h * 0.62f + sin(drift + 2f) * 40f),
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(listOf(Color(0xFFFF9E4D).copy(alpha = 0.38f), Color.Transparent), radius = w * 0.6f),
-                    radius = w * 0.6f,
-                    center = Offset(w * 0.88f, h * 0.66f - sin(drift + 4f) * 40f),
-                )
                 // Wave rising from the bottom; crest climbs with the `rise` phase.
                 val waveY = h * (0.74f - 0.19f * rise)
                 val wave = Path().apply {

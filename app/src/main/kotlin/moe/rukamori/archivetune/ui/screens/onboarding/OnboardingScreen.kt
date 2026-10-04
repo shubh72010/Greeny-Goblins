@@ -407,8 +407,12 @@ private fun WelcomePage(
 
 /** Living glow shared by every onboarding page: Material You hues on a dark base. */
 @Composable
-private fun OnboardingAmbientBackground(
+internal fun OnboardingAmbientBackground(
     showMesh: Boolean,
+    // ponytail: static mode for the startup cover — the 64dp full-screen blur
+    // re-renders on every drift frame, which janks while the app is still binding.
+    // Static composes the blur once (GPU-cached) and never recomposes.
+    animate: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -419,18 +423,24 @@ private fun OnboardingAmbientBackground(
     val ember = scheme.primary.darken(0.35f)
 
     // One slow clock; every blob drifts off it with its own speed/phase/amp.
-    val driftTransition = rememberInfiniteTransition(label = "onboardingDrift")
-    val driftProgress by driftTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(durationMillis = 14000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart,
-            ),
-        label = "driftTime",
-    )
-    val time = driftProgress * (2 * Math.PI).toFloat()
+    // Skipped entirely in static mode (startup cover): fixed flattering phase.
+    val time =
+        if (animate) {
+            val driftTransition = rememberInfiniteTransition(label = "onboardingDrift")
+            val driftProgress by driftTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec =
+                    infiniteRepeatable(
+                        animation = tween(durationMillis = 14000, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart,
+                    ),
+                label = "driftTime",
+            )
+            driftProgress * (2 * Math.PI).toFloat()
+        } else {
+            2.1f
+        }
 
     BoxWithConstraints(
         modifier = modifier.fillMaxSize().background(scrim),
