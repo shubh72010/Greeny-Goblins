@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -16,8 +17,11 @@ import moe.rukamori.archivetune.ui.player.CanvasSource
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
+import moe.rukamori.archivetune.ui.player.modular.LocalThumbnailCornerRadius
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentRegistry
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentType
+import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
+import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import java.util.Locale
@@ -81,6 +85,9 @@ fun CanvasArtworkComponent(
 
     val artwork = canvasArtwork
     if (artwork != null) {
+        // ponytail: respect the thumbnail-shape pref — was unclipped, so the shape
+        // option silently did nothing whenever canvas video was showing.
+        val shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, LocalThumbnailCornerRadius.current, metadata?.id)
         CanvasArtworkPlayer(
             primaryUrl = artwork.preferredAnimationUrl,
             fallbackUrl = artwork.preferredVerticalAnimationUrl.takeIf { !it.isNullOrBlank() }
@@ -88,7 +95,7 @@ fun CanvasArtworkComponent(
             isPlaying = isPlaying,
             clipStartMs = artwork.loopStartMs,
             clipEndMs = artwork.loopEndMs,
-            modifier = modifier.fillMaxSize(),
+            modifier = modifier.fillMaxSize().clip(shape),
         )
     }
 }
