@@ -20,6 +20,7 @@ import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -40,8 +41,9 @@ class PlayerConnection(
     context: Context,
     binder: MusicBinder,
     val database: MusicDatabase,
-    scope: CoroutineScope,
+    private val uiScope: CoroutineScope,
 ) : Player.Listener {
+    private var previewJob: Job? = null
     val service = binder.service
     val player = service.player
     val localPlayer = service.localPlayer
@@ -53,7 +55,7 @@ class PlayerConnection(
         combine(playbackState, playWhenReady) { playbackState, playWhenReady ->
             playWhenReady && playbackState != STATE_ENDED
         }.stateIn(
-            scope,
+            uiScope,
             SharingStarted.Lazily,
             player.playWhenReady && player.playbackState != STATE_ENDED,
         )
@@ -108,12 +110,14 @@ class PlayerConnection(
         currentMediaItemIndex.value = player.currentMediaItemIndex
         shuffleModeEnabled.value = player.shuffleModeEnabled
         repeatMode.value = player.repeatMode
-        if (player.mediaItemCount > 0 && service.currentMediaMetadata.value == null) {
+        if (player.mediaItemCount > 0 && service.currentMediaMetadata.value == null &&
+            service.globalCrossfadePreviewIndex.value == null
+        ) {
             service.currentMediaMetadata.value = player.currentMetadata
         }
         // Instant visual crossfade: mirror the pending target so queue highlight
         // and tap guards flip immediately while audio still blends underneath.
-        scope.launch {
+        previewJob = uiScope.launch {
             service.globalCrossfadePreviewIndex.collect { preview ->
                 if (preview != null && preview in 0 until player.mediaItemCount) {
                     currentMediaItemIndex.value = preview
@@ -272,6 +276,8 @@ class PlayerConnection(
     fun removeDeckMix() = service.removeDeckMix()
 
     fun dispose() {
+        previewJob?.cancel()
+        previewJob = null
         player.removeListener(this)
     }
 }

@@ -150,13 +150,16 @@ class DownloadUtil
                     }
                 val playbackData =
                     runBlocking(Dispatchers.IO) {
-                        context.retryWithoutPlaybackLoginContext {
-                            YTPlayerUtils.playerResponseForDownload(
-                                mediaId,
-                                audioQuality = requestedAudioQuality,
-                                connectivityManager = connectivityManager,
-                                networkMetered = lowDataModeActive,
-                            )
+                        // ponytail: bounded Sync — full async resolver is a bigger refactor; ceiling is 20s
+                        kotlinx.coroutines.withTimeout(20_000) {
+                            context.retryWithoutPlaybackLoginContext {
+                                YTPlayerUtils.playerResponseForDownload(
+                                    mediaId,
+                                    audioQuality = requestedAudioQuality,
+                                    connectivityManager = connectivityManager,
+                                    networkMetered = lowDataModeActive,
+                                )
+                            }
                         }
                     }.getOrThrow()
                 persistPlaybackMetadata(mediaId, playbackData)

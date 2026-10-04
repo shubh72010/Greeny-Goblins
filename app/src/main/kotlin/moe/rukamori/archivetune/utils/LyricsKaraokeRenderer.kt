@@ -185,7 +185,12 @@ class LyricsKaraokeRenderer(
                         .size(max(canvasWidth, canvasHeight))
                         .allowHardware(false)
                         .build()
-                coverArtBitmap = runBlocking { loader.execute(request).image?.toBitmap() }
+                // ponytail: bounded Sync — init runs on caller thread; remote fetch must not hang it
+                coverArtBitmap = kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+                    kotlinx.coroutines.withTimeoutOrNull(2_000) {
+                        loader.execute(request).image?.toBitmap()
+                    }
+                }
             }
         }
 

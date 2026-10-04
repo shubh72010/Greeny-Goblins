@@ -113,32 +113,40 @@ object PreferenceStore {
     }
 }
 
-operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? =
-    PreferenceStore.get(key)
-        ?: if (Looper.getMainLooper().thread == Thread.currentThread()) {
-            null
-        } else {
-            runBlocking(Dispatchers.IO) {
-                withTimeoutOrNull(1500) {
-                    data.first()[key]
-                }
-            }
+operator fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>): T? {
+    PreferenceStore.get(key)?.let { return it }
+    // ponytail: sync get() on Main can never block — callers must use getAsync() from a coroutine.
+    // Returning null here is a deliberate ceiling, not a cache miss; warn so misuse surfaces in logcat.
+    if (Looper.getMainLooper().thread == Thread.currentThread()) {
+        moe.rukamori.archivetune.utils.reportException(
+            IllegalStateException("DataStore.get() on Main for ${key.name}; use getAsync()"),
+        )
+        return null
+    }
+    return runBlocking(Dispatchers.IO) {
+        withTimeoutOrNull(1500) {
+            data.first()[key]
         }
+    }
+}
 
 fun <T> DataStore<Preferences>.get(
     key: Preferences.Key<T>,
     defaultValue: T,
-): T =
-    PreferenceStore.get(key)
-        ?: if (Looper.getMainLooper().thread == Thread.currentThread()) {
-            defaultValue
-        } else {
-            runBlocking(Dispatchers.IO) {
-                withTimeoutOrNull(1500) {
-                    data.first()[key]
-                } ?: defaultValue
-            }
-        }
+): T {
+    PreferenceStore.get(key)?.let { return it }
+    if (Looper.getMainLooper().thread == Thread.currentThread()) {
+        moe.rukamori.archivetune.utils.reportException(
+            IllegalStateException("DataStore.get(default) on Main for ${key.name}; use getAsync()"),
+        )
+        return defaultValue
+    }
+    return runBlocking(Dispatchers.IO) {
+        withTimeoutOrNull(1500) {
+            data.first()[key]
+        } ?: defaultValue
+    }
+}
 
 suspend fun <T> DataStore<Preferences>.getAsync(key: Preferences.Key<T>): T? = data.first()[key]
 

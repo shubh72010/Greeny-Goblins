@@ -2324,7 +2324,9 @@ class MusicService :
             )
             player.prepare()
             player.playWhenReady = false
-            currentMediaMetadata.value = player.currentMetadata
+            if (!isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()) {
+                currentMediaMetadata.value = player.currentMetadata
+            }
             updateNotification()
 
             if (items.size > initialChunk.size) {
@@ -2387,7 +2389,9 @@ class MusicService :
             player.playWhenReady = false
             abandonAudioFocus()
 
-            currentMediaMetadata.value = player.currentMetadata.takeIf { player.mediaItemCount > 0 }
+            if (!isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()) {
+                currentMediaMetadata.value = player.currentMetadata.takeIf { player.mediaItemCount > 0 }
+            }
             updateNotification()
         }
     }
@@ -4642,6 +4646,7 @@ class MusicService :
         queueTitle = null
         waitingForNetworkConnection.value = false
         optimisticPlayMediaId = null
+        globalCrossfadePreviewIndex.value = null
         currentMediaMetadata.value = null
         player.playWhenReady = false
         player.stop()
@@ -6468,10 +6473,10 @@ class MusicService :
         hapticVisualizer.attach(sessionId)
         // Attach external BNMV hub if any external visualizer feature enabled (UDP/network)
         runCatching {
-            val prefs = kotlinx.coroutines.runBlocking { dataStore.data.first() }
-            val needHub = (prefs[moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey] ?: false) ||
-                (prefs[moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey] ?: false) ||
-                (prefs[moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey] ?: false)
+            // ponytail: fast-path read only — never block the audio-session callback on DataStore I/O
+            val needHub = (moe.rukamori.archivetune.utils.PreferenceStore.get(moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey) ?: false) ||
+                (moe.rukamori.archivetune.utils.PreferenceStore.get(moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey) ?: false) ||
+                (moe.rukamori.archivetune.utils.PreferenceStore.get(moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey) ?: false)
             if (needHub) visualizerHub.attach(sessionId)
         }
 
@@ -9212,8 +9217,11 @@ class MusicService :
         try { visualizerHub.release() } catch (_: Exception) {}
         try {
             if (dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
-                runBlocking {
-                    saveQueueToDisk()
+                // ponytail: bounded Sync — unbounded disk write on Main is the shutdown ANR
+                kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+                    kotlinx.coroutines.withTimeoutOrNull(1500) {
+                        saveQueueToDisk()
+                    }
                 }
             }
         } catch (_: Exception) {
@@ -9232,6 +9240,9 @@ class MusicService :
             player.removeListener(sleepTimer)
             try { trackAnalysisOrchestrator?.release() } catch (_: Exception) {}
             trackAnalysisOrchestrator = null
+            // ponytail: secondary/deck players hold native AudioTracks — release before primary
+            runCatching { releaseSecondaryCrossfadePlayer() }
+            runCatching { removeDeckMix() }
             player.release()
         } catch (_: Exception) {
         }
@@ -9310,7 +9321,12 @@ class MusicService :
             }
 
             if (dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
-                runBlocking { saveQueueToDisk() }
+                // ponytail: bounded Sync — see onDestroy
+                kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
+                    kotlinx.coroutines.withTimeoutOrNull(1500) {
+                        saveQueueToDisk()
+                    }
+                }
             }
         } catch (_: Exception) {
         }

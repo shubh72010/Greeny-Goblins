@@ -358,6 +358,8 @@ fun BottomSheetPlayer(
 
     val (disableBlur) = rememberPreference(DisableBlurKey, true)
     val (blurRadius) = rememberPreference(BlurRadiusKey, 48f)
+    // ponytail: 48dp blur is a full-screen RenderEffect every frame — clamp to 20dp ceiling
+    val safeBlurRadius = blurRadius.coerceIn(0f, 20f)
     // ponytail: deck mixer prototype behind flag, default off
     val (enableDeckMix) = rememberPreference(moe.rukamori.archivetune.constants.EnableDeckMixKey, false)
     var showDeckMixer by remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -412,15 +414,15 @@ fun BottomSheetPlayer(
             MaterialTheme.colorScheme.surfaceContainer.copy(alpha = progress)
         }
 
-    val playbackState by playerConnection.playbackState.collectAsState()
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val currentSong by playerConnection.currentSong.collectAsState(initial = null)
+    val playbackState by playerConnection.playbackState.collectAsStateWithLifecycle()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+    val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val currentSongLiked = currentSong?.song?.liked == true
-    val queueTitle by playerConnection.queueTitle.collectAsState()
-    val currentFormat by playerConnection.currentFormat.collectAsState(initial = null)
-    val queueWindows by playerConnection.queueWindows.collectAsState()
-    val currentWindowIndex by playerConnection.currentWindowIndex.collectAsState()
+    val queueTitle by playerConnection.queueTitle.collectAsStateWithLifecycle()
+    val currentFormat by playerConnection.currentFormat.collectAsStateWithLifecycle(initialValue = null)
+    val queueWindows by playerConnection.queueWindows.collectAsStateWithLifecycle()
+    val currentWindowIndex by playerConnection.currentWindowIndex.collectAsStateWithLifecycle()
     val deviceMusicVolumeController = rememberDeviceMusicVolumeController()
     var pendingVolumeJump by remember { mutableStateOf<Float?>(null) }
     var pendingVolumeOld by remember { mutableFloatStateOf(0f) }
@@ -462,10 +464,10 @@ fun BottomSheetPlayer(
         )
     }
 
-    val repeatMode by playerConnection.repeatMode.collectAsState()
+    val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
 
-    val canSkipPrevious by playerConnection.canSkipPrevious.collectAsState()
-    val canSkipNext by playerConnection.canSkipNext.collectAsState()
+    val canSkipPrevious by playerConnection.canSkipPrevious.collectAsStateWithLifecycle()
+    val canSkipNext by playerConnection.canSkipNext.collectAsStateWithLifecycle()
 
     val aodModeEnabled by playerConnection.aodModeEnabled.collectAsStateWithLifecycle()
     val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 45f)
@@ -1219,7 +1221,7 @@ fun BottomSheetPlayer(
                 mediaMetadata = mediaMetadata,
                 gradientColors = gradientColors,
                 disableBlur = disableBlur,
-                blurRadius = blurRadius,
+                blurRadius = safeBlurRadius,
                 playerCustomImageUri = playerCustomImageUri,
                 playerCustomBlur = playerCustomBlur,
                 playerCustomContrast = playerCustomContrast,
@@ -2090,7 +2092,7 @@ private fun V8PlayerBackdrop(
             thumbnailUrl?.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx)
         }
     val backdropRequest = rememberOfflineArtworkImageRequest(backdropModel)
-    val blurRadiusDp = 44.dp * (backdropBlurAmount.toFloat() / 100f)
+    val blurRadiusDp = (44.dp * (backdropBlurAmount.toFloat() / 100f)).coerceAtMost(20.dp)
 
     Box(
         modifier =
