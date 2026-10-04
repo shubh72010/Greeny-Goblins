@@ -8,17 +8,17 @@ Kotlin/Jetpack Compose YouTube Music client `moe.rukamori.archivetune` (`app/src
 
 ```bash
 ./gradlew assembleGmsMobileUniversalDebug
+./gradlew :app:compileGmsMobileUniversalDebugKotlin    # fastest correctness gate
 ./gradlew :app:lintGmsMobileUniversalDebug
 ./gradlew :app:testGmsMobileUniversalDebugUnitTest
-./gradlew :app:testGmsMobileUniversalDebugUnitTest --tests "*.StreamChunkResolverTest"
-./gradlew clean assembleGmsMobileUniversalRelease   # reproducibility double-build
+./gradlew :app:testGmsMobileUniversalDebugUnitTest --tests "*.SubsonicIdTest"
 ```
 
 `CONTRIBUTING.md` is stale (JDK 17 / ktlintCheck) — ignore. Required JDK 21, no ktlint/detekt in CI. Toolchain in `gradle/libs.versions.toml`: AGP 9.2.1, Kotlin 2.4.0, Gradle 9.6.1, Compose 1.12.0-beta02, compileSdk/targetSdk 37, minSdk 26.
 
 ## Structure
 
-- `:app` only Android module; 8 Glance widgets in `archivetune/widget/`; flavor sources `app/src/{gms,foss,tv,debug}`; Cast (`media3-cast`+`mediarouter`) is `gmsImplementation`-only.
+- `:app` only Android module; widgets in `archivetune/widget/`; flavor sources `app/src/{gms,foss,tv,debug}`; Cast (`mediarouter`) is `gmsImplementation`-only.
 - Optional submodules via `includeIfPresent` in `settings.gradle.kts`: `core`, `lyrics/{kugou,lrclib,simpmusic,paxsenix,betterlyrics,unison,youlyplus}`, `moriextractor`, `morideobfuscator`. `IconPack` is SVG source, not a module. Clone with `--recurse-submodules`.
 - In-repo JVM: `:lastfm`, `:canvas`, `:shazamkit` (`src/main/kotlin`), `:spotifycore` (`kotlin.srcDir("src")`).
 - Engine `com.github.shubh72010.JusPlayer-Engine:engine-{api,provider-newpipe,provider-api,model}:v1.6.0` from JitPack `exclusiveContent`; `engine-provider-newpipe` excludes `extractor`.
@@ -27,9 +27,11 @@ Kotlin/Jetpack Compose YouTube Music client `moe.rukamori.archivetune` (`app/src
 ## Architecture — must enforce
 
 - Strict UDF: stateless UI → ViewModel (sealed `Loading/Success/Empty/Error`) → UseCase → Repository. `collectAsStateWithLifecycle()` in composables. Map DB/DTO→UI outside composables. See `.github/copilot-instructions.md` for blocking PR checklist.
-- Playback dual-engine: InnerTube (`YTPlayerUtils/WEB_REMIX`) + JusPlayer Engine (`NewPipeProvider.getStream` via `engine/JusPlayerEngineResolver.kt`, fallback to InnerTube). `PlayerStreamClient` (PreferenceKeys.kt:266) 8 values; `AudioQuality.HIGHEST` runs `MusicService.resolveMaxQualityDualEngineDataSpec()` concurrently (higher bitrate, tie <8kbps → opus> aac, tie→InnerTube).
+- Playback dual-engine: InnerTube (`YTPlayerUtils/WEB_REMIX`) + JusPlayer Engine (`NewPipeProvider.getStream` via `engine/JusPlayerEngineResolver.kt`, fallback to InnerTube). `PlayerStreamClient` (PreferenceKeys.kt) 9 values incl. `SUBSONIC`; `AudioQuality.HIGHEST` runs `MusicService.resolveMaxQualityDualEngineDataSpec()` concurrently (higher bitrate, tie <8kbps → opus> aac, tie→InnerTube).
+- Crossfade is two systems on one audio path and is the easiest thing to break: the audio blend duration must stay as configured, but the UI switches *instantly* via `globalCrossfadePreviewIndex` (crossfade) and `optimisticPlayMediaId` (playQueue taps). Every new `currentMediaMetadata` write needs the `!isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()` guard, or the UI snaps back mid-fade. Details in `AGENTS.md`.
+- Subsonic is provider-agnostic (`subsonic/`); track ids are `subsonic:<serverId>:<kind>:<id>` and must survive the `SubsonicId` round-trip. Credentials are runtime DataStore values, never build secrets.
 - BNMV external: `BngvTeeAudioProcessor` → `VisualizerHub` → `BnmvIntegrationManager` → 512 bins 30Hz–16kHz → 768B UDP 8889 (handshake 8888). `GlyphRenderer` etc dead code.
-- Version in `app/build.gradle.kts` (`versionCode 141`, `versionName 13.8.0`) — bump triggers `release.yml` tag `v<versionName>` + reproducibility check.
+- Version in `app/build.gradle.kts` (`versionCode 142`, `versionName 15.0.0`) — release builds and the GitHub release are driven off this.
 
 ## Conventions
 
@@ -40,4 +42,4 @@ Kotlin/Jetpack Compose YouTube Music client `moe.rukamori.archivetune` (`app/src
 
 ## CI
 
-`build_pull_request.yml` (PR): single debug APK+lint. `build.yml` (main/dev): 7 release variants + debug, Telegram. `release.yml` (main touch `app/build.gradle.kts`): version check, reproducibility double-build, 7-variant signing, changelog, GitHub Release. Renovate base `dev`, group:all.
+`build.yml` ("Build and Scan") is the only build workflow. PR job: `assembleGmsMobileUniversalDebug` + `:app:lintGmsMobileUniversalDebug` (filters the `CXX5202` warning). Release job: validates required secrets (fails on `main` if missing), decodes the release keystore with no debug fallback, then `assembleGmsMobileUniversalRelease` (real key, R8, `--no-configuration-cache`) plus a debug APK. `header.yml` (manual) writes the GPL-3.0 header via `addlicense`; `notify_user.yml` comments on issues referenced by commits. Renovate base `dev`, group:all, blocks pre-releases except `androidx.compose.*`.
