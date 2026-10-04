@@ -174,6 +174,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -2421,14 +2422,20 @@ class MainActivity : ComponentActivity() {
                 }
             } // BoxWithConstraints
             } // CompositionLocalProvider
-            // ponytail: startup cover — brand veil until the service binds, exits upward
-            // continuing the wave's motion into the app reveal.
+            // ponytail: startup cover — brand veil until components are loaded, exits upward
+            // into the app reveal. Waits for a restored queue but never held hostage by it
+            // (cap 2.5s — the queue fills in live either way); min-show keeps the slide
+            // from skipping on fast starts, settle lets home compose behind the static
+            // cover so the slide runs over ready UI on an idle thread.
+            val coverShownAt = remember { android.os.SystemClock.elapsedRealtime() }
             var startupCoverGone by remember { mutableStateOf(false) }
             LaunchedEffect(playerConnection) {
-                if (playerConnection != null) {
-                    delay(600)
-                    startupCoverGone = true
-                }
+                val connection = playerConnection ?: return@LaunchedEffect
+                withTimeoutOrNull(2500) { connection.queueRestoreCompleted.first { it } }
+                val remain = 1200L - (android.os.SystemClock.elapsedRealtime() - coverShownAt)
+                if (remain > 0) delay(remain)
+                delay(400)
+                startupCoverGone = true
             }
             StartupCover(visible = !startupCoverGone)
         }
