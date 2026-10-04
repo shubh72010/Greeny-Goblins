@@ -3297,7 +3297,7 @@ class MusicService :
         currentMediaMetadata.value = metadata
     }
 
-    private fun isOptimisticPlayPending(): Boolean {
+    internal fun isOptimisticPlayPending(): Boolean {
         val pending = optimisticPlayMediaId ?: return false
         val current = if (::player.isInitialized) player.currentMediaItem else null
         if (current == null ||

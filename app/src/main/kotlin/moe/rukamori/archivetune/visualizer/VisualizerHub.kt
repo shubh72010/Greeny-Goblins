@@ -314,10 +314,10 @@ class VisualizerHub(
             // Hop will be copied inside bnmv if needed; pass original for efficiency
             bnmv.onPcm(hop, sampleRate)
         } catch (_: Exception) {}
-        // Copy hop for the Main handoff (fan-out buffer is reused by the caller).
         // Coalesced: if Main is still processing the previous hop, drop this one (visuals only).
-        val hopCopy = hop.copyOf()
+        // Copy after acquiring the slot — a dropped hop must not cost an alloc.
         if (!pcmPostPending.compareAndSet(false, true)) return
+        val hopCopy = hop.copyOf()
         mainHandler.post {
             pcmPostPending.set(false)
             if (glyphRenderer.isDeeplySilent()) {

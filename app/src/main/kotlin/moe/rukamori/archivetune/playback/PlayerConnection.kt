@@ -111,7 +111,7 @@ class PlayerConnection(
         shuffleModeEnabled.value = player.shuffleModeEnabled
         repeatMode.value = player.repeatMode
         if (player.mediaItemCount > 0 && service.currentMediaMetadata.value == null &&
-            service.globalCrossfadePreviewIndex.value == null
+            service.globalCrossfadePreviewIndex.value == null && !service.isOptimisticPlayPending()
         ) {
             service.currentMediaMetadata.value = player.currentMetadata
         }
