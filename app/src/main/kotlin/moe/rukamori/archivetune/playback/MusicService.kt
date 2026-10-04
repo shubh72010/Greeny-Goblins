@@ -8761,16 +8761,25 @@ class MusicService :
                 enableAudioTrackPlaybackParams: Boolean,
             ): DefaultAudioSink {
                 // PCM tee: drives both external BNMV (UDP) and local haptics off the audio thread.
-                val bngvTee = moe.rukamori.archivetune.visualizer.BngvTeeAudioProcessor { hop, sr ->
-                    // Called on high-priority audio thread — post to dedicated background thread
-                    // to avoid blocking audio or flooding coroutines. Hop is already a fresh copy.
-                    val hopCopy = hop.copyOf()
-                    visualizerHandler.post {
-                        try { visualizerHub.onPcm(hopCopy, sr) } catch (_: Exception) {}
-                        try { hapticVisualizer.onPcm(hopCopy, sr) } catch (_: Exception) {}
-                        try { trackAnalysisOrchestrator?.onPcm(hopCopy, sr) } catch (_: Exception) {}
-                    }
-                }
+                val bngvTee =
+                    moe.rukamori.archivetune.visualizer.BngvTeeAudioProcessor(
+                        onPcm = { hop, sr ->
+                            // Called on high-priority audio thread — hop is tee-owned and
+                            // must not escape; fan out on the visualizer thread instead.
+                            // ponytail: OOM guard — no consumer → no post (was: copy + post per
+                            // ~10ms buffer even with every visualizer off, piling Main until 256MB died).
+                            if (visualizerHub.hasPcmConsumers || hapticVisualizer.enabled || trackAnalysisOrchestrator != null) {
+                                visualizerHandler.post {
+                                    try { visualizerHub.onPcm(hop, sr) } catch (_: Exception) {}
+                                    try { hapticVisualizer.onPcm(hop, sr) } catch (_: Exception) {}
+                                    try { trackAnalysisOrchestrator?.onPcm(hop, sr) } catch (_: Exception) {}
+                                }
+                            }
+                        },
+                        isEnabled = {
+                            visualizerHub.hasPcmConsumers || hapticVisualizer.enabled || trackAnalysisOrchestrator != null
+                        },
+                    )
                 return DefaultAudioSink
                     .Builder(context)
                     .setEnableFloatOutput(false)

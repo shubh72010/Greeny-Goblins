@@ -296,19 +296,30 @@ class VisualizerHub(
         synchronized(pendingFrames) { pendingFrames.addLast(frame); dispatchDueFrames(pendingFrames) }
     }
 
+    // ponytail: OOM guard — coalesces Main posts so a saturated Main (blur/lyrics/60Hz ticks)
+    // can't pile oneFFT+runnable per ~10ms audio buffer until the 256MB heap dies.
+    private val pcmPostPending = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** True when any PCM consumer (glyph/flash/haptic/BNMV) wants tee output. */
+    val hasPcmConsumers: Boolean
+        get() = glyphEnabled || flashlightEnabled || hapticEnabled
+
     // Direct PCM tee from ExoPlayer — we have control of the music itself, no need for screen capture.
-    // Called on audio thread from BngvTeeAudioProcessor — post to main for glyph/haptic/flash dispatch
+    // Called on visualizerHandler thread from the tee fan-out — coalesced to main for glyph/haptic/flash dispatch.
     // Also streams to external BNMV via UDP (non-blocking, throttled).
     fun onPcm(hop: ShortArray, sampleRate: Int) {
-        if (!glyphEnabled && !flashlightEnabled && !hapticEnabled) return
+        if (!hasPcmConsumers) return
         // External BNMV streaming — fire-and-forget, throttled inside streamer (16ms)
         try {
             // Hop will be copied inside bnmv if needed; pass original for efficiency
             bnmv.onPcm(hop, sampleRate)
         } catch (_: Exception) {}
-        // Copy hop to avoid mutation on audio thread for local pipeline
+        // Copy hop for the Main handoff (fan-out buffer is reused by the caller).
+        // Coalesced: if Main is still processing the previous hop, drop this one (visuals only).
         val hopCopy = hop.copyOf()
+        if (!pcmPostPending.compareAndSet(false, true)) return
         mainHandler.post {
+            pcmPostPending.set(false)
             if (glyphRenderer.isDeeplySilent()) {
                 var hasSignal = false
                 for (s in hopCopy) if (kotlin.math.abs(s.toInt()) > 750) { hasSignal = true; break }

@@ -18,13 +18,19 @@ import java.nio.ByteBuffer
  * We have direct control of the music — use it.
  */
 class BngvTeeAudioProcessor(
-    private val onPcm: (hop: ShortArray, sampleRate: Int) -> Unit
+    private val onPcm: (hop: ShortArray, sampleRate: Int) -> Unit,
+    // ponytail: OOM guard (fenilmodh Nothing Phone 3, 256MB heap). The tee used to
+    // allocate ByteArray + ShortArray + 2 more copies per ~10ms buffer even with every
+    // visualizer off. Now: no consumer → zero-alloc pass-through on the audio thread.
+    private val isEnabled: () -> Boolean = { true },
 ) : AudioProcessor {
 
     private var audioFormat: AudioFormat = AudioFormat.NOT_SET
     private var isActiveFlag = false
     private var inputEnded = false
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
+    // Audio-thread only: scratch reuse, grown as needed, never shrunk.
+    private var scratchBytes = ByteArray(0)
 
     override fun configure(inputAudioFormat: AudioFormat): AudioFormat {
         audioFormat = inputAudioFormat
@@ -41,7 +47,7 @@ class BngvTeeAudioProcessor(
     override fun isActive(): Boolean = isActiveFlag
 
     override fun queueInput(inputBuffer: ByteBuffer) {
-        if (!isActiveFlag) {
+        if (!isActiveFlag || !isEnabled()) {
             outputBuffer = inputBuffer
             return
         }
@@ -52,9 +58,14 @@ class BngvTeeAudioProcessor(
         val limit = inputBuffer.limit()
         val size = limit - position
 
-        // Copy bytes for tee processing before consuming
-        val bytes = ByteArray(size)
-        inputBuffer.get(bytes)
+        // Copy bytes for tee processing before consuming (scratch reused, audio thread only)
+        val bytes =
+            if (scratchBytes.size < size) {
+                ByteArray(size).also { scratchBytes = it }
+            } else {
+                scratchBytes
+            }
+        inputBuffer.get(bytes, 0, size)
         // Reset position for output
         inputBuffer.position(position)
 
