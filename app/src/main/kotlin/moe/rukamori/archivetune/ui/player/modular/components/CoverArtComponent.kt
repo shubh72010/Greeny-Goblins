@@ -210,7 +210,8 @@ private fun LyricVariant(
     var currentPositionMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
         while (true) {
-            currentPositionMs = playerConnection.player.currentPosition.coerceAtLeast(0L)
+            // ponytail: failsafe — released player must end the poll, not crash the screen.
+            currentPositionMs = runCatching { playerConnection.player.currentPosition.coerceAtLeast(0L) }.getOrNull() ?: break
             withFrameNanos { }
         }
     }
@@ -325,20 +326,26 @@ private fun LyricVariant(
 }
 
 private fun parseLyricsWithTimings(lyrics: String): Pair<List<LyricsEntry>, Boolean> {
-    val normalized = LyricsUtils.normalizeLyricsText(lyrics)
-    if (normalized.isEmpty()) return Pair(emptyList(), false)
+    // ponytail: failsafe — malformed provider payloads must show unsynced text, not crash composition.
+    return runCatching {
+        val normalized = LyricsUtils.normalizeLyricsText(lyrics)
+        if (normalized.isEmpty()) return Pair(emptyList(), false)
 
-    if (LyricsUtils.isTtml(normalized)) {
-        val entries = LyricsUtils.parseTtml(normalized)
-        return Pair(entries, entries.isNotEmpty())
+        if (LyricsUtils.isTtml(normalized)) {
+            val entries = LyricsUtils.parseTtml(normalized)
+            return Pair(entries, entries.isNotEmpty())
+        }
+
+        if (LyricsUtils.isLineSyncedLrc(normalized)) {
+            val entries = LyricsUtils.parseLyrics(normalized)
+            return Pair(entries, entries.isNotEmpty())
+        }
+
+        val lines = normalized.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        val entries = lines.map { LyricsEntry(time = 0L, text = it) }
+        Pair(entries, false)
+    }.getOrElse {
+        val lines = lyrics.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        Pair(lines.map { LyricsEntry(time = 0L, text = it) }, false)
     }
-
-    if (LyricsUtils.isLineSyncedLrc(normalized)) {
-        val entries = LyricsUtils.parseLyrics(normalized)
-        return Pair(entries, entries.isNotEmpty())
-    }
-
-    val lines = normalized.lines().map { it.trim() }.filter { it.isNotEmpty() }
-    val entries = lines.map { LyricsEntry(time = 0L, text = it) }
-    return Pair(entries, false)
 }

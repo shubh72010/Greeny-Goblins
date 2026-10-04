@@ -320,19 +320,22 @@ class VisualizerHub(
         val hopCopy = hop.copyOf()
         mainHandler.post {
             pcmPostPending.set(false)
-            if (glyphRenderer.isDeeplySilent()) {
-                var hasSignal = false
-                for (s in hopCopy) if (kotlin.math.abs(s.toInt()) > 750) { hasSignal = true; break }
-                if (!hasSignal) {
-                    val frame = PendingFrame(IntArray(512), visualizerConfig, presetConfigVersion.get(), SystemClock.elapsedRealtime() + latencyMs)
-                    synchronized(pendingFrames) { pendingFrames.addLast(frame); dispatchDueFrames(pendingFrames) }
-                    return@post
+            // ponytail: failsafe — one bad FFT frame must drop, never take Main (and the app) down.
+            try {
+                if (glyphRenderer.isDeeplySilent()) {
+                    var hasSignal = false
+                    for (s in hopCopy) if (kotlin.math.abs(s.toInt()) > 750) { hasSignal = true; break }
+                    if (!hasSignal) {
+                        val frame = PendingFrame(IntArray(512), visualizerConfig, presetConfigVersion.get(), SystemClock.elapsedRealtime() + latencyMs)
+                        synchronized(pendingFrames) { pendingFrames.addLast(frame); dispatchDueFrames(pendingFrames) }
+                        return@post
+                    }
                 }
-            }
-            audioProcessor.updateFFTSize(sampleRate)
-            val result = audioProcessor.processAudioFrame(hopCopy, AudioProcessor.SourceType.INTERNAL, visualizerConfig?.decay ?: 0.85f) ?: return@post
-            val frame = PendingFrame(result.fftraw, visualizerConfig, presetConfigVersion.get(), SystemClock.elapsedRealtime() + latencyMs)
-            synchronized(pendingFrames) { pendingFrames.addLast(frame); dispatchDueFrames(pendingFrames) }
+                audioProcessor.updateFFTSize(sampleRate)
+                val result = audioProcessor.processAudioFrame(hopCopy, AudioProcessor.SourceType.INTERNAL, visualizerConfig?.decay ?: 0.85f) ?: return@post
+                val frame = PendingFrame(result.fftraw, visualizerConfig, presetConfigVersion.get(), SystemClock.elapsedRealtime() + latencyMs)
+                synchronized(pendingFrames) { pendingFrames.addLast(frame); dispatchDueFrames(pendingFrames) }
+            } catch (_: Exception) {}
         }
     }
 

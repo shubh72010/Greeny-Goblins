@@ -65,8 +65,10 @@ fun CanvasArtworkComponent(
         if (fetchInFlight) return@LaunchedEffect
         fetchInFlight = true
         try {
+            // ponytail: failsafe — one failed canvas lookup must not kill the player screen.
             canvasArtwork =
-                resolveCanvasArtworkForPlayback(
+                runCatching {
+                    resolveCanvasArtworkForPlayback(
                     mediaId = meta.id,
                     songTitleRaw = meta.title,
                     artistNameRaw = meta.artists.firstOrNull()?.name.orEmpty(),
@@ -78,6 +80,7 @@ fun CanvasArtworkComponent(
                     currentIsMusicVideo = meta.isMusicVideo,
                     canvasSource = canvasSource,
                 )
+                }.getOrNull()
         } finally {
             fetchInFlight = false
         }
