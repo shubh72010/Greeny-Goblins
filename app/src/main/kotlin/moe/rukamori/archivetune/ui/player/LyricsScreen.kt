@@ -165,7 +165,7 @@ fun LyricsScreen(
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
     val lyricsMode by rememberEnumPreference(LyricsModeKey, LyricsMode.ENHANCED)
     val showPlayerControlsState =
-        rememberPreference(ShowLyricsPlayerControlsKey, false)
+        rememberPreference(ShowLyricsPlayerControlsKey, true)
     val showPlayerControls by showPlayerControlsState
     val onShowPlayerControlsChange =
         remember(showPlayerControlsState) {
@@ -594,7 +594,18 @@ private fun AppleMusicGrabber(
                     role = Role.Button,
                     onClick = onClick,
                 ),
-    )
+        contentAlignment = Alignment.Center,
+    ) {
+        // ponytail: the 44dp grab area was completely invisible, reading as a stray gap.
+        Box(
+            modifier =
+                Modifier
+                    .width(36.dp)
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(2.5.dp))
+                    .background(AppleMusicForeground.copy(alpha = 0.45f)),
+        )
+    }
 }
 
 @Composable
@@ -743,7 +754,7 @@ private fun AppleMusicLyricsPane(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                        .padding(start = 24.dp, end = 24.dp, top = 18.dp, bottom = 16.dp),
             )
         }
     }
@@ -770,8 +781,8 @@ private fun AppleMusicLyricsProgressBar(
         trackColor = AppleMusicForeground.copy(alpha = 0.28f),
         modifier =
             modifier
-                .height(3.dp)
-                .clip(RoundedCornerShape(1.5.dp)),
+                .height(5.dp)
+                .clip(RoundedCornerShape(2.5.dp)),
     )
 }
 

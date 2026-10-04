@@ -547,17 +547,22 @@ fun LyricsEnhanced(
     val normalTextStyle =
         MaterialTheme.typography.headlineMedium.copy(
             fontSize = lyricsTextSize.sp,
+            // ponytail: proportional lineHeight — inherited headlineMedium 36sp clips
+            // descenders/tall scripts as soon as the user raises the size.
+            lineHeight = (lyricsTextSize * 1.3f).sp,
             fontWeight = FontWeight.Bold,
             fontFamily = lyricsFontFamily ?: MaterialTheme.typography.headlineMedium.fontFamily,
         )
     val accompanimentTextStyle =
         MaterialTheme.typography.titleLarge.copy(
             fontSize = (lyricsTextSize * 0.82f).sp,
+            lineHeight = (lyricsTextSize * 0.82f * 1.3f).sp,
             fontFamily = lyricsFontFamily ?: MaterialTheme.typography.titleLarge.fontFamily,
         )
     val phoneticTextStyle =
         MaterialTheme.typography.bodyMedium.copy(
             fontSize = (lyricsTextSize * 0.55f).sp,
+            lineHeight = (lyricsTextSize * 0.55f * 1.4f).sp,
             fontWeight = FontWeight.Normal,
         )
     val plainLyrics =

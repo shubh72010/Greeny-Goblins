@@ -48,10 +48,6 @@ fun LyricsAnimationSettings(navController: NavController) {
     val (lrcBounceEnabled, onLrcBounceEnabledChange) = rememberPreference(LyricsV2LrcBounceEnabledKey, defaultValue = true)
 
     Scaffold { innerPadding ->
-            SettingsEditorialHeader(
-                title = stringResource(R.string.lyrics_animation_style),
-                onBack = { navController.navigateUp() },
-            )
         val topPadding = innerPadding.calculateTopPadding()
 
         Column(
@@ -65,6 +61,12 @@ fun LyricsAnimationSettings(navController: NavController) {
                         ),
                     ).padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            // ponytail: header is the first list item (AppearanceSettings pattern) — was a
+            // Scaffold-content sibling floating over the list, overlapping the group title.
+            SettingsEditorialHeader(
+                title = stringResource(R.string.lyrics_animation_style),
+                onBack = { navController.navigateUp() },
+            )
             PreferenceGroup(title = "Animation Tuning") {
                 item {
                     PreferenceEntry(
