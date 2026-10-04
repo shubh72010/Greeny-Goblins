@@ -1215,6 +1215,21 @@ class MainActivity : ComponentActivity() {
                             },
                         )
 
+                    // ponytail: nav autohide reuses the header scroll behavior — when the
+                    // header is scrolled away the nav pill slides off too (no more stacked "2 bars").
+                    val navAutoHidden by remember(navBackStackEntry) {
+                        derivedStateOf {
+                            val behavior =
+                                when (navBackStackEntry?.destination?.route) {
+                                    Screens.Home.route -> homeScrollBehavior
+                                    Screens.Search.route -> searchScrollBehavior
+                                    else -> topAppBarScrollBehavior
+                                }
+                            val state = behavior.state
+                            state.heightOffsetLimit < 0f && state.heightOffset < state.heightOffsetLimit * 0.5f
+                        }
+                    }
+
                     val handlePrimaryNavigationClick: (Screens, Boolean) -> Unit = { screen, isSelected ->
                         if (isSelected) {
                             if (screen == Screens.Search) {
@@ -2009,6 +2024,12 @@ class MainActivity : ComponentActivity() {
                                         val navSlideDistance =
                                             bottomInset + floatingBarsBottomPadding + navVisibleHeight
 
+                                        val navAutoHideOffset by animateDpAsState(
+                                            targetValue = if (navAutoHidden && bottomNavigationBarHeight > 0.dp) navSlideDistance else 0.dp,
+                                            animationSpec = if (disableAnimations) snap() else NavigationBarAnimationSpec,
+                                            label = "",
+                                        )
+
                                         Box(
                                             modifier =
                                                 Modifier
@@ -2036,7 +2057,7 @@ class MainActivity : ComponentActivity() {
                                                                     )
                                                             IntOffset(
                                                                 x = 0,
-                                                                y = (slideOffset + hideOffset).roundToPx(),
+                                                                y = (slideOffset + hideOffset + navAutoHideOffset).roundToPx(),
                                                             )
                                                         }
                                                     },
