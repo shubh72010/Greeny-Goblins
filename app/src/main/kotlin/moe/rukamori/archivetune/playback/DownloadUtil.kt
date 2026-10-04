@@ -70,6 +70,16 @@ class DownloadUtil
         private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
         private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val songUrlCache = ConcurrentHashMap<String, AuthScopedCacheValue>()
+
+        // ponytail: cap 256 expired-first; was unbounded alongside the MusicService caches
+        private fun putBoundedSongUrl(key: String, value: AuthScopedCacheValue, maxSize: Int = 256) {
+            if (songUrlCache.size >= maxSize) {
+                val now = System.currentTimeMillis()
+                runCatching { songUrlCache.entries.removeIf { it.value.expiresAtMs <= now } }
+                if (songUrlCache.size >= maxSize) songUrlCache.keys.firstOrNull()?.let { songUrlCache.remove(it) }
+            }
+            songUrlCache[key] = value
+        }
         private val downloadExecutor = Executors.newFixedThreadPool(DEFAULT_MAX_PARALLEL_DOWNLOADS)
 
         private val mediaOkHttpClient: OkHttpClient by lazy {
@@ -166,12 +176,14 @@ class DownloadUtil
 
                 val streamUrl = playbackData.streamUrl
 
-                songUrlCache[streamCacheKey] =
+                putBoundedSongUrl(
+                    streamCacheKey,
                     AuthScopedCacheValue(
                         url = streamUrl,
                         expiresAtMs = System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L),
                         authFingerprint = playbackData.authFingerprint,
-                    )
+                    ),
+                )
                 dataSpec.withUri(streamUrl.toUri())
             }
 

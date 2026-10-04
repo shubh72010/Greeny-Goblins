@@ -63,9 +63,9 @@ data class SongEntity(
                 likedDate = if (!liked) LocalDateTime.now() else null,
                 inLibrary = if (!liked) inLibrary ?: LocalDateTime.now() else inLibrary,
             ).also {
-                CoroutineScope(Dispatchers.IO).launch {
-                    YouTube.likeVideo(id, !liked)
-                    this.cancel()
+                LikeScope.launch {
+                    runCatching { YouTube.likeVideo(id, !liked) }
+                        .onFailure { moe.rukamori.archivetune.utils.reportException(it) }
                 }
             }
         }

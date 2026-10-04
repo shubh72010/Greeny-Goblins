@@ -46,11 +46,12 @@ data class AlbumEntity(
     fun toggleLike() =
         localToggleLike().also {
             if (isLocal) return@also
-            CoroutineScope(Dispatchers.IO).launch {
+            LikeScope.launch {
+                runCatching {
                 if (playlistId != null) {
                     YouTube.likePlaylist(playlistId, bookmarkedAt == null)
                 }
-                this.cancel()
+                }.onFailure { moe.rukamori.archivetune.utils.reportException(it) }
             }
         }
 }

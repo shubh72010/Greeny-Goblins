@@ -514,7 +514,12 @@ fun BottomSheetPlayer(
     var previousGradientColors by remember { mutableStateOf<List<Color>>(emptyList()) }
 
     // Cache for gradient colors to prevent re-extraction for same songs
-    val gradientColorsCache = remember { mutableMapOf<String, List<Color>>() }
+    // ponytail: LRU 64 — was an unbounded remember{} map retained across rotations
+    val gradientColorsCache = remember {
+        object : LinkedHashMap<String, List<Color>>(64, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Color>>?) = size > 64
+        }
+    }
 
     // Default gradient colors for fallback
     val defaultGradientColors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)

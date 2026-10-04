@@ -113,22 +113,24 @@
 }
 
 ## Media3 Protection Rules
-# Protect Guava from conflicts with system versions
--keep class com.google.common.** { *; }
--keep class com.google.common.util.concurrent.** { *; }
--keep class com.google.common.collect.** { *; }
+# ponytail: narrowed — was -keep class com.google.common.** + androidx.media3.** (defeated shrinking).
+# Media3 ships consumer rules; only ListenableFuture (session binder) needs an explicit keep.
+-keep class com.google.common.util.concurrent.ListenableFuture { *; }
 -dontwarn com.google.common.**
 
-# Protect Media3 from obfuscation
--keep class androidx.media3.** { *; }
+# Keep Media3 session surface only; player impls shrink normally
 -keep interface androidx.media3.** { *; }
+-keep class androidx.media3.session.MediaSessionService { *; }
+-keep class androidx.media3.session.MediaLibraryService { *; }
 -dontwarn androidx.media3.**
 
 ## JAudioTagger - suppress missing AWT/ImageIO classes (not available on Android)
 -dontwarn java.awt.**
 -dontwarn javax.imageio.**
 -dontwarn javax.swing.**
--keep class org.jaudiotagger.** { *; }
+# ponytail: narrowed — was org.jaudiotagger.** (entire lib unshrunk)
+-keep class org.jaudiotagger.tag.** { *; }
+-keep class org.jaudiotagger.audio.** { *; }
 
 ## Jetpack Glance
 # Keep ActionCallback implementations and their no-arg constructors
@@ -142,13 +144,18 @@
 -keep class * extends androidx.glance.appwidget.GlanceAppWidget { *; }
 -keep class * extends androidx.glance.appwidget.GlanceAppWidgetReceiver { *; }
 
-# internal Ktor HTTP Client
--keep class io.ktor.** { *; }
+# internal Ktor HTTP Client — keep service-loader surface only (CIO engine registration)
+# ponytail: narrowed — was io.ktor.** (entire client+server unshrunk)
+-keep class io.ktor.client.engine.** { *; }
+-keep class io.ktor.server.engine.** { *; }
+-keep class io.ktor.serialization.** { *; }
 -dontwarn io.ktor.**
 -keep class moe.rukamori.archivetune.moriextractor.BackendExtractorResponse { *; }
 
 # JusPlayer Engine (JitPack) — keep provider API
--keep class org.jusplayer.** { *; }
+# ponytail: narrowed — was org.jusplayer.** (entire engine unshrunk)
+-keep class org.jusplayer.engine.provider.** { *; }
+-keep class org.jusplayer.engine.api.** { *; }
 -dontwarn org.jusplayer.**
 
 # engine HTTP Android/OkHttp Ktor

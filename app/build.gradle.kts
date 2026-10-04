@@ -446,8 +446,7 @@ dependencies {
     implementation(libs.ktor.server.websockets)
     implementation(libs.ktor.server.content.negotiation)
 
-    coreLibraryDesugaring(libs.desugaring)
-
+    // ponytail: desugaring dep removed — flag is false and minSdk 26 covers java.time/stream natively
     implementation(libs.timber)
     testImplementation(libs.junit)
     testImplementation(libs.turbine)
@@ -458,7 +457,8 @@ dependencies {
     implementation(libs.accompanist.lyrics.core)
 
     implementation("org.json:json:20240303")
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
+    // ponytail: explicit pinned blob — was fileTree("libs") pulling any dropped jar/aar into release
+    implementation(files("libs/glyph-matrix-sdk-2_0.aar"))
     implementation("com.github.wendykierp:JTransforms:3.1")
 
     implementation("com.github.shubh72010.JusPlayer-Engine:engine-api:v1.6.0")
@@ -522,8 +522,8 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
         freeCompilerArgs.addAll(
             "-opt-in=kotlin.RequiresOptIn"
         )
-        // Suppress warnings
-        suppressWarnings.set(true)
+        // ponytail: warnings visible — was suppressWarnings=true hiding Kotlin warnings in every build
+        suppressWarnings.set(false)
     }
 }
 

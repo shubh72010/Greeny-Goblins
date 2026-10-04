@@ -233,9 +233,12 @@ abstract class InternalDatabase : RoomDatabase() {
 }
 
 private class DatabaseCallback : RoomDatabase.Callback() {
+    // ponytail: one shared executor — was newSingleThreadExecutor() per onOpen (thread leak)
+    private val openExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
+
     override fun onOpen(db: SupportSQLiteDatabase) {
         super.onOpen(db)
-        java.util.concurrent.Executors.newSingleThreadExecutor().execute {
+        openExecutor.execute {
             try {
                 db.query("PRAGMA busy_timeout = 60000").close()
                 db.query("PRAGMA cache_size = -16000").close()
@@ -254,7 +257,10 @@ private class DatabaseCallback : RoomDatabase.Callback() {
 
     private fun cleanupDuplicatePlaylistsOnOpen(db: SupportSQLiteDatabase) {
         try {
-            db.execSQL(
+            // ponytail: transactional — was two bare DELETEs, crash between = orphan playlist_song_map rows
+            db.beginTransaction()
+            try {
+                db.execSQL(
                 """
                 DELETE FROM playlist_song_map WHERE playlistId IN (
                     SELECT p1.id FROM playlist p1
@@ -299,6 +305,10 @@ private class DatabaseCallback : RoomDatabase.Callback() {
                 )
             """,
             )
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Duplicate playlist cleanup skipped", e)
         }

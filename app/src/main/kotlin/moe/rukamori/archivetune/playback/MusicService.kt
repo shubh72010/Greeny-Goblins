@@ -6897,7 +6897,7 @@ class MusicService :
 
         val refreshedPlaybackTrackingUrl = remotePlaybackTracking?.remotePlaybackTrackingUrl()
         if (refreshedPlaybackTrackingUrl != null) {
-            remotePlaybackTrackingUrlCache[mediaId] = refreshedPlaybackTrackingUrl
+            putBoundedCache(remotePlaybackTrackingUrlCache, mediaId, refreshedPlaybackTrackingUrl)
             return registerTracking(refreshedPlaybackTrackingUrl)
         }
 
@@ -7786,7 +7786,7 @@ class MusicService :
                     .get(ContentMetadata.KEY_CONTENT_LENGTH, -1L)
             }.getOrNull()?.takeIf { it > 0L }
 
-        knownContentLength?.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
+        knownContentLength?.takeIf { it > 0L }?.let { putBoundedCache(contentLengthCache, mediaId, it) }
 
         if (allowCacheShortCircuit) {
             resolveCachedDataSpec(
@@ -7964,7 +7964,7 @@ class MusicService :
             }
         nonNullPlayback.playbackTracking
             ?.remotePlaybackTrackingUrl()
-            ?.let { remotePlaybackTrackingUrlCache[mediaId] = it }
+            ?.let { putBoundedCache(remotePlaybackTrackingUrlCache, mediaId, it) }
         val format = nonNullPlayback.format
         val loudnessDb = nonNullPlayback.audioConfig?.loudnessDb
         val perceptualLoudnessDb = nonNullPlayback.audioConfig?.perceptualLoudnessDb
@@ -7974,7 +7974,7 @@ class MusicService :
                 .substringAfter("codecs=", "")
                 .removeSurrounding("\"")
                 .substringBefore("\"")
-        resolvedContentLength.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
+        resolvedContentLength.takeIf { it > 0L }?.let { putBoundedCache(contentLengthCache, mediaId, it) }
 
         Timber
             .tag(
@@ -8401,13 +8401,13 @@ class MusicService :
             // Reuse innerTube success path side-effects with already-fetched data
             playbackData.playbackTracking
                 ?.remotePlaybackTrackingUrl()
-                ?.let { remotePlaybackTrackingUrlCache[mediaId] = it }
+                ?.let { putBoundedCache(remotePlaybackTrackingUrlCache, mediaId, it) }
             val format = playbackData.format
             val loudnessDb = playbackData.audioConfig?.loudnessDb
             val perceptualLoudnessDb = playbackData.audioConfig?.perceptualLoudnessDb
             val resolvedContentLength = format.contentLength ?: 0L
             val resolvedCodecs = format.mimeType.substringAfter("codecs=", "").removeSurrounding("\"").substringBefore("\"")
-            resolvedContentLength.takeIf { it > 0L }?.let { contentLengthCache[mediaId] = it }
+            resolvedContentLength.takeIf { it > 0L }?.let { putBoundedCache(contentLengthCache, mediaId, it) }
 
             val formatEntity = FormatEntity(
                 id = mediaId,

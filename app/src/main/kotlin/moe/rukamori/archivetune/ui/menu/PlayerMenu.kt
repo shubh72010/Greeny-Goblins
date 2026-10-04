@@ -308,7 +308,7 @@ fun PlayerMenu(
         ListDialog(
             onDismiss = { showSelectArtistDialog = false },
         ) {
-            items(splitArtists.distinctBy { it.name }, key = { it.name }) { splitArtist ->
+            items(splitArtists.distinctBy { it.originalArtist?.id ?: it.name }, key = { it.originalArtist?.id ?: it.name }) { splitArtist ->
                 ListItem(
                     headlineContent = {
                         Text(

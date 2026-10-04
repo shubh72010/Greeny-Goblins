@@ -46,13 +46,14 @@ data class ArtistEntity(
     fun toggleLike() =
         localToggleLike().also {
             if (isLocal) return@also
-            CoroutineScope(Dispatchers.IO).launch {
+            LikeScope.launch {
+                runCatching {
                 if (channelId == null) {
                     YouTube.subscribeChannel(YouTube.getChannelId(id), bookmarkedAt == null)
                 } else {
                     YouTube.subscribeChannel(channelId, bookmarkedAt == null)
                 }
-                this.cancel()
+                }.onFailure { moe.rukamori.archivetune.utils.reportException(it) }
             }
         }
 

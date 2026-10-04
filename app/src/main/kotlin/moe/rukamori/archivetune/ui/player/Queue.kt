@@ -1196,10 +1196,9 @@ fun Queue(
     }
 }
 
-private val Timeline.Window.queueItemKey: Long
-    get() =
-        (uid.hashCode().toLong() shl Int.SIZE_BITS) xor
-            (mediaItem.mediaId.hashCode().toLong() and UInt.MAX_VALUE.toLong())
+// ponytail: string identity — the old hash-xor Long could collide across windows
+private val Timeline.Window.queueItemKey: String
+    get() = "$uid:${mediaItem.mediaId}"
 
 @Composable
 private fun QueueSelectionFloatingToolbar(
