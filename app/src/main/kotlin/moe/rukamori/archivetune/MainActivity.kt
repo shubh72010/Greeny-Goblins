@@ -257,6 +257,7 @@ import moe.rukamori.archivetune.ui.component.LocalMenuState
 import moe.rukamori.archivetune.ui.component.MarkdownText
 import moe.rukamori.archivetune.ui.component.NetworkStatusBanner
 import moe.rukamori.archivetune.ui.component.StarDialog
+import moe.rukamori.archivetune.ui.component.StartupCover
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.component.TvNavigationRail
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
@@ -2420,6 +2421,16 @@ class MainActivity : ComponentActivity() {
                 }
             } // BoxWithConstraints
             } // CompositionLocalProvider
+            // ponytail: startup cover — brand veil until the service binds, exits upward
+            // continuing the wave's motion into the app reveal.
+            var startupCoverGone by remember { mutableStateOf(false) }
+            LaunchedEffect(playerConnection) {
+                if (playerConnection != null) {
+                    delay(600)
+                    startupCoverGone = true
+                }
+            }
+            StartupCover(visible = !startupCoverGone)
         }
     }
 
