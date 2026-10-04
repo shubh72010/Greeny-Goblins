@@ -339,7 +339,7 @@ class MainActivity : ComponentActivity() {
 
     private var playerConnection by mutableStateOf<PlayerConnection?>(null)
     private var isMusicServiceBound = false
-    private var immersiveStatusBarsHidden = false
+    private var immersiveSystemBarsHidden = false
 
     private val serviceConnection =
         object : ServiceConnection {
@@ -486,8 +486,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && immersiveStatusBarsHidden) {
-            setStatusBarsHidden(true)
+        if (hasFocus && immersiveSystemBarsHidden) {
+            setSystemBarsHidden(true)
         }
     }
 
@@ -1126,7 +1126,7 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(shouldHideStatusBars, aodModeEnabled) {
                         if (aodModeEnabled) return@LaunchedEffect
-                        setStatusBarsHidden(shouldHideStatusBars)
+                        setSystemBarsHidden(shouldHideStatusBars)
                     }
 
                     LaunchedEffect(isYearInMusicScreen, playerConnection) {
@@ -2724,8 +2724,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun setStatusBarsHidden(hidden: Boolean) {
-        immersiveStatusBarsHidden = hidden
+    // ponytail: extended immersive — hides status AND navigation bars (was status only),
+    // transient bars return on swipe. Active on Year-in-Music + expanded V7.
+    private fun setSystemBarsHidden(hidden: Boolean) {
+        immersiveSystemBarsHidden = hidden
         val controller = WindowCompat.getInsetsController(window, window.decorView)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -2744,11 +2746,11 @@ class MainActivity : ComponentActivity() {
             window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             controller.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(WindowInsetsCompat.Type.statusBars())
+            controller.hide(WindowInsetsCompat.Type.systemBars())
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-            controller.show(WindowInsetsCompat.Type.statusBars())
+            controller.show(WindowInsetsCompat.Type.systemBars())
         }
     }
 
