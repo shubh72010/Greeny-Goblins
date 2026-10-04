@@ -84,7 +84,8 @@ object TogetherOnlineEndpoint {
 
         val uri = runCatching { URI(candidate) }.getOrNull() ?: return null
         val scheme = uri.scheme?.trim()?.lowercase()
-        if (scheme != "http" && scheme != "https") return null
+        // ponytail: public endpoint must be https; cleartext only for loopback (networkSecurityConfig)
+        if (scheme != "https") return null
         val host = uri.host?.trim().orEmpty()
         if (host.isBlank()) return null
 

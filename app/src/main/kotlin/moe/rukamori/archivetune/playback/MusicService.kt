@@ -8981,11 +8981,24 @@ class MusicService :
     private inline fun <reified T> readPersistentObject(fileName: String): T? {
         val persistentFile = filesDir.resolve(fileName)
         if (!persistentFile.exists() || !persistentFile.isFile) return null
+        if (persistentFile.length() <= 0 || persistentFile.length() > 2 * 1024 * 1024) return null
 
         return synchronized(persistentStateLock) {
             runCatching {
                 persistentFile.inputStream().use { fis ->
-                    ObjectInputStream(fis).use { input ->
+                    object : ObjectInputStream(fis) {
+                        // ponytail: allowlist only our persisted graph; check-then-cast is too late otherwise
+                        override fun resolveClass(desc: java.io.ObjectStreamClass): Class<*> {
+                            val name = desc.name
+                            val allowed = name.startsWith("moe.rukamori.archivetune.models.") ||
+                                name.startsWith("moe.rukamori.archivetune.playback.") ||
+                                name.startsWith("java.util.") ||
+                                name.startsWith("java.lang.") ||
+                                name.startsWith("[")
+                            if (!allowed) throw java.io.InvalidClassException("Blocked persistent class: $name")
+                            return super.resolveClass(desc)
+                        }
+                    }.use { input ->
                         val payload = input.readObject()
                         check(payload is T) { "Unexpected persistent payload type for $fileName" }
                         payload

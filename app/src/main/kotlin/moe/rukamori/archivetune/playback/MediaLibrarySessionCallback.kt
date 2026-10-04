@@ -176,9 +176,21 @@ class MediaLibrarySessionCallback
         private fun readPersistentQueue(): PersistQueue? {
             val file = context.filesDir.resolve(PERSISTENT_QUEUE_FILE)
             if (!file.exists() || !file.isFile) return null
+            if (file.length() <= 0 || file.length() > 2 * 1024 * 1024) return null
             return try {
                 file.inputStream().use { fis ->
-                    ObjectInputStream(fis).use { input ->
+                    object : ObjectInputStream(fis) {
+                        // ponytail: allowlist our queue graph; resolveClass runs before instantiation (API-safe)
+                        override fun resolveClass(desc: java.io.ObjectStreamClass): Class<*> {
+                            val name = desc.name
+                            val allowed = name.startsWith("moe.rukamori.archivetune.models.") ||
+                                name.startsWith("java.util.") ||
+                                name.startsWith("java.lang.") ||
+                                name.startsWith("[")
+                            if (!allowed) throw java.io.InvalidClassException("Blocked persistent class: $name")
+                            return super.resolveClass(desc)
+                        }
+                    }.use { input ->
                         input.readObject() as? PersistQueue
                     }
                 }

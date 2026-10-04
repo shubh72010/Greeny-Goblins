@@ -74,6 +74,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
 
+        // ponytail: app-level API keys only; missing/blank = feature disabled (never a user secret).
+        // Baked into BuildConfig by design — Together/Extractor paths already treat blank as disabled.
         val lastfmApiKey =
             localProperties.getProperty("LASTFM_API_KEY")
                 ?: System.getenv("LASTFM_API_KEY")

@@ -45,6 +45,11 @@ const val LOGIN_URL_ARGUMENT = "url"
 
 fun buildLoginRoute(startUrl: String? = null): String {
     val resolvedUrl = startUrl?.trim().takeUnless { it.isNullOrBlank() } ?: return LOGIN_ROUTE
+    // ponytail: open-redirect guard — only Google/YouTube auth pages may be loaded with the JS bridge
+    val host = runCatching { Uri.parse(resolvedUrl).host?.lowercase() }.getOrNull()
+    val allowed = host != null && (host == "accounts.google.com" || host.endsWith(".accounts.google.com") ||
+        host.endsWith("youtube.com") || host.endsWith("music.youtube.com") || host.endsWith("google.com"))
+    if (!allowed) return LOGIN_ROUTE
     return "$LOGIN_ROUTE?$LOGIN_URL_ARGUMENT=${Uri.encode(resolvedUrl)}"
 }
 
@@ -127,6 +132,14 @@ fun LoginScreen(
                     setSupportZoom(true)
                     builtInZoomControls = true
                     displayZoomControls = false
+                    allowFileAccess = false
+                    allowContentAccess = false
+                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                }
+                runCatching {
+                    // ponytail: no file-URL JS access for the auth bridge
+                    settings.allowFileAccessFromFileURLs = false
+                    settings.allowUniversalAccessFromFileURLs = false
                 }
                 addJavascriptInterface(
                     object {
@@ -148,8 +161,9 @@ fun LoginScreen(
                     "Android",
                 )
                 webView = this
+                val safeStart = startUrl?.takeIf { buildLoginRoute(it) != LOGIN_ROUTE } ?: DEFAULT_LOGIN_URL
                 resetAuthWebViewSession(context, this, clearCookies = true) {
-                    loadUrl(startUrl?.takeIf { it.isNotBlank() } ?: DEFAULT_LOGIN_URL)
+                    loadUrl(safeStart)
                 }
             }
         },

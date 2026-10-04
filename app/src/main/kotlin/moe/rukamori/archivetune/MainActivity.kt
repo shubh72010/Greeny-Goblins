@@ -2414,8 +2414,13 @@ class MainActivity : ComponentActivity() {
     ) {
         if (intent == null) return
         intent.getStringExtra("navigate_to")?.takeIf { it.isNotBlank() }?.let { route ->
-            navController.navigate(route) {
-                launchSingleTop = true
+            // ponytail: allowlist only — any app can send this extra
+            if (route.matches(Regex("^(home|search|library|settings(/[a-z_/]+)?|login|update)$"))) {
+                runCatching {
+                    navController.navigate(route) {
+                        launchSingleTop = true
+                    }
+                }
             }
             intent.removeExtra("navigate_to")
             return
@@ -2473,7 +2478,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-            }.distinct()
+            }.distinct().take(20)
 
         if (incomingUris.isEmpty()) return false
 
@@ -2552,9 +2557,13 @@ class MainActivity : ComponentActivity() {
 
         val authority = uri.authority?.lowercase()
         if (uri.scheme.equals("archivetune", ignoreCase = true) && authority == "together") {
-            pendingTogetherJoinLink = uri.toString()
-            startMusicServiceSafely()
-            joinPendingTogetherIfReady()
+            // ponytail: reject attacker ws:// hosts; guest taps go through Together validation anyway
+            val ws = uri.getQueryParameter("ws").orEmpty()
+            if (ws.isBlank() || ws.startsWith("ws://", true) || ws.startsWith("wss://", true)) {
+                pendingTogetherJoinLink = uri.toString()
+                startMusicServiceSafely()
+                joinPendingTogetherIfReady()
+            }
             return
         }
 
