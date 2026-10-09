@@ -16,11 +16,13 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
+import moe.rukamori.archivetune.innertube.models.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.pages.ArtistItemsPageLayout
 import moe.rukamori.archivetune.models.ItemsPage
@@ -64,6 +66,7 @@ class ArtistItemsViewModel
                                     artistItemsPage.items
                                         .distinctBy { it.id }
                                         .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                        .filterBlockedTitles(context.dataStore.get(HideBlockedTitlesKey, false))
                                         .filterBlockedArtists(database.getBlockedArtistIds().toSet()),
                                 continuation = artistItemsPage.continuation,
                             )
@@ -86,6 +89,7 @@ class ArtistItemsViewModel
                                     (oldItemsPage.items + artistItemsContinuationPage.items)
                                         .distinctBy { it.id }
                                         .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                        .filterBlockedTitles(context.dataStore.get(HideBlockedTitlesKey, false))
                                         .filterBlockedArtists(database.getBlockedArtistIds().toSet()),
                                 continuation = artistItemsContinuationPage.continuation,
                             )

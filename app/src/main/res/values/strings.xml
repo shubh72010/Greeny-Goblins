@@ -671,6 +671,8 @@
     <string name="romanization">Romanization</string>
     <string name="hide_explicit">Hide explicit content</string>
     <string name="hide_video">Hide music videos</string>
+    <string name="hide_blocked_titles">Hide blocked titles</string>
+    <string name="hide_blocked_titles_summary">Hide songs with Montagem or Funk in the title</string>
     <string name="backup_restore">Backup and restore</string>
     <string name="action_backup">Backup</string>
     <string name="action_restore">Restore</string>

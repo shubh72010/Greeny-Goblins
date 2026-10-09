@@ -198,6 +198,7 @@ import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.ImageBlurUtils
+import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
@@ -357,6 +358,8 @@ fun BottomSheetPlayer(
     val (playerCustomBrightness) = rememberPreference(PlayerCustomBrightnessKey, 1f)
 
     val (disableBlur) = rememberPreference(DisableBlurKey, true)
+    // ponytail: fullscreen blurs skip entirely on low-RAM, same gate as lyrics lines
+    val isLowRam = remember(context) { context.isLowRamDevice() }
     val (blurRadius) = rememberPreference(BlurRadiusKey, 48f)
     // ponytail: 48dp blur is a full-screen RenderEffect every frame — clamp to 20dp ceiling
     val safeBlurRadius = blurRadius.coerceIn(0f, 20f)
@@ -1495,8 +1498,11 @@ fun BottomSheetPlayer(
                 } else if (playerDesignStyle == PlayerDesignStyle.V10) {
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)).padding(bottom = queueSheetState.collapsedBound + 16.dp).nestedScroll(state.preUpPostDownNestedScrollConnection)) {
                         enrichedMetadata?.thumbnailUrl?.let { thumb ->
-                            val blurMod = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) Modifier.blur(32.dp) else Modifier
-                            AsyncImage(model = thumb, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().then(blurMod).graphicsLayer { scaleX = 1.2f; scaleY = 1.2f; alpha = 0.38f })
+                            // ponytail: 20dp ceiling + disableBlur/low-RAM gate, pre-sized like V8
+                            val v10BackdropModel = remember(thumb) { thumb.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx) }
+                            val v10BackdropRequest = rememberOfflineArtworkImageRequest(v10BackdropModel)
+                            val blurMod = if (!disableBlur && !isLowRam && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) Modifier.blur(20.dp) else Modifier
+                            AsyncImage(model = v10BackdropRequest, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().then(blurMod).graphicsLayer { scaleX = 1.2f; scaleY = 1.2f; alpha = 0.38f })
                         }
                         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.10f), 1f to Color.Black.copy(alpha = 0.78f))))
                         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)))
@@ -1833,9 +1839,12 @@ fun BottomSheetPlayer(
                     ) {
                         // ambient blurred cover = fills "empty" feeling, cheap (no Palette)
                         enrichedMetadata?.thumbnailUrl?.let { thumb ->
-                            val blurMod = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) Modifier.blur(36.dp) else Modifier
+                            // ponytail: 20dp ceiling + disableBlur/low-RAM gate, pre-sized like V8
+                            val ambientBackdropModel = remember(thumb) { thumb.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx) }
+                            val ambientBackdropRequest = rememberOfflineArtworkImageRequest(ambientBackdropModel)
+                            val blurMod = if (!disableBlur && !isLowRam && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) Modifier.blur(20.dp) else Modifier
                             AsyncImage(
-                                model = thumb,
+                                model = ambientBackdropRequest,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize().then(blurMod).graphicsLayer { scaleX = 1.25f; scaleY = 1.25f; alpha = 0.42f },
@@ -2367,7 +2376,7 @@ private fun V7PlayerBackdrop(
                     ),
             )
         }
-    val backdropBlurRadius = V7BackdropBlurDp.dp * (backdropBlurAmount.toFloat() / 100f)
+    val backdropBlurRadius = (V7BackdropBlurDp.dp * (backdropBlurAmount.toFloat() / 100f)).coerceAtMost(20.dp)
     val needsBlur = !disableBlur && backdropBlurAmount > 0
     val backdropImageModifier =
         remember(disableBlur, needsBlur) {

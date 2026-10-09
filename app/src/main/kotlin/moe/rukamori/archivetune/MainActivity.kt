@@ -2022,10 +2022,32 @@ class MainActivity : ComponentActivity() {
                                 },
                                 bottomBar = {
                                     Box {
+                                        // ponytail: when the pill auto-hides, the collapsed miniplayer
+                                        // drops by exactly the pill stack height so it lands where the
+                                        // pill was instead of floating over a gap. Expanded sheet unaffected.
+                                        val miniPlayerDropOffset by animateDpAsState(
+                                            targetValue =
+                                                if (navAutoHidden && bottomNavigationBarHeight > 0.dp &&
+                                                    shouldShowNavigationBar && !useRail
+                                                ) {
+                                                    floatingBarsBottomPadding + navVisibleHeight
+                                                } else {
+                                                    0.dp
+                                                },
+                                            animationSpec = if (disableAnimations) snap() else NavigationBarAnimationSpec,
+                                            label = "",
+                                        )
                                         BottomSheetPlayer(
                                             state = playerBottomSheetState,
                                             navController = navController,
                                             pureBlack = pureBlack,
+                                            modifier =
+                                                Modifier.offset {
+                                                    val drop =
+                                                        miniPlayerDropOffset *
+                                                            (1f - playerBottomSheetState.progress.coerceIn(0f, 1f))
+                                                    IntOffset(x = 0, y = drop.roundToPx())
+                                                },
                                         )
 
                                         if (useRail) return@Box

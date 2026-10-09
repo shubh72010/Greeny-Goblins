@@ -56,6 +56,7 @@ import moe.rukamori.archivetune.constants.ArtistSongSortTypeKey
 import moe.rukamori.archivetune.constants.ArtistSortDescendingKey
 import moe.rukamori.archivetune.constants.ArtistSortType
 import moe.rukamori.archivetune.constants.ArtistSortTypeKey
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.LibraryFilter
@@ -71,6 +72,7 @@ import moe.rukamori.archivetune.constants.TopSize
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.Song
+import moe.rukamori.archivetune.extensions.filterBlockedTitles
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.extensions.filterExplicitAlbums
 import moe.rukamori.archivetune.extensions.reversed
@@ -118,19 +120,20 @@ class LibrarySongsViewModel
                             it[SongSortTypeKey].toEnum(SongSortType.CREATE_DATE),
                             (it[SongSortDescendingKey] ?: true),
                         ),
-                        it[HideExplicitKey] ?: false,
+                        (it[HideExplicitKey] ?: false) to (it[HideBlockedTitlesKey] ?: false),
                         it[HideVideoKey] ?: false,
                     )
                 }.distinctUntilChanged()
-                .flatMapLatest { (filterSort, hideExplicit, hideVideo) ->
+                .flatMapLatest { (filterSort, explicitAndBlocked, hideVideo) ->
+                    val (hideExplicit, hideBlockedTitles) = explicitAndBlocked
                     val (filter, sortType, descending) = filterSort
                     when (filter) {
                         SongFilter.LIBRARY -> {
-                            database.songs(sortType, descending, hideVideo).map { it.filterExplicit(hideExplicit) }
+                            database.songs(sortType, descending, hideVideo).map { it.filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles) }
                         }
 
                         SongFilter.LIKED -> {
-                            database.likedSongs(sortType, descending, hideVideo).map { it.filterExplicit(hideExplicit) }
+                            database.likedSongs(sortType, descending, hideVideo).map { it.filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles) }
                         }
 
                         SongFilter.DOWNLOADED -> {
@@ -168,7 +171,7 @@ class LibrarySongsViewModel
                                             SongSortType.PLAY_TIME -> {
                                                 songs.sortedBy { song: Song -> song.song.totalPlayTime }
                                             }
-                                        }.reversed(descending).filterExplicit(hideExplicit)
+                                        }.reversed(descending).filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles)
                                     }
                             }
                         }
@@ -468,12 +471,13 @@ class ArtistSongsViewModel
                             it[ArtistSongSortDescendingKey]
                                 ?: true
                         ),
-                        it[HideExplicitKey] ?: false,
+                        (it[HideExplicitKey] ?: false) to (it[HideBlockedTitlesKey] ?: false),
                     )
                 }.distinctUntilChanged()
-                .flatMapLatest { (sortDesc, hideExplicit) ->
+                .flatMapLatest { (sortDesc, explicitAndBlocked) ->
                     val (sortType, descending) = sortDesc
-                    database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit) }
+                    val (hideExplicit, hideBlockedTitles) = explicitAndBlocked
+                    database.artistSongs(artistId, sortType, descending).map { it.filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles) }
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     }
 

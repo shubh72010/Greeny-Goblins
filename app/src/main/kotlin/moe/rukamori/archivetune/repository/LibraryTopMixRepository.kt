@@ -18,12 +18,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
 import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.Song
+import moe.rukamori.archivetune.extensions.filterBlockedTitles
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.library.GeneratedLibraryTopMix
 import moe.rukamori.archivetune.library.LibraryTopMix
@@ -46,8 +48,8 @@ class LibraryTopMixRepository
         private val database: MusicDatabase,
     ) {
         fun observePersistedTopMixes(): Flow<List<LibraryTopMix>> =
-            hideExplicitEnabled()
-                .flatMapLatest { hideExplicit ->
+            hideContentFilters()
+                .flatMapLatest { (hideExplicit, hideBlockedTitles) ->
                     database
                         .libraryTopMixes(LibraryTopMixDisplayLimit)
                         .map { mixes ->
@@ -56,6 +58,7 @@ class LibraryTopMixRepository
                                     database
                                         .libraryTopMixSongs(mix.id)
                                         .filterExplicit(hideExplicit)
+                                        .filterBlockedTitles(hideBlockedTitles)
                                         .map { it.toMediaMetadata() }
                                 if (tracks.isEmpty()) {
                                     null
@@ -72,11 +75,11 @@ class LibraryTopMixRepository
                 }.flowOn(Dispatchers.IO)
 
         suspend fun recentSongsForTopMixes(limit: Int): List<Song> =
-            hideExplicitEnabled()
-                .flatMapLatest { hideExplicit ->
+            hideContentFilters()
+                .flatMapLatest { (hideExplicit, hideBlockedTitles) ->
                     database
                         .recentSongs(limit)
-                        .map { songs -> songs.filterExplicit(hideExplicit) }
+                        .map { songs -> songs.filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles) }
                 }.first()
 
         suspend fun replaceTopMixes(mixes: List<GeneratedLibraryTopMix>) {
@@ -109,53 +112,56 @@ class LibraryTopMixRepository
         }
 
         fun observeRecentTracks(): Flow<List<MediaMetadata>> =
-            hideExplicitEnabled()
-                .flatMapLatest { hideExplicit ->
+            hideContentFilters()
+                .flatMapLatest { (hideExplicit, hideBlockedTitles) ->
                     database
                         .recentSongs(LibraryTopMixCandidateLimit)
-                        .map { songs -> songs.filterExplicit(hideExplicit).map { it.toMediaMetadata() } }
+                        .map { songs -> songs.filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles).map { it.toMediaMetadata() } }
                 }.flowOn(Dispatchers.IO)
 
         fun observeLikedTracks(): Flow<List<MediaMetadata>> =
-            hideExplicitEnabled()
-                .flatMapLatest { hideExplicit ->
+            hideContentFilters()
+                .flatMapLatest { (hideExplicit, hideBlockedTitles) ->
                     database
                         .likedSongsByCreateDateAsc()
                         .map { songs ->
                             songs
                                 .filterExplicit(hideExplicit)
+                                .filterBlockedTitles(hideBlockedTitles)
                                 .asReversed()
                                 .map { it.toMediaMetadata() }
                         }
                 }.flowOn(Dispatchers.IO)
 
         fun observeListenedTracks(): Flow<List<MediaMetadata>> =
-            hideExplicitEnabled()
-                .flatMapLatest { hideExplicit ->
+            hideContentFilters()
+                .flatMapLatest { (hideExplicit, hideBlockedTitles) ->
                     database
                         .songs(SongSortType.PLAY_TIME, descending = true, filterVideo = true)
                         .map { songs ->
                             songs
                                 .filterExplicit(hideExplicit)
+                                .filterBlockedTitles(hideBlockedTitles)
                                 .filter { it.song.totalPlayTime > 0L }
                                 .map { it.toMediaMetadata() }
                         }
                 }.flowOn(Dispatchers.IO)
 
         fun observeLibraryTracks(): Flow<List<MediaMetadata>> =
-            hideExplicitEnabled()
-                .flatMapLatest { hideExplicit ->
+            hideContentFilters()
+                .flatMapLatest { (hideExplicit, hideBlockedTitles) ->
                     database
                         .songs(SongSortType.CREATE_DATE, descending = true, filterVideo = true)
                         .map { songs ->
                             songs
                                 .filterExplicit(hideExplicit)
+                                .filterBlockedTitles(hideBlockedTitles)
                                 .map { it.toMediaMetadata() }
                         }
                 }.flowOn(Dispatchers.IO)
 
-        private fun hideExplicitEnabled(): Flow<Boolean> =
+        private fun hideContentFilters(): Flow<Pair<Boolean, Boolean>> =
             context.dataStore.data
-                .map { preferences -> preferences[HideExplicitKey] ?: false }
+                .map { preferences -> (preferences[HideExplicitKey] ?: false) to (preferences[HideBlockedTitlesKey] ?: false) }
                 .distinctUntilChanged()
     }

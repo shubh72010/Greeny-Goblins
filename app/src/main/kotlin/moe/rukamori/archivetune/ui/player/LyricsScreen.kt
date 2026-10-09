@@ -99,6 +99,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.LyricsMode
 import moe.rukamori.archivetune.constants.LyricsModeKey
@@ -114,6 +115,8 @@ import moe.rukamori.archivetune.ui.component.LyricsV2
 import moe.rukamori.archivetune.ui.component.PlayerSliderTrack
 import moe.rukamori.archivetune.ui.menu.LyricsMenu
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
+import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -299,12 +302,13 @@ fun LyricsScreen(
         gradientColorsCache[thumbnailUrl] = gradientColors
     }
 
-    LaunchedEffect(player, playbackState, mediaMetadata.id) {
+    LaunchedEffect(player, playbackState, mediaMetadata.id, isPlaying) {
         if (playbackState != STATE_READY && playbackState != STATE_BUFFERING) return@LaunchedEffect
         while (isActive) {
             positionState.longValue = player.currentPosition.coerceAtLeast(0L)
             durationState.longValue = player.duration
-            delay(250)
+            // ponytail: paused position is static — 1s backoff instead of 4Hz binder polls.
+            delay(if (isPlaying) 250 else 1000)
         }
     }
 
@@ -510,6 +514,11 @@ private fun AppleMusicBackground(
     gradientColors: List<Color>,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val (disableBlur) = rememberPreference(DisableBlurKey, true)
+    val isLowRam = remember(context) { context.isLowRamDevice() }
+    // ponytail: 46dp fullscreen blur was the largest radius in the repo — 20dp ceiling + gate.
+    val backdropBlurEnabled = !disableBlur && !isLowRam
     val colors = if (gradientColors.isNotEmpty()) gradientColors else AppleMusicFallbackGradient
     val backgroundBrush =
         remember(colors) {
@@ -543,14 +552,15 @@ private fun AppleMusicBackground(
             label = "lyrics-apple-background",
         ) { thumbnailUrl ->
             if (thumbnailUrl != null) {
+                val backdropModel = remember(thumbnailUrl) { thumbnailUrl.resize(500, 500) }
                 AsyncImage(
-                    model = thumbnailUrl,
+                    model = backdropModel,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .blur(46.dp)
+                            .then(if (backdropBlurEnabled) Modifier.blur(20.dp) else Modifier)
                             .alpha(0.62f),
                 )
             }

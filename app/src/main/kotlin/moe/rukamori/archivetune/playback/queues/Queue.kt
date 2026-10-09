@@ -10,6 +10,7 @@ package moe.rukamori.archivetune.playback.queues
 import androidx.media3.common.MediaItem
 import moe.rukamori.archivetune.extensions.ExtraIsMusicVideo
 import moe.rukamori.archivetune.extensions.metadata
+import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
 import moe.rukamori.archivetune.models.MediaMetadata
 
 interface Queue {
@@ -39,6 +40,13 @@ interface Queue {
         fun filterVideo(enabled: Boolean = true) =
             if (enabled) {
                 filterItems { it.mediaMetadata.extras?.getBoolean(ExtraIsMusicVideo, false) != true }
+            } else {
+                this
+            }
+
+        fun filterBlockedTitles(enabled: Boolean = true) =
+            if (enabled) {
+                filterItems { it.metadata?.title?.containsBlockedTitleWord() != true }
             } else {
                 this
             }
@@ -85,6 +93,15 @@ fun List<MediaItem>.filterVideo(enabled: Boolean = true) =
     if (enabled) {
         filterNot {
             it.mediaMetadata.extras?.getBoolean(ExtraIsMusicVideo, false) == true
+        }
+    } else {
+        this
+    }
+
+fun List<MediaItem>.filterBlockedTitles(enabled: Boolean = true) =
+    if (enabled) {
+        filterNot {
+            it.metadata?.title?.containsBlockedTitleWord() == true
         }
     } else {
         this

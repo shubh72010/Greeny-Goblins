@@ -28,9 +28,11 @@ import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortDescendingKey
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortType
 import moe.rukamori.archivetune.constants.AutoPlaylistSongSortTypeKey
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.SongSortType
 import moe.rukamori.archivetune.db.MusicDatabase
+import moe.rukamori.archivetune.extensions.filterBlockedTitles
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.extensions.reversed
 import moe.rukamori.archivetune.extensions.toEnum
@@ -74,15 +76,16 @@ class AutoPlaylistViewModel
                             it[AutoPlaylistSongSortDescendingKey]
                                 ?: true
                         ),
-                        it[HideExplicitKey] ?: false,
+                        (it[HideExplicitKey] ?: false) to (it[HideBlockedTitlesKey] ?: false),
                     )
                 }.distinctUntilChanged()
-                .flatMapLatest { (sortDesc, hideExplicit) ->
+                .flatMapLatest { (sortDesc, explicitAndBlocked) ->
                     val (sortType, descending) = sortDesc
+                    val (hideExplicit, hideBlockedTitles) = explicitAndBlocked
                     val songSortType = sortType.toSongSortType()
                     when (playlist) {
                         "liked" -> {
-                            database.likedSongs(songSortType, descending).map { it.filterExplicit(hideExplicit) }
+                            database.likedSongs(songSortType, descending).map { it.filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles) }
                         }
 
                         "downloaded" -> {
@@ -115,7 +118,7 @@ class AutoPlaylistViewModel
                                             SongSortType.PLAY_TIME -> {
                                                 songs.sortedBy { it.song.totalPlayTime }
                                             }
-                                        }.reversed(descending).filterExplicit(hideExplicit)
+                                        }.reversed(descending).filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles)
                                     }
                             }
                         }

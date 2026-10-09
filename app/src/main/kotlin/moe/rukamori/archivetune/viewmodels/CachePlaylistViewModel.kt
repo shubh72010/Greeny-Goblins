@@ -17,11 +17,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.di.DownloadCache
 import moe.rukamori.archivetune.di.PlayerCache
+import moe.rukamori.archivetune.extensions.filterBlockedTitles
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
@@ -44,6 +46,7 @@ class CachePlaylistViewModel
             viewModelScope.launch(Dispatchers.IO) {
                 while (true) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                    val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
                     val cachedIds = playerCache.keys.toSet()
                     val downloadedIds = downloadCache.keys.toSet()
                     val pureCacheIds = cachedIds.subtract(downloadedIds)
@@ -76,6 +79,7 @@ class CachePlaylistViewModel
                             .filter { it.song.dateDownload != null }
                             .sortedByDescending { it.song.dateDownload }
                             .filterExplicit(hideExplicit)
+                            .filterBlockedTitles(hideBlockedTitles)
 
                     delay(1000)
                 }

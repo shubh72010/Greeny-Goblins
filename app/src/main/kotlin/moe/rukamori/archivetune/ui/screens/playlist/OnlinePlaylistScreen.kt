@@ -117,6 +117,7 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.DisableBlurKey
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
@@ -125,6 +126,7 @@ import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
+import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.DraggableScrollbar
@@ -187,6 +189,7 @@ fun OnlinePlaylistScreen(
 
     var selection by remember { mutableStateOf(false) }
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val hideBlockedTitles by rememberPreference(key = HideBlockedTitlesKey, defaultValue = false)
     val (disableBlur) = rememberPreference(DisableBlurKey, true)
 
     // System bars padding
@@ -1118,7 +1121,8 @@ fun OnlinePlaylistScreen(
                             modifier =
                                 Modifier
                                     .combinedClickable(
-                                        enabled = !hideExplicit || !song.item.second.explicit,
+                                        enabled = (!hideExplicit || !song.item.second.explicit) &&
+                                            (!hideBlockedTitles || !song.item.second.title.containsBlockedTitleWord()),
                                         onClick = {
                                             if (!selection) {
                                                 if (song.item.second.id == mediaMetadata?.id) {

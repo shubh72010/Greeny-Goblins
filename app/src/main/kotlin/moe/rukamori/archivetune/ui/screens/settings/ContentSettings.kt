@@ -83,6 +83,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
         )
     val (hideExplicit, onHideExplicitChange) = rememberPreference(key = HideExplicitKey, defaultValue = false)
     val (hideVideo, onHideVideoChange) = rememberPreference(key = HideVideoKey, defaultValue = false)
+    val (hideBlockedTitles, onHideBlockedTitlesChange) = rememberPreference(key = HideBlockedTitlesKey, defaultValue = false)
     val (lengthTop, onLengthTopChange) = rememberPreference(key = TopSize, defaultValue = "50")
     val (quickPicks, onQuickPicksChange) = rememberEnumPreference(key = QuickPicksKey, defaultValue = QuickPicks.QUICK_PICKS)
 
@@ -134,6 +135,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                         onContentLanguageChange(newValue)
                     },
                 )
+                    }
             }
 
             item {
@@ -160,6 +162,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                         onContentCountryChange(newValue)
                     },
                 )
+                    }
             }
 
             item {
@@ -192,6 +195,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                     checked = hideExplicit,
                     onCheckedChange = onHideExplicitChange,
                 )
+                    }
             }
 
             item {
@@ -202,6 +206,19 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                     checked = hideVideo,
                     onCheckedChange = onHideVideoChange,
                 )
+                    }
+            }
+
+            item {
+                    HighlightablePreference(highlightKey = "hide_blocked_titles", highlight = highlight) {
+                SwitchPreference(
+                    title = { Text(stringResource(R.string.hide_blocked_titles)) },
+                    description = stringResource(R.string.hide_blocked_titles_summary),
+                    icon = { Icon(painterResource(R.drawable.filter_alt), null) },
+                    checked = hideBlockedTitles,
+                    onCheckedChange = onHideBlockedTitlesChange,
+                )
+                    }
             }
         }
 
@@ -223,11 +240,8 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                         checked = useDefault,
                         onCheckedChange = onUseDefaultChange,
                     )
-                    }
-                    }
-                    }
-                    }
                 }
+            }
                 item {
                     SwitchPreference(
                         title = { Text("Censor lyrics") },
@@ -253,7 +267,6 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                     )
                 }
             }
-        }
 
         PreferenceGroup(title = stringResource(R.string.app_language)) {
             item {

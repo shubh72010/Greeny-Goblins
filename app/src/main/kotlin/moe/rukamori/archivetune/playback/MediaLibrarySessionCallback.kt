@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.MediaSessionConstants
@@ -56,6 +57,7 @@ import moe.rukamori.archivetune.extensions.toggleRepeatMode
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.models.PersistQueue
@@ -1524,6 +1526,7 @@ class MediaLibrarySessionCallback
         private suspend fun homeSuggestedSongs(): List<SongItem> {
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideo = context.dataStore.get(HideVideoKey, false)
+            val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
             return YouTube
                 .home()
                 .getOrNull()
@@ -1531,6 +1534,7 @@ class MediaLibrarySessionCallback
                 .orEmpty()
                 .flatMap { it.items }
                 .filterExplicit(hideExplicit)
+                .filterBlockedTitles(hideBlockedTitles)
                 .filterVideo(hideVideo)
                 .filterIsInstance<SongItem>()
                 .distinctBy { it.id }
@@ -1564,6 +1568,7 @@ class MediaLibrarySessionCallback
         private suspend fun homeOnlinePlaylists(): List<MediaItem> {
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideo = context.dataStore.get(HideVideoKey, false)
+            val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
             return YouTube
                 .home()
                 .getOrNull()
@@ -1571,6 +1576,7 @@ class MediaLibrarySessionCallback
                 .orEmpty()
                 .flatMap { it.items }
                 .filterExplicit(hideExplicit)
+                .filterBlockedTitles(hideBlockedTitles)
                 .filterVideo(hideVideo)
                 .filterIsInstance<PlaylistItem>()
                 .distinctBy { it.id }

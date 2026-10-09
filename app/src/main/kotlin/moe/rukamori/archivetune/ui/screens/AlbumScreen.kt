@@ -104,7 +104,9 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
+import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio
@@ -162,6 +164,7 @@ fun AlbumScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val otherVersions by viewModel.otherVersions.collectAsStateWithLifecycle()
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val hideBlockedTitles by rememberPreference(key = HideBlockedTitlesKey, defaultValue = false)
 
     // System bars padding
     val systemBarsTopPadding = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
@@ -214,13 +217,12 @@ fun AlbumScreen(
     }
 
     val wrappedSongs =
-        remember(albumWithSongs, hideExplicit) {
+        remember(albumWithSongs, hideExplicit, hideBlockedTitles) {
             val filteredSongs =
-                if (hideExplicit) {
-                    albumWithSongs?.songs?.filter { !it.song.explicit } ?: emptyList()
-                } else {
-                    albumWithSongs?.songs ?: emptyList()
-                }
+                albumWithSongs?.songs?.filter {
+                    (!hideExplicit || !it.song.explicit) &&
+                        (!hideBlockedTitles || !it.song.title.containsBlockedTitleWord())
+                } ?: emptyList()
             filteredSongs.map { item -> ItemWrapper(item) }.toMutableStateList()
         }
 

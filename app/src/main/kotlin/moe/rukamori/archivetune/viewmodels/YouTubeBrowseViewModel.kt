@@ -15,6 +15,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -48,6 +49,7 @@ class YouTubeBrowseViewModel
                         result.value =
                             it
                                 .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                .filterBlockedTitles(context.dataStore.get(HideBlockedTitlesKey, false))
                                 .filterVideo(hideVideo)
                                 .filterBlockedArtists(database.getBlockedArtistIds().toSet())
                     }.onFailure {

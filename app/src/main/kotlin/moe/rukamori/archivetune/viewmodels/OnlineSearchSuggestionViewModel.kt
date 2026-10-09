@@ -18,12 +18,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.SearchHistory
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.YTItem
+import moe.rukamori.archivetune.innertube.models.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.utils.dataStore
@@ -72,6 +74,11 @@ class OnlineSearchSuggestionViewModel
                                                 ?.filterExplicit(
                                                     context.dataStore.get(
                                                         HideExplicitKey,
+                                                        false,
+                                                    ),
+                                                )?.filterBlockedTitles(
+                                                    context.dataStore.get(
+                                                        HideBlockedTitlesKey,
                                                         false,
                                                     ),
                                                 )?.filterVideo(context.dataStore.get(HideVideoKey, false))

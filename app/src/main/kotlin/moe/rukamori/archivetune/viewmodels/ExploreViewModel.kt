@@ -16,11 +16,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.innertube.models.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.innertube.pages.ExplorePage
@@ -72,6 +74,8 @@ class ExploreViewModel
                                         firstArtistKey
                                     }.filterExplicit(
                                         context.dataStore.get(HideExplicitKey, false),
+                                    ).filterBlockedTitles(
+                                        context.dataStore.get(HideBlockedTitlesKey, false),
                                     ).filterVideo(context.dataStore.get(HideVideoKey, false))
                                     .filterBlockedArtists(blockedArtistIds),
                         )

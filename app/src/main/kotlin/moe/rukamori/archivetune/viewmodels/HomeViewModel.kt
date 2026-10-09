@@ -27,6 +27,7 @@ import moe.rukamori.archivetune.constants.AccountChannelHandleKey
 import moe.rukamori.archivetune.constants.AccountEmailKey
 import moe.rukamori.archivetune.constants.AccountNameKey
 import moe.rukamori.archivetune.constants.DataSyncIdKey
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
@@ -50,6 +51,7 @@ import moe.rukamori.archivetune.innertube.models.AccountChannel
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.models.YTItem
+import moe.rukamori.archivetune.innertube.models.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.innertube.pages.HomePage
@@ -467,6 +469,7 @@ class HomeViewModel
             try {
                 supervisorScope {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                    val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
                     val hiddenSongIds = hiddenRecommendationIds()
@@ -526,6 +529,7 @@ class HomeViewModel
                                                     items =
                                                         section.items
                                                             .filterExplicit(hideExplicit)
+                                                        .filterBlockedTitles(hideBlockedTitles)
                                                             .filterVideo(hideVideo)
                                                             .filterBlockedArtists(blockedArtistIds)
                                                             .filterHiddenSongs(hiddenSongIds),
@@ -565,6 +569,7 @@ class HomeViewModel
 
         private suspend fun loadSimilarRecommendations() {
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+            val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
             val hideVideo = context.dataStore.get(HideVideoKey, false)
             val blockedArtistIds = database.getBlockedArtistIds().toSet()
             val hiddenSongIds = hiddenRecommendationIds()
@@ -596,6 +601,7 @@ class HomeViewModel
                                 items =
                                     items
                                         .filterExplicit(hideExplicit)
+                                                        .filterBlockedTitles(hideBlockedTitles)
                                         .filterVideo(hideVideo)
                                         .filterBlockedArtists(blockedArtistIds)
                                         .filterHiddenSongs(hiddenSongIds)
@@ -625,6 +631,7 @@ class HomeViewModel
                                         page.artists.shuffled().take(4) +
                                         page.playlists.shuffled().take(4)
                                 ).filterExplicit(hideExplicit)
+                                                        .filterBlockedTitles(hideBlockedTitles)
                                     .filterVideo(hideVideo)
                                     .filterBlockedArtists(blockedArtistIds)
                                     .filterHiddenSongs(hiddenSongIds)
@@ -731,6 +738,7 @@ class HomeViewModel
         private fun loadMoreYouTubeItems(continuation: String?) {
             if (continuation == null || isLoadingMore.value) return
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+            val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
             val hideVideo = context.dataStore.get(HideVideoKey, false)
 
             viewModelScope.launch(Dispatchers.IO) {
@@ -748,6 +756,7 @@ class HomeViewModel
                                         items =
                                             section.items
                                                 .filterExplicit(hideExplicit)
+                                                        .filterBlockedTitles(hideBlockedTitles)
                                                 .filterVideo(hideVideo)
                                                 .filterBlockedArtists(blockedArtistIds)
                                                 .filterHiddenSongs(hiddenSongIds),
@@ -776,6 +785,7 @@ class HomeViewModel
             chipLoadJob =
                 viewModelScope.launch(Dispatchers.IO) {
                     val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                    val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
                     val hideVideo = context.dataStore.get(HideVideoKey, false)
                     val blockedArtistIds = database.getBlockedArtistIds().toSet()
                     val hiddenSongIds = hiddenRecommendationIds()
@@ -790,6 +800,7 @@ class HomeViewModel
                                         items =
                                             section.items
                                                 .filterExplicit(hideExplicit)
+                                                        .filterBlockedTitles(hideBlockedTitles)
                                                 .filterVideo(hideVideo)
                                                 .filterBlockedArtists(blockedArtistIds)
                                                 .filterHiddenSongs(hiddenSongIds),

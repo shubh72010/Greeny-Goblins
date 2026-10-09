@@ -70,7 +70,9 @@ import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
+import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
 import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.SongFilter
 import moe.rukamori.archivetune.constants.SongFilterKey
@@ -114,6 +116,7 @@ fun LibrarySongsScreen(
         )
     val (sortDescending, onSortDescendingChange) = rememberPreference(SongSortDescendingKey, true)
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
+    val hideBlockedTitles by rememberPreference(key = HideBlockedTitlesKey, defaultValue = false)
 
     val songs by viewModel.allSongs.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -131,11 +134,10 @@ fun LibrarySongsScreen(
     val wrappedSongs = remember(songs) { songs.map { item -> ItemWrapper(item) }.toMutableList() }
 
     val filteredSongs =
-        remember(wrappedSongs, hideExplicit) {
-            if (hideExplicit) {
-                wrappedSongs.filter { !it.item.song.explicit }
-            } else {
-                wrappedSongs
+        remember(wrappedSongs, hideExplicit, hideBlockedTitles) {
+            wrappedSongs.filter {
+                (!hideExplicit || !it.item.song.explicit) &&
+                    (!hideBlockedTitles || !it.item.song.title.containsBlockedTitleWord())
             }
         }
 

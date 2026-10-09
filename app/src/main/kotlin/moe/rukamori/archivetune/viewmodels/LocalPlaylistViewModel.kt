@@ -34,6 +34,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.PlaylistSongSortType
@@ -47,6 +48,7 @@ import moe.rukamori.archivetune.extensions.toEnum
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.YTItem
+import moe.rukamori.archivetune.innertube.models.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.models.PlaylistSuggestion
@@ -614,6 +616,7 @@ class LocalPlaylistViewModel
         private suspend fun filterSuggestionItems(items: List<YTItem>): List<YTItem> {
             val hideExplicit = context.dataStore.data.first()[HideExplicitKey] ?: false
             val hideVideos = context.dataStore.data.first()[HideVideoKey] ?: false
+            val hideBlockedTitles = context.dataStore.data.first()[HideBlockedTitlesKey] ?: false
 
             var filteredItems =
                 items
@@ -622,6 +625,10 @@ class LocalPlaylistViewModel
 
             if (hideExplicit) {
                 filteredItems = filteredItems.filterExplicit()
+            }
+
+            if (hideBlockedTitles) {
+                filteredItems = filteredItems.filterBlockedTitles()
             }
 
             if (hideVideos) {

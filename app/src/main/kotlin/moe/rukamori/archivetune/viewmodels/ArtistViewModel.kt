@@ -38,14 +38,17 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.artist.ArtistBlockRequest
 import moe.rukamori.archivetune.artist.ObserveArtistBlockedUseCase
 import moe.rukamori.archivetune.artist.SetArtistBlockedUseCase
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
+import moe.rukamori.archivetune.extensions.filterBlockedTitles
 import moe.rukamori.archivetune.extensions.filterExplicit
 import moe.rukamori.archivetune.extensions.filterExplicitAlbums
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.models.SongItem
+import moe.rukamori.archivetune.innertube.models.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.pages.ArtistPage
 import moe.rukamori.archivetune.ui.player.YouTubeCanvasProvider
@@ -130,10 +133,10 @@ class ArtistViewModel
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ArtistBlockState.Loading)
         val librarySongs =
             context.dataStore.data
-                .map { it[HideExplicitKey] ?: false }
+                .map { (it[HideExplicitKey] ?: false) to (it[HideBlockedTitlesKey] ?: false) }
                 .distinctUntilChanged()
-                .flatMapLatest { hideExplicit ->
-                    database.artistSongsByCreateDateAsc(artistId).map { it.filterExplicit(hideExplicit) } // show all
+                .flatMapLatest { (hideExplicit, hideBlockedTitles) ->
+                    database.artistSongsByCreateDateAsc(artistId).map { it.filterExplicit(hideExplicit).filterBlockedTitles(hideBlockedTitles) } // show all
                     // database.artistSongsPreview(artistId).map { it.filterExplicit(hideExplicit) } // only preview
                 }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
         val libraryAlbums =
@@ -148,7 +151,7 @@ class ArtistViewModel
             // Load artist page and reload when hide explicit setting changes
             viewModelScope.launch {
                 context.dataStore.data
-                    .map { it[HideExplicitKey] ?: false }
+                    .map { (it[HideExplicitKey] ?: false) to (it[HideBlockedTitlesKey] ?: false) }
                     .distinctUntilChanged()
                     .collect {
                         fetchArtistsFromYTM()
@@ -159,6 +162,7 @@ class ArtistViewModel
         fun fetchArtistsFromYTM() {
             viewModelScope.launch {
                 val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
                 val blockedArtistIds = database.getBlockedArtistIds().toSet()
                 YouTube
                     .artist(artistId)
@@ -170,6 +174,7 @@ class ArtistViewModel
                                         items =
                                             section.items
                                                 .filterExplicit(hideExplicit)
+                                                .filterBlockedTitles(hideBlockedTitles)
                                                 .filterBlockedArtists(blockedArtistIds),
                                     )
                                 }

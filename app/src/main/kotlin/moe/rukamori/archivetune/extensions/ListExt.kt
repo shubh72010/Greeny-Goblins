@@ -9,6 +9,7 @@ package moe.rukamori.archivetune.extensions
 
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.db.entities.Song
+import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
 
 fun <T> List<T>.reversed(reversed: Boolean) = if (reversed) asReversed() else this
 
@@ -42,6 +43,10 @@ fun <T : Any> List<T>.mergeNearbyElements(
 
     return mergedList
 }
+
+// Extension function to filter songs whose title contains a blocked word
+fun List<Song>.filterBlockedTitles(enabled: Boolean = true) =
+    if (!enabled) this else filterNot { it.title.containsBlockedTitleWord() }
 
 // Extension function to filter explicit content for local Song entities
 fun List<Song>.filterExplicit(enabled: Boolean = true) =

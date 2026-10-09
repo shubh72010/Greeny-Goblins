@@ -166,6 +166,7 @@ import moe.rukamori.archivetune.constants.EqualizerVirtualizerStrengthKey
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_MAX
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_MIN
+import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.constants.HistoryDuration
@@ -252,6 +253,7 @@ import moe.rukamori.archivetune.playback.queues.EmptyQueue
 import moe.rukamori.archivetune.playback.queues.ListQueue
 import moe.rukamori.archivetune.playback.queues.Queue
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
+import moe.rukamori.archivetune.playback.queues.filterBlockedTitles
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
 import moe.rukamori.archivetune.playback.haptic.HapticVisualizer
@@ -2301,10 +2303,12 @@ class MusicService :
         val continuationQueue = persistedQueue.toContinuationQueue()
         val hideExplicit = dataStore.get(HideExplicitKey, false)
         val hideVideo = dataStore.get(HideVideoKey, false)
+        val hideBlockedTitles = dataStore.get(HideBlockedTitlesKey, false)
         val initialStatus =
             itemQueue
                 .getInitialStatus()
                 .filterExplicit(hideExplicit)
+                .filterBlockedTitles(hideBlockedTitles)
                 .filterVideo(hideVideo)
 
         withContext(Dispatchers.Main) {
@@ -4251,6 +4255,7 @@ class MusicService :
                         queue
                             .getInitialStatus()
                             .filterExplicit(dataStore.get(HideExplicitKey, false))
+                            .filterBlockedTitles(dataStore.get(HideBlockedTitlesKey, false))
                             .filterVideo(dataStore.get(HideVideoKey, false))
                     }
 
@@ -4342,12 +4347,14 @@ class MusicService :
         scope.launch(SilentHandler) {
             val hideExplicit = dataStore.get(HideExplicitKey, false)
             val hideVideo = dataStore.get(HideVideoKey, false)
+            val hideBlockedTitles = dataStore.get(HideBlockedTitlesKey, false)
             val autoLoadMoreEnabled = dataStore.get(AutoLoadMoreKey, true)
             var initialStatus =
                 withContext(Dispatchers.IO) {
                     queue
                         .getInitialStatus()
                         .filterExplicit(hideExplicit)
+                        .filterBlockedTitles(hideBlockedTitles)
                         .filterVideo(hideVideo)
                 }
             if (!autoLoadMoreEnabled && queue.shouldExpandToFullQueueWhenAutoLoadMoreDisabled() && queue.hasNextPage()) {
@@ -4360,6 +4367,7 @@ class MusicService :
                             queue
                                 .nextPage()
                                 .filterExplicit(hideExplicit)
+                                .filterBlockedTitles(hideBlockedTitles)
                                 .filterVideo(hideVideo)
                         }
                     if (nextItems.isNotEmpty()) {
@@ -4517,6 +4525,8 @@ class MusicService :
                         .getInitialStatus()
                         .filterExplicit(
                             dataStore.get(HideExplicitKey, false),
+                        ).filterBlockedTitles(
+                            dataStore.get(HideBlockedTitlesKey, false),
                         ).filterVideo(dataStore.get(HideVideoKey, false))
                 }
 
@@ -4579,12 +4589,14 @@ class MusicService :
                 try {
                     val hideExplicit = dataStore.get(HideExplicitKey, false)
                     val hideVideo = dataStore.get(HideVideoKey, false)
+                    val hideBlockedTitles = dataStore.get(HideBlockedTitlesKey, false)
                     val radioQueue = YouTubeQueue(WatchEndpoint(videoId = seedMediaId), followAutomixPreview = true)
                     val status =
                         withContext(Dispatchers.IO) {
                             radioQueue
                                 .getInitialStatus()
                                 .filterExplicit(hideExplicit)
+                                .filterBlockedTitles(hideBlockedTitles)
                                 .filterVideo(hideVideo)
                         }
                     val knownIds =
@@ -4604,6 +4616,7 @@ class MusicService :
                                 radioQueue
                                     .nextPage()
                                     .filterExplicit(hideExplicit)
+                                    .filterBlockedTitles(hideBlockedTitles)
                                     .filterVideo(hideVideo)
                             }
                         newItems += page.filter { knownIds.add(it.mediaId) }
@@ -6993,6 +7006,8 @@ class MusicService :
                         .nextPage()
                         .filterExplicit(
                             dataStore.get(HideExplicitKey, false),
+                        ).filterBlockedTitles(
+                            dataStore.get(HideBlockedTitlesKey, false),
                         ).filterVideo(dataStore.get(HideVideoKey, false))
                 if (player.playbackState != STATE_IDLE) {
                     player.addMediaItems(mediaItems.drop(1))

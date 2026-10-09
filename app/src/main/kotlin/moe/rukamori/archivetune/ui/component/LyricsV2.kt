@@ -103,6 +103,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.LyricsClickKey
 import moe.rukamori.archivetune.constants.LyricsFilterCensorEnabledKey
 import moe.rukamori.archivetune.constants.LyricsFilterEnabledKey
@@ -143,6 +144,7 @@ import moe.rukamori.archivetune.ui.component.shimmer.ShimmerHost
 import moe.rukamori.archivetune.ui.component.shimmer.TextPlaceholder
 import moe.rukamori.archivetune.ui.theme.rememberArchiveTuneLyricsFontFamily
 import moe.rukamori.archivetune.ui.utils.smoothFadingEdge
+import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
@@ -248,6 +250,10 @@ fun LyricsV2(
             Color.White
         }
     val lyricsLineBlur = lyricsLineBlurOverride ?: lyricsLineBlurPreference
+    val (disableBlur) = rememberPreference(DisableBlurKey, defaultValue = true)
+    val isLowRam = remember(context) { context.isLowRamDevice() }
+    // ponytail: per-line blur is the priciest Compose op here — single gate, alpha+scale stay.
+    val lineBlurEnabled = lyricsLineBlur && !disableBlur && !isLowRam
 
     val inactiveAlpha = 0.35f
 
@@ -373,7 +379,8 @@ fun LyricsV2(
 
     LaunchedEffect(entriesWithWords, isSynced, leadMs, lyricsSyncOffset) {
         if (!isSynced || entriesWithWords.isEmpty()) return@LaunchedEffect
-        val pollIntervalMs = if (isTtmlFormat) 16L else 50L
+        // ponytail: TTML 50ms / LRC 100ms; paused + no scrub = 1s backoff (pos is static).
+        val pollIntervalMs = if (isTtmlFormat) 50L else 100L
         while (isActive) {
             val sliderPos = sliderPositionProvider()
             val pos = sliderPos ?: player.currentPosition
@@ -382,7 +389,7 @@ fun LyricsV2(
             currentPositionMs = (playbackPositionMs + leadMs + LYRIC_VISUAL_TUNING_OFFSET_MS).coerceAtLeast(0L)
 
             currentLineIndex = findCurrentLineIndex(entriesWithWords, currentPositionMs, 0L)
-            delay(pollIntervalMs)
+            delay(if (sliderPos == null && !player.isPlaying) 1000L else pollIntervalMs)
         }
     }
 
@@ -625,7 +632,7 @@ fun LyricsV2(
                                         },
                                     bottom = (lyricsLineSpacing * 8).dp,
                                 ).then(
-                                    if (lyricsLineBlur) {
+                                    if (lineBlurEnabled) {
                                         Modifier.blur(
                                             radiusX = animatedInstrBlur.dp,
                                             radiusY = animatedInstrBlur.dp,
@@ -811,7 +818,7 @@ fun LyricsV2(
                                         },
                                     bottom = (lyricsLineSpacing * 8).dp,
                                 ).then(
-                                    if (lyricsLineBlur) {
+                                    if (lineBlurEnabled) {
                                         Modifier.blur(
                                             radiusX = animatedBlur.dp,
                                             radiusY = animatedBlur.dp,
