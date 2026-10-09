@@ -396,7 +396,9 @@ class MainActivity : ComponentActivity() {
         pendingAodModeJob?.cancel()
         pendingAodModeJob =
             lifecycleScope.launch {
-                connection.queueRestoreCompleted.first { it }
+                // ponytail: bounded — was an unbounded first{} that outlived the
+                // binding and wrote aodModeEnabled on a dead service (see B-02).
+                withTimeoutOrNull(3000) { connection.queueRestoreCompleted.first { it } }
                 if (awaitRestorablePlayback(connection)) {
                     aodModeLaunchRequestCount++
                 }
@@ -573,9 +575,13 @@ class MainActivity : ComponentActivity() {
             val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
 
             LaunchedEffect(Unit) {
-                while (playerConnection == null) {
-                    delay(100)
-                }
+                // ponytail: bounded bind wait — was an infinite while loop that lived
+                // forever when the service never bound (killed service, FOSS variant).
+                withTimeoutOrNull(10_000) {
+                    while (playerConnection == null) {
+                        delay(100)
+                    }
+                } ?: return@LaunchedEffect
                 delay(500)
 
                 if (
@@ -1352,7 +1358,8 @@ class MainActivity : ComponentActivity() {
                     LaunchedEffect(playerConnection, savedMiniPlayerAnchor, isYearInMusicScreen) {
                         if (restoredMiniPlayerAnchor) return@LaunchedEffect
                         val connection = playerConnection ?: return@LaunchedEffect
-                        connection.queueRestoreCompleted.first { it }
+                        // ponytail: bounded — a stuck restore must not pin the sheet state forever.
+                        withTimeoutOrNull(3000) { connection.queueRestoreCompleted.first { it } }
                         if (!awaitRestorablePlayback(connection)) {
                             if (!playerBottomSheetState.isDismissed) {
                                 playerBottomSheetState.dismiss()
@@ -2435,6 +2442,13 @@ class MainActivity : ComponentActivity() {
                 val remain = 1200L - (android.os.SystemClock.elapsedRealtime() - coverShownAt)
                 if (remain > 0) delay(remain)
                 delay(400)
+                startupCoverGone = true
+            }
+            // ponytail: absolute failsafe — the effect above returns early when the
+            // service never binds, which pinned the cover forever on cold starts.
+            // The cover is a veil, never a gate: 4s max, content loads live behind it.
+            LaunchedEffect(Unit) {
+                delay(4000)
                 startupCoverGone = true
             }
             StartupCover(visible = !startupCoverGone)

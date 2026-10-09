@@ -281,6 +281,7 @@ import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.deviceTier
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.get
+import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.getAsync
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.isLowDataModeActive
@@ -1776,38 +1777,46 @@ class MusicService :
             }
 
         scope.launch(Dispatchers.IO) {
-            runCatching {
-                if (dataStore.get(PersistentQueueKey, true)) {
-                    playerInitialized.first { it }
-                    val persistedQueue = readPersistentObject<PersistQueue>(PERSISTENT_QUEUE_FILE)
-                    val persistedPlayerState = readPersistentObject<PersistPlayerState>(PERSISTENT_PLAYER_STATE_FILE)
+            try {
+                // ponytail: bounded restore — every wait inside has a ceiling and the
+                // flag flips in finally, so a stuck restore can delay but never gate
+                // startup (cold-start hang needed force-stop to recover).
+                kotlinx.coroutines.withTimeoutOrNull(8000) {
+                    if (dataStore.getAsync(PersistentQueueKey, true)) {
+                        kotlinx.coroutines.withTimeoutOrNull(5000) {
+                            playerInitialized.first { it }
+                        } ?: return@withTimeoutOrNull
+                        val persistedQueue = readPersistentObject<PersistQueue>(PERSISTENT_QUEUE_FILE)
+                        val persistedPlayerState = readPersistentObject<PersistPlayerState>(PERSISTENT_PLAYER_STATE_FILE)
 
-                    if (persistedQueue != null || persistedPlayerState != null) {
-                        isRestoringPersistentState = true
-                    }
+                        if (persistedQueue != null || persistedPlayerState != null) {
+                            isRestoringPersistentState = true
+                        }
 
-                    var restoredQueue = false
-                    try {
-                        persistedQueue?.let { queue ->
-                            restorePersistentQueue(queue)
-                            restoredQueue = true
+                        var restoredQueue = false
+                        try {
+                            persistedQueue?.let { queue ->
+                                restorePersistentQueue(queue)
+                                restoredQueue = true
+                            }
+                            persistedPlayerState?.let { playerState ->
+                                restorePersistentPlayerState(playerState, restoredQueue)
+                            }
+                        } finally {
+                            isRestoringPersistentState = false
                         }
-                        persistedPlayerState?.let { playerState ->
-                            restorePersistentPlayerState(playerState, restoredQueue)
-                        }
-                    } finally {
-                        isRestoringPersistentState = false
                     }
                 }
-            }.onFailure { error ->
+            } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 Timber.tag(TAG).w(error, "Failed to restore persisted queue, clearing data")
                 isRestoringPersistentState = false
                 cancelRestoredQueueHydration()
                 clearPersistedQueueFiles()
-            }
-            withContext(Dispatchers.Main) {
-                queueRestoreCompleted.value = true
+            } finally {
+                withContext(Dispatchers.Main) {
+                    queueRestoreCompleted.value = true
+                }
             }
         }
 
@@ -9146,49 +9155,60 @@ class MusicService :
         )
     }
 
+    /**
+     * Pure in-memory snapshot of queue + player state. Main thread only (touches
+     * player), no I/O, no locks — safe to call synchronously from lifecycle callbacks.
+     * Null = nothing worth persisting.
+     */
+    private fun snapshotQueueState(): Pair<PersistQueue, PersistPlayerState>? {
+        if (isRestoringPersistentState || isHydratingRestoredQueue) return null
+
+        val mediaItemsSnapshot = player.mediaItems.mapNotNull { it.toPersistableMetadata() }
+        if (mediaItemsSnapshot.isEmpty()) return null
+
+        val currentMediaItemIndex = player.currentMediaItemIndex
+        val currentPosition = player.currentPosition
+        val persistQueue =
+            currentQueue.toPersistQueue(
+                title = queueTitle,
+                items = mediaItemsSnapshot,
+                mediaItemIndex = currentMediaItemIndex,
+                position = currentPosition,
+            )
+        val persistPlayerState =
+            PersistPlayerState(
+                playWhenReady = player.playWhenReady,
+                repeatMode = player.repeatMode,
+                shuffleModeEnabled = player.shuffleModeEnabled,
+                volume = playerVolume.value,
+                currentPosition = currentPosition,
+                currentMediaItemIndex = currentMediaItemIndex,
+                playbackState = player.playbackState,
+            )
+
+        return persistQueue to persistPlayerState
+    }
+
+    private fun writeQueueSnapshot(
+        saveGeneration: Long,
+        snapshot: Pair<PersistQueue, PersistPlayerState>,
+    ) {
+        if (saveGeneration != persistentSaveGeneration.get()) return
+        writePersistentObject(PERSISTENT_QUEUE_FILE, snapshot.first)
+        if (saveGeneration != persistentSaveGeneration.get()) return
+        writePersistentObject(PERSISTENT_PLAYER_STATE_FILE, snapshot.second)
+    }
+
     private suspend fun saveQueueToDisk() {
         val saveGeneration = persistentSaveGeneration.get()
         val snapshot =
             withContext(Dispatchers.Main.immediate) {
-                if (
-                    saveGeneration != persistentSaveGeneration.get() ||
-                    isRestoringPersistentState ||
-                    isHydratingRestoredQueue
-                ) {
-                    return@withContext null
-                }
-
-                val mediaItemsSnapshot = player.mediaItems.mapNotNull { it.toPersistableMetadata() }
-                if (mediaItemsSnapshot.isEmpty()) return@withContext null
-
-                val currentMediaItemIndex = player.currentMediaItemIndex
-                val currentPosition = player.currentPosition
-                val persistQueue =
-                    currentQueue.toPersistQueue(
-                        title = queueTitle,
-                        items = mediaItemsSnapshot,
-                        mediaItemIndex = currentMediaItemIndex,
-                        position = currentPosition,
-                    )
-                val persistPlayerState =
-                    PersistPlayerState(
-                        playWhenReady = player.playWhenReady,
-                        repeatMode = player.repeatMode,
-                        shuffleModeEnabled = player.shuffleModeEnabled,
-                        volume = playerVolume.value,
-                        currentPosition = currentPosition,
-                        currentMediaItemIndex = currentMediaItemIndex,
-                        playbackState = player.playbackState,
-                    )
-
-                persistQueue to persistPlayerState
+                if (saveGeneration != persistentSaveGeneration.get()) return@withContext null
+                snapshotQueueState()
             } ?: return
 
         withContext(Dispatchers.IO) {
-            if (saveGeneration != persistentSaveGeneration.get()) return@withContext
-            writePersistentObject(PERSISTENT_QUEUE_FILE, snapshot.first)
-            if (saveGeneration != persistentSaveGeneration.get()) return@withContext
-            writePersistentObject(PERSISTENT_PLAYER_STATE_FILE, snapshot.second)
+            writeQueueSnapshot(saveGeneration, snapshot)
         }
     }
 
@@ -9225,11 +9245,24 @@ class MusicService :
         }
         try { visualizerHub.release() } catch (_: Exception) {}
         try {
-            if (dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
-                // ponytail: bounded Sync — unbounded disk write on Main is the shutdown ANR
-                kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
-                    kotlinx.coroutines.withTimeoutOrNull(1500) {
-                        saveQueueToDisk()
+            // ponytail: never block Main on persistence (was runBlocking disk write ->
+            // Service Timeout ANR in onTaskRemoved, confirmed by on-device traces).
+            // Snapshot is pure memory on Main; pref + file write go to IO fire-and-forget.
+            // Worst case we lose <10s of queue (periodic saver covers it); an ANR kills
+            // the whole process, which loses everything.
+            // Pre-gate on the warm PreferenceStore cache (no Main-guard warning); the
+            // IO block re-checks authoritatively via getAsync.
+            if ((PreferenceStore.get(PersistentQueueKey) ?: true) && player.mediaItemCount > 0) {
+                val snapshot = snapshotQueueState()
+                if (snapshot != null) {
+                    val saveGeneration = persistentSaveGeneration.get()
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            if (dataStore.getAsync(PersistentQueueKey, true)) {
+                                writeQueueSnapshot(saveGeneration, snapshot)
+                            }
+                        } catch (_: Exception) {
+                        }
                     }
                 }
             }
@@ -9329,11 +9362,18 @@ class MusicService :
                 }
             }
 
-            if (dataStore.get(PersistentQueueKey, true) && player.mediaItemCount > 0) {
-                // ponytail: bounded Sync — see onDestroy
-                kotlinx.coroutines.runBlocking(kotlinx.coroutines.Dispatchers.IO) {
-                    kotlinx.coroutines.withTimeoutOrNull(1500) {
-                        saveQueueToDisk()
+            // ponytail: never block Main on persistence — see onDestroy (Service Timeout ANR).
+            if ((PreferenceStore.get(PersistentQueueKey) ?: true) && player.mediaItemCount > 0) {
+                val snapshot = snapshotQueueState()
+                if (snapshot != null) {
+                    val saveGeneration = persistentSaveGeneration.get()
+                    scope.launch(Dispatchers.IO) {
+                        try {
+                            if (dataStore.getAsync(PersistentQueueKey, true)) {
+                                writeQueueSnapshot(saveGeneration, snapshot)
+                            }
+                        } catch (_: Exception) {
+                        }
                     }
                 }
             }

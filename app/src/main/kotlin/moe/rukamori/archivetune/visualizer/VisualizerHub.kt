@@ -400,6 +400,12 @@ class VisualizerHub(
         if (idleRunnable != null) return
         val r = object : Runnable {
             override fun run() {
+                // ponytail: back off when idle — was a 60Hz Main wakeup 24/7 (blocks
+                // Doze, burns battery behind playback) even with every visualizer off.
+                if (!hasPcmConsumers && pendingFrames.isEmpty()) {
+                    mainHandler.postDelayed(this, 500)
+                    return
+                }
                 // BNGV: dispatchDueFrames tick + breathing
                 synchronized(pendingFrames) { dispatchDueFrames(pendingFrames) }
                 // If no frames, still tick glyph breathing
