@@ -72,15 +72,13 @@ internal object SettingsSearchScanner {
     /** `fun Name(` at column 0, i.e. a top-level composable/function declaration. */
     private val topLevelFun = Regex("""^(?:(?:public|internal|private)\s+)?fun\s+([A-Z][A-Za-z0-9]*)\s*\(""", RegexOption.MULTILINE)
 
-    /** Row components. `HighlightablePreference` is a wrapper, not a row. */
+    /** Row components. `HighlightablePreference` (removed) is skipped if ever reintroduced. */
     private val rowCall = Regex("""^(\s*)([A-Z][A-Za-z0-9]*(?:Preference|Entry))\(""")
 
     private val groupOpen = Regex("""\bPreferenceGroup\s*\(""")
 
     private val groupTitle =
         Regex("""PreferenceGroup\(\s*title\s*=\s*(?:stringResource\(\s*R\.string\.([A-Za-z0-9_]+)\s*\)|"([^"]*)")""", RegexOption.DOT_MATCHES_ALL)
-
-    private val highlightKey = Regex("""HighlightablePreference\(\s*highlightKey\s*=\s*"([^"]+)\"""")
 
     private val routeLiteral = Regex("""(?:route\s*=\s*|composable\(\s*)"([^"]+)\"""")
 
@@ -137,6 +135,11 @@ internal object SettingsSearchScanner {
      * live outside the entry function. Files holding several screens are attributed by
      * the nearest preceding top-level declaration.
      *
+     * Every row gets a `?highlight=<slug>` route where the slug is the title's string
+     * resource name (or a slugified literal), matching the `highlightKey` the row
+     * declares on its preference call. Rows that navigate to a nested settings screen
+     * keep that direct route instead.
+     *
      * ponytail: rows with a runtime-computed title (`title = "Edit $title"`) and screens
      * with bespoke row components outside the `*Preference`/`*Entry` set are not indexed.
      * A real Kotlin parser (KSP) is the upgrade if the misses start to matter.
@@ -160,7 +163,6 @@ internal object SettingsSearchScanner {
         // Section title as (Kotlin expression, plain words for search keywords).
         var sectionExpr: String? = null
         var sectionWords: String? = null
-        var pendingHighlight: String? = null
 
         for ((index, line) in lines.withIndex()) {
             if (groupOpen.find(line) != null) {
@@ -179,8 +181,6 @@ internal object SettingsSearchScanner {
                     }
                 }
             }
-            highlightKey.find(line)?.let { pendingHighlight = it.groupValues[1] }
-
             val row = rowCall.find(line) ?: continue
             if (row.groupValues[2] == "HighlightablePreference") continue
 
@@ -207,16 +207,14 @@ internal object SettingsSearchScanner {
             val slug = resTitle?.groupValues?.get(1) ?: literalTitle?.let(::slugify) ?: continue
 
             val icon = iconRes.find(window)?.groupValues?.get(1) ?: DEFAULT_ICON
-            val highlight = pendingHighlight
-            pendingHighlight = null
             val segment = baseRoute.substringAfterLast('/')
             val words = sectionWords ?: segment
             val section = sectionExpr ?: "\"${humanize(segment)}\""
+            // Rows that navigate to a nested settings screen keep that direct route;
+            // every other row deep-links to its exact position via its title slug.
             val route =
-                when {
-                    highlight != null -> "$baseRoute?$HIGHLIGHT_ARG=$highlight"
-                    else -> settingsNavigate.find(window)?.groupValues?.get(1) ?: baseRoute
-                }
+                settingsNavigate.find(window)?.groupValues?.get(1)
+                    ?: "$baseRoute?$HIGHLIGHT_ARG=$slug"
 
             entries +=
                 ScannedSetting(

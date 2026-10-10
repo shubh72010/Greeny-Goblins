@@ -17,8 +17,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -37,6 +39,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -66,6 +70,7 @@ import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -90,6 +95,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
@@ -97,6 +103,14 @@ import moe.rukamori.archivetune.constants.HISTORY_DURATION_RANGE
 import kotlin.math.roundToInt
 
 val LocalPreferenceInGroup = compositionLocalOf { false }
+
+/**
+ * Highlight key forwarded by settings search (`settings/<page>?highlight=<key>`).
+ * Screens provide it; [PreferenceEntry] matches it against its own [highlightKey]
+ * and scrolls + pulses the row into view. Keys live on the row and the search
+ * index derives them from the title, so there is no second list to maintain.
+ */
+val LocalSettingsHighlight = compositionLocalOf<String?> { null }
 
 enum class PreferenceGroupPosition { Single, First, Middle, Last }
 
@@ -171,6 +185,7 @@ fun PreferenceEntry(
     onClick: (() -> Unit)? = null,
     isEnabled: Boolean = true,
     shape: Shape? = null,
+    highlightKey: String? = null,
 ) {
     val inGroup = LocalPreferenceInGroup.current
     val groupPosition = LocalPreferenceGroupPosition.current
@@ -187,6 +202,34 @@ fun PreferenceEntry(
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "prefScale",
     )
+    val isHighlighted =
+        highlightKey != null && LocalSettingsHighlight.current?.equals(highlightKey, ignoreCase = true) == true
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val pulse by animateFloatAsState(
+        targetValue = if (isHighlighted) 1f else 0f,
+        label = "highlightPulse",
+    )
+    LaunchedEffect(isHighlighted) {
+        if (isHighlighted) {
+            // small delay to wait for layout
+            delay(180)
+            try {
+                bringIntoViewRequester.bringIntoView()
+            } catch (_: Exception) {
+            }
+        }
+    }
+    val highlightModifier =
+        if (isHighlighted) {
+            Modifier
+                .bringIntoViewRequester(bringIntoViewRequester)
+                .border(
+                    BorderStroke((2.dp * pulse), MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)),
+                    shape = resolvedShape,
+                )
+        } else {
+            Modifier
+        }
 
     val rowContent: @Composable () -> Unit = {
         Row(
@@ -259,13 +302,14 @@ fun PreferenceEntry(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier =
             modifier
+                .then(highlightModifier)
                 .fillMaxWidth()
                 .padding(
                     horizontal = if (inGroup) 0.dp else 16.dp,
                     vertical = if (inGroup) 0.dp else 3.dp,
                 ).graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
+                    scaleX = scale + 0.015f * pulse
+                    scaleY = scale + 0.015f * pulse
                 },
     ) {
         rowContent()
@@ -284,6 +328,7 @@ fun <T> SegmentedPreference(
     valueText: @Composable (T) -> String,
     onValueSelected: (T) -> Unit,
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     PreferenceEntry(
         modifier = modifier,
@@ -291,6 +336,7 @@ fun <T> SegmentedPreference(
         description = description,
         icon = icon,
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
         content = {
             Spacer(Modifier.height(12.dp))
             SingleChoiceSegmentedButtonRow(
@@ -333,6 +379,7 @@ inline fun <reified T : Enum<T>> EnumSegmentedPreference(
     noinline valueText: @Composable (T) -> String,
     noinline onValueSelected: (T) -> Unit,
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     val values = remember { enumValues<T>().toList() }
 
@@ -346,6 +393,7 @@ inline fun <reified T : Enum<T>> EnumSegmentedPreference(
         valueText = valueText,
         onValueSelected = onValueSelected,
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
     )
 }
 
@@ -363,6 +411,7 @@ fun <T> ListPreference(
     isValueEnabled: (T) -> Boolean = { true },
     onValueSelected: (T) -> Unit,
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     var showBottomSheet by remember {
         mutableStateOf(false)
@@ -397,6 +446,7 @@ fun <T> ListPreference(
         title = title,
         description = description,
         icon = icon,
+        highlightKey = highlightKey,
         content = {
             Spacer(Modifier.height(10.dp))
             PreferenceValueChip(valueText(selectedValue))
@@ -424,6 +474,7 @@ inline fun <reified T : Enum<T>> EnumListPreference(
     noinline valueText: @Composable (T) -> String,
     noinline onValueSelected: (T) -> Unit,
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     val values = remember { enumValues<T>().toList() }
 
@@ -437,6 +488,7 @@ inline fun <reified T : Enum<T>> EnumListPreference(
         valueText = valueText,
         onValueSelected = onValueSelected,
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
     )
 }
 
@@ -623,12 +675,14 @@ fun SwitchPreference(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     PreferenceEntry(
         modifier = modifier,
         title = title,
         description = description,
         icon = icon,
+        highlightKey = highlightKey,
         trailingContent = {
             Switch(
                 checked = checked,
@@ -679,6 +733,7 @@ fun EditTextPreference(
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
     isInputValid: (String) -> Boolean = { it.isNotEmpty() },
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     var showDialog by remember {
         mutableStateOf(false)
@@ -707,6 +762,7 @@ fun EditTextPreference(
         icon = icon,
         onClick = { showDialog = true },
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
     )
 }
 
@@ -719,6 +775,7 @@ fun NumberEditTextPreference(
     onValueChange: (Int) -> Unit,
     isInputValid: (String) -> Boolean = { it.toIntOrNull() != null },
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     var showDialog by remember {
         mutableStateOf(false)
@@ -751,6 +808,7 @@ fun NumberEditTextPreference(
         icon = icon,
         onClick = { showDialog = true },
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
     )
 }
 
@@ -763,6 +821,7 @@ fun SliderPreference(
     value: Int,
     onValueChange: (Int) -> Unit,
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     var showDialog by remember {
         mutableStateOf(false)
@@ -852,6 +911,7 @@ fun SliderPreference(
         icon = icon,
         onClick = { showDialog = true },
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
     )
 }
 
@@ -862,6 +922,7 @@ fun CrossfadeSliderPreference(
     valueSeconds: Float,
     onValueChange: (Float) -> Unit,
     isEnabled: Boolean = true,
+    highlightKey: String? = "audio_crossfade_title",
 ) {
     var showDialog by remember {
         mutableStateOf(false)
@@ -981,6 +1042,7 @@ fun CrossfadeSliderPreference(
         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
         onClick = { if (isEnabled) showDialog = true },
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
     )
 }
 
@@ -995,6 +1057,7 @@ fun NumberPickerPreference(
     maxValue: Int = 10,
     valueText: (Int) -> String = { it.toString() },
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     var showDialog by remember {
         mutableStateOf(false)
@@ -1072,6 +1135,7 @@ fun NumberPickerPreference(
         icon = icon,
         onClick = { if (isEnabled) showDialog = true },
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
     )
 }
 

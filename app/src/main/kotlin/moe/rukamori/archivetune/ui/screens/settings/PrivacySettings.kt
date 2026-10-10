@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,10 +45,10 @@ import moe.rukamori.archivetune.constants.PauseListenHistoryKey
 import moe.rukamori.archivetune.constants.PauseSearchHistoryKey
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
-import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -160,25 +161,26 @@ fun PrivacySettings(navController: NavController, highlight: String? = null) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
             SettingsEditorialHeader(
                 title = stringResource(R.string.privacy),
                 onBack = { navController.navigateUp() },
             )
             PreferenceGroup(title = stringResource(R.string.listen_history)) {
                 item {
-                    HighlightablePreference(highlightKey = "pause_history", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.pause_listen_history)) },
+                        highlightKey = "pause_listen_history",
                         icon = { Icon(painterResource(R.drawable.history), null) },
                         checked = pauseListenHistory,
                         onCheckedChange = onPauseListenHistoryChange,
                     )
-                    }
                 }
 
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.clear_listen_history)) },
+                        highlightKey = "clear_listen_history",
                         icon = { Icon(painterResource(R.drawable.delete_history), null) },
                         onClick = { showClearListenHistoryDialog = true },
                     )
@@ -187,19 +189,19 @@ fun PrivacySettings(navController: NavController, highlight: String? = null) {
 
             PreferenceGroup(title = stringResource(R.string.search_history)) {
                 item {
-                    HighlightablePreference(highlightKey = "pause_search", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.pause_search_history)) },
+                        highlightKey = "pause_search_history",
                         icon = { Icon(painterResource(R.drawable.search_off), null) },
                         checked = pauseSearchHistory,
                         onCheckedChange = onPauseSearchHistoryChange,
                     )
-                    }
                 }
 
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.clear_search_history)) },
+                        highlightKey = "clear_search_history",
                         icon = { Icon(painterResource(R.drawable.clear_all), null) },
                         onClick = { showClearSearchHistoryDialog = true },
                     )
@@ -208,28 +210,27 @@ fun PrivacySettings(navController: NavController, highlight: String? = null) {
 
             PreferenceGroup(title = stringResource(R.string.misc)) {
                 item {
-                    HighlightablePreference(highlightKey = "haptics", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.haptics)) },
+                        highlightKey = "haptics",
                         description = stringResource(R.string.haptics_desc),
                         icon = { Icon(painterResource(R.drawable.vibration), null) },
                         checked = enableHapticFeedback,
                         onCheckedChange = onEnableHapticFeedbackChange,
                     )
-                    }
                 }
 
                 item {
-                    HighlightablePreference(highlightKey = "screenshot", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.disable_screenshot)) },
+                        highlightKey = "disable_screenshot",
                         description = stringResource(R.string.disable_screenshot_desc),
                         icon = { Icon(painterResource(R.drawable.screenshot), null) },
                         checked = disableScreenshot,
                         onCheckedChange = onDisableScreenshotChange,
                     )
-                    }
                 }
+            }
             }
         }
     }

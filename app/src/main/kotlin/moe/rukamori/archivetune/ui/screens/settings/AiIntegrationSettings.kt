@@ -60,6 +60,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -101,9 +102,9 @@ import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
-import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -167,6 +168,7 @@ fun AiIntegrationSettings(
             .verticalScroll(rememberScrollState())
             .padding(bottom = SettingsDimensions.ScreenBottomPadding),
     ) {
+        CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
         Spacer(
             Modifier.windowInsetsPadding(
                 LocalPlayerAwareWindowInsets.current.only(WindowInsetsSides.Top),
@@ -175,9 +177,9 @@ fun AiIntegrationSettings(
 
         PreferenceGroup(title = stringResource(R.string.ai_provider_settings)) {
             item {
-                HighlightablePreference(highlightKey = "ai_provider", highlight = highlight) {
                     ListPreference(
                         title = { Text(stringResource(R.string.ai_provider)) },
+                        highlightKey = "ai_provider",
                     description = stringResource(R.string.ai_provider_desc),
                     icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
                     selectedValue = provider,
@@ -200,12 +202,12 @@ fun AiIntegrationSettings(
                         setValidationStatus(AiApiValidationStatus.UNKNOWN)
                     },
                     )
-                }
             }
 
-            item(visible = provider == AiProvider.CUSTOM) {
+            item(visible = provider == AiProvider.CUSTOM || highlight == "ai_custom_endpoint") {
                 EditTextPreference(
                     title = { Text(stringResource(R.string.ai_custom_endpoint)) },
+                    highlightKey = "ai_custom_endpoint",
                     icon = { Icon(painterResource(R.drawable.website), null) },
                     value = customEndpoint,
                     onValueChange = {
@@ -220,6 +222,7 @@ fun AiIntegrationSettings(
             item {
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.ai_api_key)) },
+                    highlightKey = "ai_api_key",
                     description =
                         if (apiKey.isBlank()) {
                             stringResource(R.string.ai_api_key_missing)
@@ -232,7 +235,7 @@ fun AiIntegrationSettings(
                 )
             }
 
-            item(visible = provider != AiProvider.NONE && provider != AiProvider.CUSTOM) {
+            item(visible = (provider != AiProvider.NONE && provider != AiProvider.CUSTOM) || highlight == "ai_model") {
                 ModelPickerPreference(
                     selectedModel = selectedModel,
                     availableModels = availableModels,
@@ -248,9 +251,10 @@ fun AiIntegrationSettings(
                 )
             }
 
-            item(visible = provider == AiProvider.CUSTOM) {
+            item(visible = provider == AiProvider.CUSTOM || highlight == "ai_model") {
                 EditTextPreference(
                     title = { Text(stringResource(R.string.ai_model)) },
+                    highlightKey = "ai_model",
                     icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
                     value = customModel,
                     onValueChange = {
@@ -271,6 +275,7 @@ fun AiIntegrationSettings(
                     }
                 PreferenceEntry(
                     title = { Text(stringResource(R.string.ai_test_api)) },
+                    highlightKey = "ai_test_api",
                     icon = {
                         AnimatedContent(
                             targetState = testVisualState,
@@ -346,6 +351,7 @@ fun AiIntegrationSettings(
                     isEnabled = canTestApi,
                 )
             }
+        }
         }
     }
 
@@ -656,6 +662,7 @@ private fun ModelPickerPreference(
 
     PreferenceEntry(
         title = { Text(stringResource(R.string.ai_model)) },
+        highlightKey = "ai_model",
         description = description,
         icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
         trailingContent = {

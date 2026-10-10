@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +43,7 @@ import moe.rukamori.archivetune.constants.SubsonicUsernameKey
 import moe.rukamori.archivetune.subsonic.SubsonicClient
 import moe.rukamori.archivetune.subsonic.SubsonicConfig
 import moe.rukamori.archivetune.ui.component.InfoLabel
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -54,7 +56,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SubsonicSettings(navController: NavController) {
+fun SubsonicSettings(navController: NavController, highlight: String? = null) {
     val (enabled, onEnabledChange) = rememberPreference(SubsonicEnabledKey, false)
     val (baseUrl, onBaseUrlChange) = rememberPreference(SubsonicBaseUrlKey, "")
     val (username, onUsernameChange) = rememberPreference(SubsonicUsernameKey, "")
@@ -77,6 +79,7 @@ fun SubsonicSettings(navController: NavController) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
             SettingsEditorialHeader(
                 title = stringResource(R.string.subsonic_integration),
                 onBack = { navController.navigateUp() },
@@ -85,6 +88,7 @@ fun SubsonicSettings(navController: NavController) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.subsonic_enable)) },
+                        highlightKey = "subsonic_enable",
                         description = stringResource(R.string.subsonic_enable_description),
                         icon = { Icon(painterResource(R.drawable.storage), null) },
                         checked = enabled,
@@ -110,6 +114,7 @@ fun SubsonicSettings(navController: NavController) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.password)) },
+                        highlightKey = "password",
                         description = if (password.isBlank()) "—" else "••••••••",
                         icon = { Icon(painterResource(R.drawable.token), null) },
                         onClick = { editing = Field.Password },
@@ -118,6 +123,7 @@ fun SubsonicSettings(navController: NavController) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.subsonic_strict_only)) },
+                        highlightKey = "subsonic_strict_only",
                         description = stringResource(R.string.subsonic_strict_only_description),
                         icon = { Icon(painterResource(R.drawable.music_note), null) },
                         checked = strictOnly,
@@ -127,6 +133,7 @@ fun SubsonicSettings(navController: NavController) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.subsonic_test_connection)) },
+                        highlightKey = "subsonic_test_connection",
                         description = status,
                         icon = { Icon(painterResource(R.drawable.update), null) },
                         onClick = {
@@ -157,6 +164,7 @@ fun SubsonicSettings(navController: NavController) {
                 }
             }
             InfoLabel(text = stringResource(R.string.subsonic_compat_note))
+            }
         }
     }
 

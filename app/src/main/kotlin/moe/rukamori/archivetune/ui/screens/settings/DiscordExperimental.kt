@@ -23,6 +23,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.*
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.ListPreference
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.utils.TranslatorLanguages
@@ -33,7 +34,7 @@ private val DiscordExperimentalButtonUrlOptions =
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiscordExperimental(navController: NavController) {
+fun DiscordExperimental(navController: NavController, highlight: String? = null) {
     val context = LocalContext.current
     val languages = remember(context) { TranslatorLanguages.load(context) }
     val languageCodes = remember(languages) { languages.map { it.code } }
@@ -98,6 +99,7 @@ fun DiscordExperimental(navController: NavController) {
                 onBack = { navController.navigateUp() },
             )
 
+            CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding =
@@ -111,6 +113,7 @@ fun DiscordExperimental(navController: NavController) {
                         item {
                             SwitchPreference(
                                 title = { Text(stringResource(R.string.enable_translator)) },
+                                highlightKey = "enable_translator",
                                 description = stringResource(R.string.enable_translator_desc),
                                 icon = { Icon(painterResource(R.drawable.translate), null) },
                                 checked = translatorEnabled,
@@ -118,9 +121,10 @@ fun DiscordExperimental(navController: NavController) {
                             )
                         }
 
-                        item(visible = translatorEnabled) {
+                        item(visible = translatorEnabled || highlight == "context_info") {
                             EditTextPreference(
                                 title = { Text(stringResource(R.string.context_info)) },
+                                highlightKey = "context_info",
                                 icon = { Icon(painterResource(R.drawable.translate), null) },
                                 value = translatorContexts,
                                 onValueChange = onTranslatorContextsChange,
@@ -128,9 +132,10 @@ fun DiscordExperimental(navController: NavController) {
                             )
                         }
 
-                        item(visible = translatorEnabled) {
+                        item(visible = translatorEnabled || highlight == "target_language") {
                             ListPreference(
                                 title = { Text(stringResource(R.string.target_language)) },
+                                highlightKey = "target_language",
                                 icon = { Icon(painterResource(R.drawable.translate), null) },
                                 selectedValue = translatorTargetLang,
                                 values = languageCodes,
@@ -146,6 +151,7 @@ fun DiscordExperimental(navController: NavController) {
                         item {
                             SwitchPreference(
                                 title = { Text(stringResource(R.string.show_button)) },
+                                highlightKey = "show_button",
                                 description = stringResource(R.string.show_button1_description),
                                 icon = { Icon(painterResource(R.drawable.buttons), null) },
                                 checked = button1Enabled,
@@ -153,9 +159,10 @@ fun DiscordExperimental(navController: NavController) {
                             )
                         }
 
-                        item(visible = button1Enabled) {
+                        item(visible = button1Enabled || highlight == "discord_activity_button_1_url") {
                             ListPreference(
                                 title = { Text(stringResource(R.string.discord_activity_button_1_url)) },
+                                highlightKey = "discord_activity_button_1_url",
                                 icon = { Icon(painterResource(R.drawable.link), null) },
                                 selectedValue = button1UrlSource,
                                 values = DiscordExperimentalButtonUrlOptions,
@@ -164,9 +171,10 @@ fun DiscordExperimental(navController: NavController) {
                             )
                         }
 
-                        item(visible = button1Enabled) {
+                        item(visible = button1Enabled || highlight == "discord_activity_button1_label") {
                             EditTextPreference(
                                 title = { Text(stringResource(R.string.discord_activity_button1_label)) },
+                                highlightKey = "discord_activity_button1_label",
                                 icon = { Icon(painterResource(R.drawable.buttons), null) },
                                 value = button1Label,
                                 onValueChange = onButton1LabelChange,
@@ -174,9 +182,10 @@ fun DiscordExperimental(navController: NavController) {
                             )
                         }
 
-                        item(visible = button1Enabled && button1UrlSource == "custom") {
+                        item(visible = (button1Enabled && button1UrlSource == "custom") || highlight == "discord_activity_button1_url") {
                             EditTextPreference(
                                 title = { Text(stringResource(R.string.discord_activity_button1_url)) },
+                                highlightKey = "discord_activity_button1_url",
                                 icon = { Icon(painterResource(R.drawable.link), null) },
                                 value = button1CustomUrl,
                                 onValueChange = onButton1CustomUrlChange,
@@ -187,6 +196,7 @@ fun DiscordExperimental(navController: NavController) {
                         item {
                             SwitchPreference(
                                 title = { Text(stringResource(R.string.show_button)) },
+                                highlightKey = "show_button",
                                 description = stringResource(R.string.show_button2_description),
                                 icon = { Icon(painterResource(R.drawable.buttons), null) },
                                 checked = button2Enabled,
@@ -194,9 +204,10 @@ fun DiscordExperimental(navController: NavController) {
                             )
                         }
 
-                        item(visible = button2Enabled) {
+                        item(visible = button2Enabled || highlight == "discord_activity_button_2_url") {
                             ListPreference(
                                 title = { Text(stringResource(R.string.discord_activity_button_2_url)) },
+                                highlightKey = "discord_activity_button_2_url",
                                 icon = { Icon(painterResource(R.drawable.link), null) },
                                 selectedValue = button2UrlSource,
                                 values = DiscordExperimentalButtonUrlOptions,
@@ -205,9 +216,10 @@ fun DiscordExperimental(navController: NavController) {
                             )
                         }
 
-                        item(visible = button2Enabled) {
+                        item(visible = button2Enabled || highlight == "discord_activity_button2_label") {
                             EditTextPreference(
                                 title = { Text(stringResource(R.string.discord_activity_button2_label)) },
+                                highlightKey = "discord_activity_button2_label",
                                 icon = { Icon(painterResource(R.drawable.buttons), null) },
                                 value = button2Label,
                                 onValueChange = onButton2LabelChange,
@@ -215,9 +227,10 @@ fun DiscordExperimental(navController: NavController) {
                             )
                         }
 
-                        item(visible = button2Enabled && button2UrlSource == "custom") {
+                        item(visible = (button2Enabled && button2UrlSource == "custom") || highlight == "discord_activity_button2_url") {
                             EditTextPreference(
                                 title = { Text(stringResource(R.string.discord_activity_button2_url)) },
+                                highlightKey = "discord_activity_button2_url",
                                 icon = { Icon(painterResource(R.drawable.link), null) },
                                 value = button2CustomUrl,
                                 onValueChange = onButton2CustomUrlChange,
@@ -226,6 +239,7 @@ fun DiscordExperimental(navController: NavController) {
                         }
                     }
                 }
+            }
             }
         }
     }

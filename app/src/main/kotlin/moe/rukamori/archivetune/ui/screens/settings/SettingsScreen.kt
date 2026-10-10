@@ -274,7 +274,7 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                            .padding(vertical = 2.dp),
+                            .padding(top = 2.dp, bottom = 10.dp),
                     ) {
                         OutlinedTextField(
                             value = query,

@@ -22,6 +22,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -34,6 +35,7 @@ import moe.rukamori.archivetune.constants.LyricsV2FillTransitionWidthKey
 import moe.rukamori.archivetune.constants.LyricsV2GlowFactorKey
 import moe.rukamori.archivetune.constants.LyricsV2LrcBounceEnabledKey
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.utils.backToMain
@@ -41,7 +43,7 @@ import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LyricsAnimationSettings(navController: NavController) {
+fun LyricsAnimationSettings(navController: NavController, highlight: String? = null) {
     val (bounceFactor, onBounceFactorChange) = rememberPreference(LyricsV2BounceFactorKey, defaultValue = 1f)
     val (glowFactor, onGlowFactorChange) = rememberPreference(LyricsV2GlowFactorKey, defaultValue = 1f)
     val (fillTransitionWidth, onFillTransitionWidthChange) = rememberPreference(LyricsV2FillTransitionWidthKey, defaultValue = 8f)
@@ -61,6 +63,7 @@ fun LyricsAnimationSettings(navController: NavController) {
                         ),
                     ).padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
             // ponytail: header is the first list item (AppearanceSettings pattern) — was a
             // Scaffold-content sibling floating over the list, overlapping the group title.
             SettingsEditorialHeader(
@@ -71,6 +74,7 @@ fun LyricsAnimationSettings(navController: NavController) {
                 item {
                     PreferenceEntry(
                         title = { Text("Line Bounce Effect") },
+                        highlightKey = "line_bounce_effect",
                         description = "Enable bounce animation for line-synced (LRC) lyrics",
                         icon = { Icon(painterResource(R.drawable.animation), null) },
                         trailingContent = {
@@ -85,6 +89,7 @@ fun LyricsAnimationSettings(navController: NavController) {
                 item {
                     PreferenceEntry(
                         title = { Text("Bounce Amplitude") },
+                        highlightKey = "bounce_amplitude",
                         description = "Adjust the bounce effect when a word is sung (${(bounceFactor * 100).toInt()}%)",
                         icon = { Icon(painterResource(R.drawable.animation), null) },
                         content = {
@@ -100,6 +105,7 @@ fun LyricsAnimationSettings(navController: NavController) {
                 item {
                     PreferenceEntry(
                         title = { Text("Glow Intensity") },
+                        highlightKey = "glow_intensity",
                         description = "Adjust the glow brightness of the sung word (${(glowFactor * 100).toInt()}%)",
                         icon = { Icon(painterResource(R.drawable.lyrics), null) },
                         content = {
@@ -115,6 +121,7 @@ fun LyricsAnimationSettings(navController: NavController) {
                 item {
                     PreferenceEntry(
                         title = { Text("Fill Transition Smoothness") },
+                        highlightKey = "fill_transition_smoothness",
                         description = "Adjust the gradient edge width of the liquid fill effect (${fillTransitionWidth.toInt()} dp)",
                         icon = { Icon(painterResource(R.drawable.lyrics), null) },
                         content = {
@@ -126,6 +133,7 @@ fun LyricsAnimationSettings(navController: NavController) {
                         },
                     )
                 }
+            }
             }
         }
     }

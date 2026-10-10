@@ -413,14 +413,20 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/appearance/icon") {
         IconScreen(navController)
     }
-    composable("settings/appearance/aod_customized") {
-        AodCustomizedScreen(navController)
+    composable(
+        route = "settings/appearance/aod_customized?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
+        AodCustomizedScreen(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
     composable("settings/appearance/palette_picker") {
         PalettePickerScreen(navController)
     }
-    composable("settings/appearance/lyrics_animations") {
-        LyricsAnimationSettings(navController)
+    composable(
+        route = "settings/appearance/lyrics_animations?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
+        LyricsAnimationSettings(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
     composable("settings/appearance/theme_creator") {
         ThemeCreatorScreen(navController)
@@ -441,8 +447,11 @@ fun NavGraphBuilder.navigationBuilder(
         route = "settings/player?highlight={highlight}",
         arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
     ) { backStackEntry -> PlayerSettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
-    composable("settings/player/chiper") {
-        ChiperSettings(navController)
+    composable(
+        route = "settings/player/chiper?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
+        ChiperSettings(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
     composable(
         route = "settings/storage?highlight={highlight}",
@@ -452,8 +461,11 @@ fun NavGraphBuilder.navigationBuilder(
         route = "settings/privacy?highlight={highlight}",
         arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
     ) { backStackEntry -> PrivacySettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
-    composable("settings/backup_restore") {
-        BackupAndRestore(navController)
+    composable(
+        route = "settings/backup_restore?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
+        BackupAndRestore(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
     composable(
         route = "settings/discord?highlight={highlight}",
@@ -470,15 +482,24 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/music_together") {
         MusicTogetherScreen(navController)
     }
-    composable("settings/lastfm") {
-        LastFMSettings(navController)
+    composable(
+        route = "settings/lastfm?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
+        LastFMSettings(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
-    composable("settings/subsonic") {
-        SubsonicSettings(navController)
+    composable(
+        route = "settings/subsonic?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
+        SubsonicSettings(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
-    composable("settings/discord/experimental") {
+    composable(
+        route = "settings/discord/experimental?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
         moe.rukamori.archivetune.ui.screens.settings
-            .DiscordExperimental(navController)
+            .DiscordExperimental(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
     composable(
         route = "settings/misc?highlight={highlight}",
@@ -510,8 +531,11 @@ fun NavGraphBuilder.navigationBuilder(
     composable("settings/about") {
         AboutScreen(navController)
     }
-    composable("settings/po_token") {
-        PoTokenScreen(navController)
+    composable(
+        route = "settings/po_token?highlight={highlight}",
+        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+    ) { backStackEntry ->
+        PoTokenScreen(navController, highlight = backStackEntry.arguments?.getString("highlight"))
     }
     composable("customize_background") {
         CustomizeBackground(navController)

@@ -62,6 +62,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -102,6 +103,7 @@ import moe.rukamori.archivetune.spotify.SpotifyAccountViewModel
 import moe.rukamori.archivetune.spotify.SpotifyAuth
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.PreferenceGroupScope
@@ -139,6 +141,7 @@ fun BackupAndRestore(
     navController: NavController,
     viewModel: BackupRestoreViewModel = hiltViewModel(),
     spotifyAccountViewModel: SpotifyAccountViewModel = hiltViewModel(),
+    highlight: String? = null,
 ) {
     val importedSongs = remember { mutableStateListOf<Song>() }
     var showChoosePlaylistDialogOnline by rememberSaveable { mutableStateOf(false) }
@@ -240,6 +243,7 @@ fun BackupAndRestore(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
             SettingsEditorialHeader(
                 title = stringResource(R.string.backup_restore),
                 onBack = { navController.navigateUp() },
@@ -248,6 +252,7 @@ fun BackupAndRestore(
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.action_backup)) },
+                        highlightKey = "action_backup",
                         description = stringResource(R.string.backup_create_backup_desc),
                         icon = { Icon(painterResource(R.drawable.backup), null) },
                         onClick = { showBackupOptionsDialog = true },
@@ -257,6 +262,7 @@ fun BackupAndRestore(
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.action_restore)) },
+                        highlightKey = "action_restore",
                         description = stringResource(R.string.restore_select_backup),
                         icon = { Icon(painterResource(R.drawable.restore), null) },
                         onClick = { restoreLauncher.launch(arrayOf("application/octet-stream", "application/zip")) },
@@ -266,6 +272,7 @@ fun BackupAndRestore(
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.import_online)) },
+                        highlightKey = "import_online",
                         description = stringResource(R.string.import_m3u_format),
                         icon = { Icon(painterResource(R.drawable.playlist_import), null) },
                         onClick = { importM3uLauncherOnline.launch(arrayOf("audio/*")) },
@@ -275,6 +282,7 @@ fun BackupAndRestore(
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.import_csv)) },
+                        highlightKey = "import_csv",
                         description = stringResource(R.string.import_csv_format),
                         icon = { Icon(painterResource(R.drawable.playlist_add), null) },
                         onClick = { importPlaylistFromCsv.launch(CSV_MIME_TYPES) },
@@ -293,6 +301,7 @@ fun BackupAndRestore(
                         spotifyAccountViewModel.logout()
                     },
                 )
+            }
             }
         }
     }
@@ -412,6 +421,7 @@ private fun PreferenceGroupScope.spotifyAccountPreferences(
         item {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.spotify_connect)) },
+                highlightKey = "spotify_connect",
                 description = stringResource(R.string.spotify_not_connected),
                 icon = { Icon(painterResource(R.drawable.spotify_icon), null) },
                 trailingContent = {
@@ -465,6 +475,7 @@ private fun PreferenceGroupScope.spotifyAccountPreferences(
     item {
         SwitchPreference(
             title = { Text(stringResource(R.string.spotify_show_playlist)) },
+            highlightKey = "spotify_show_playlist",
             description = stringResource(R.string.spotify_show_playlist_desc),
             icon = { Icon(painterResource(R.drawable.spotify_icon), null) },
             checked = showPlaylists,
@@ -476,6 +487,7 @@ private fun PreferenceGroupScope.spotifyAccountPreferences(
     item {
         PreferenceEntry(
             title = { Text(stringResource(R.string.spotify_reload_playlist)) },
+            highlightKey = "spotify_reload_playlist",
             description = stringResource(R.string.spotify_reload_playlist_desc),
             icon = { Icon(painterResource(R.drawable.sync), null) },
             onClick = onReloadClick,
@@ -486,6 +498,7 @@ private fun PreferenceGroupScope.spotifyAccountPreferences(
     item {
         PreferenceEntry(
             title = { Text(stringResource(R.string.action_logout)) },
+            highlightKey = "action_logout",
             icon = { Icon(painterResource(R.drawable.logout), null) },
             onClick = onLogoutClick,
             isEnabled = !state.isLoading,

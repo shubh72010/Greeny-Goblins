@@ -46,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -100,6 +101,7 @@ import moe.rukamori.archivetune.constants.AodVerticalSpacingKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadiusKey
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -140,7 +142,7 @@ private data class AodPreviewSettings(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AodCustomizedScreen(navController: NavController) {
+fun AodCustomizedScreen(navController: NavController, highlight: String? = null) {
     val scrollBehavior = appBarScrollBehavior()
     val (thumbnailShape, onThumbnailShapeChange) =
         rememberEnumPreference(
@@ -248,6 +250,7 @@ fun AodCustomizedScreen(navController: NavController) {
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { paddingValues ->
+        CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
         LazyColumn(
             modifier =
                 Modifier
@@ -287,6 +290,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.aod_customize_show_thumbnail)) },
+                            highlightKey = "aod_customize_show_thumbnail",
                             icon = { Icon(painterResource(R.drawable.image), null) },
                             checked = showThumbnail,
                             onCheckedChange = onShowThumbnailChange,
@@ -295,6 +299,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.aod_customize_show_artist)) },
+                            highlightKey = "aod_customize_show_artist",
                             icon = { Icon(painterResource(R.drawable.artist), null) },
                             checked = showArtist,
                             onCheckedChange = onShowArtistChange,
@@ -303,6 +308,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.aod_customize_show_album)) },
+                            highlightKey = "aod_customize_show_album",
                             icon = { Icon(painterResource(R.drawable.album), null) },
                             checked = showAlbum,
                             onCheckedChange = onShowAlbumChange,
@@ -311,14 +317,16 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.aod_customize_show_progress)) },
+                            highlightKey = "aod_customize_show_progress",
                             icon = { Icon(painterResource(R.drawable.sliders), null) },
                             checked = showProgress,
                             onCheckedChange = onShowProgressChange,
                         )
                     }
-                    item(visible = showProgress) {
+                    item(visible = showProgress || highlight == "aod_customize_show_time_labels") {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.aod_customize_show_time_labels)) },
+                            highlightKey = "aod_customize_show_time_labels",
                             icon = { Icon(painterResource(R.drawable.timer), null) },
                             checked = showTimeLabels,
                             onCheckedChange = onShowTimeLabelsChange,
@@ -327,6 +335,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.aod_customize_show_controls)) },
+                            highlightKey = "aod_customize_show_controls",
                             icon = { Icon(painterResource(R.drawable.buttons), null) },
                             checked = showControls,
                             onCheckedChange = onShowControlsChange,
@@ -335,6 +344,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.aod_customize_show_exit_button)) },
+                            highlightKey = "aod_customize_show_exit_button",
                             icon = { Icon(painterResource(R.drawable.close), null) },
                             checked = showExitButton,
                             onCheckedChange = onShowExitButtonChange,
@@ -366,6 +376,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         EnumListPreference(
                             title = { Text(stringResource(R.string.aod_customize_background_style)) },
+                            highlightKey = "aod_customize_background_style",
                             icon = { Icon(painterResource(R.drawable.gradient), null) },
                             selectedValue = backgroundStyle,
                             valueText = { it.label() },
@@ -375,6 +386,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         EnumListPreference(
                             title = { Text(stringResource(R.string.aod_customize_accent_style)) },
+                            highlightKey = "aod_customize_accent_style",
                             icon = { Icon(painterResource(R.drawable.palette), null) },
                             selectedValue = accentStyle,
                             valueText = { it.label() },
@@ -384,6 +396,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         EnumListPreference(
                             title = { Text(stringResource(R.string.aod_customize_content_position)) },
+                            highlightKey = "aod_customize_content_position",
                             icon = { Icon(painterResource(R.drawable.format_align_center), null) },
                             selectedValue = contentPosition,
                             valueText = { it.label() },
@@ -393,6 +406,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         EnumListPreference(
                             title = { Text(stringResource(R.string.aod_customize_text_alignment)) },
+                            highlightKey = "aod_customize_text_alignment",
                             icon = { Icon(painterResource(R.drawable.text_fields), null) },
                             selectedValue = textAlignment,
                             valueText = { it.label() },
@@ -402,6 +416,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         AodIntSliderPreference(
                             title = stringResource(R.string.aod_customize_title_max_lines),
+                            highlightKey = "aod_customize_title_max_lines",
                             icon = { Icon(painterResource(R.drawable.text_fields), null) },
                             value = titleMaxLines,
                             valueRange = 1..3,
@@ -419,6 +434,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         AodSliderPreference(
                             title = stringResource(R.string.aod_customize_thumbnail_size),
+                            highlightKey = "aod_customize_thumbnail_size",
                             icon = { Icon(painterResource(R.drawable.image), null) },
                             value = thumbnailSize,
                             valueRange = 160f..340f,
@@ -430,6 +446,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         AodIntSliderPreference(
                             title = stringResource(R.string.aod_customize_shape_rotation),
+                            highlightKey = "aod_customize_shape_rotation",
                             icon = { Icon(painterResource(R.drawable.replay), null) },
                             value = thumbnailShapeRotation,
                             valueRange = 0..315,
@@ -441,6 +458,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         AodSliderPreference(
                             title = stringResource(R.string.aod_customize_horizontal_padding),
+                            highlightKey = "aod_customize_horizontal_padding",
                             icon = { Icon(painterResource(R.drawable.format_align_center), null) },
                             value = horizontalPadding,
                             valueRange = 16f..72f,
@@ -452,6 +470,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         AodSliderPreference(
                             title = stringResource(R.string.aod_customize_vertical_spacing),
+                            highlightKey = "aod_customize_vertical_spacing",
                             icon = { Icon(painterResource(R.drawable.drag_handle), null) },
                             value = verticalSpacing,
                             valueRange = 8f..36f,
@@ -463,6 +482,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         AodSliderPreference(
                             title = stringResource(R.string.aod_customize_ambient_intensity),
+                            highlightKey = "aod_customize_ambient_intensity",
                             icon = { Icon(painterResource(R.drawable.blur_on), null) },
                             value = ambientIntensity,
                             valueRange = 0f..1f,
@@ -474,6 +494,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.aod_customize_artwork_glow)) },
+                            highlightKey = "aod_customize_artwork_glow",
                             icon = { Icon(painterResource(R.drawable.auto_awesome), null) },
                             checked = artworkGlow,
                             onCheckedChange = onArtworkGlowChange,
@@ -490,6 +511,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         EnumListPreference(
                             title = { Text(stringResource(R.string.aod_customize_control_style)) },
+                            highlightKey = "aod_customize_control_style",
                             icon = { Icon(painterResource(R.drawable.buttons), null) },
                             selectedValue = controlStyle,
                             valueText = { it.label() },
@@ -500,6 +522,7 @@ fun AodCustomizedScreen(navController: NavController) {
                     item {
                         AodSliderPreference(
                             title = stringResource(R.string.aod_customize_control_size),
+                            highlightKey = "aod_customize_control_size",
                             icon = { Icon(painterResource(R.drawable.buttons), null) },
                             value = controlSize,
                             valueRange = 52f..84f,
@@ -518,6 +541,7 @@ fun AodCustomizedScreen(navController: NavController) {
             ) {
                 Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding))
             }
+        }
         }
     }
 }
@@ -842,6 +866,7 @@ private fun AodSliderPreference(
     valueLabel: @Composable (Float) -> String,
     onValueChange: (Float) -> Unit,
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     var sliderValue by remember { mutableFloatStateOf(value) }
     LaunchedEffect(value) {
@@ -853,6 +878,7 @@ private fun AodSliderPreference(
         description = valueLabel(sliderValue),
         icon = icon,
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
         content = {
             Spacer(modifier = Modifier.height(10.dp))
             Slider(
@@ -883,6 +909,7 @@ private fun AodIntSliderPreference(
     steps: Int = (valueRange.last - valueRange.first - 1).coerceAtLeast(0),
     valueLabel: @Composable (Int) -> String = { it.toString() },
     isEnabled: Boolean = true,
+    highlightKey: String? = null,
 ) {
     var sliderValue by remember { mutableFloatStateOf(value.toFloat()) }
     LaunchedEffect(value) {
@@ -895,6 +922,7 @@ private fun AodIntSliderPreference(
         description = valueLabel(roundedValue),
         icon = icon,
         isEnabled = isEnabled,
+        highlightKey = highlightKey,
         content = {
             Spacer(modifier = Modifier.height(10.dp))
             Slider(

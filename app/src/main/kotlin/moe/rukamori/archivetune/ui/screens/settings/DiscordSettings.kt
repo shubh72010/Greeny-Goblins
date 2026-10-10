@@ -56,13 +56,13 @@ import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.EnumListPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
-import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.ArtworkStorage
 import moe.rukamori.archivetune.utils.discordAlbumMusicUrl
@@ -418,6 +418,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     }
                 },
             )
+        CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
         LazyColumn(
             modifier =
                 Modifier
@@ -466,6 +467,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     item {
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.refresh)) },
+                            highlightKey = "refresh",
                             description = stringResource(R.string.description_refresh),
                             icon = { Icon(painterResource(R.drawable.update), null) },
                             isEnabled = discordRPC && isLoggedIn,
@@ -507,20 +509,20 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
             item {
                 PreferenceGroup(title = stringResource(R.string.discord_connection_settings)) {
                     item {
-                    HighlightablePreference(highlightKey = "discord_status", highlight = highlight) {
                         ListPreference(
                             title = { Text(stringResource(R.string.activity_status)) },
+                            highlightKey = "activity_status",
                             icon = { Icon(painterResource(R.drawable.status), null) },
                             selectedValue = activityStatusSelection,
                             values = DiscordActivityStatusOptions,
                             valueText = { discordPresenceStatusLabel(it) },
                             onValueSelected = onActivityStatusSelectionChange,
                         )
-                    }
 
                     item {
                         ListPreference(
                             title = { Text(stringResource(R.string.platform_status)) },
+                            highlightKey = "platform_status",
                             icon = { Icon(painterResource(R.drawable.desktop_windows), null) },
                             selectedValue = platformSelection,
                             values = DiscordPlatformOptions,
@@ -537,6 +539,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     item {
                         EnumListPreference(
                             title = { Text(stringResource(R.string.discord_activity_name)) },
+                            highlightKey = "discord_activity_name",
                             selectedValue = nameSource,
                             onValueSelected = onNameSourceChange,
                             valueText = { activitySourceLabel(it) },
@@ -546,6 +549,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     item {
                         EnumListPreference(
                             title = { Text(stringResource(R.string.discord_activity_details)) },
+                            highlightKey = "discord_activity_details",
                             selectedValue = detailsSource,
                             onValueSelected = onDetailsSourceChange,
                             valueText = { activitySourceLabel(it) },
@@ -555,6 +559,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     item {
                         EnumListPreference(
                             title = { Text(stringResource(R.string.discord_activity_state)) },
+                            highlightKey = "discord_activity_state",
                             selectedValue = stateSource,
                             onValueSelected = onStateSourceChange,
                             valueText = { activitySourceLabel(it) },
@@ -563,19 +568,19 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     }
 
                     item {
-                    HighlightablePreference(highlightKey = "discord_paused", highlight = highlight) {
                         SwitchPreference(
                             title = { Text(stringResource(R.string.discord_show_when_paused)) },
+                            highlightKey = "discord_show_when_paused",
                             description = stringResource(R.string.discord_show_when_paused_desc),
                             icon = { Icon(painterResource(R.drawable.ic_pause_white), null) },
                             checked = showWhenPaused,
                             onCheckedChange = { showWhenPaused = it },
                         )
-                    }
 
                     item {
                         ListPreference(
                             title = { Text(stringResource(R.string.discord_activity_type)) },
+                            highlightKey = "discord_activity_type",
                             icon = { Icon(painterResource(R.drawable.discord), null) },
                             selectedValue = activityType,
                             values = DiscordActivityTypeOptions,
@@ -592,6 +597,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     item {
                         ListPreference(
                             title = { Text(stringResource(R.string.large_image)) },
+                            highlightKey = "large_image",
                             icon = { Icon(painterResource(R.drawable.image), null) },
                             selectedValue = largeImageType,
                             values = DiscordImageOptions,
@@ -600,9 +606,10 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                         )
                     }
 
-                    item(visible = largeImageType == "custom") {
+                    item(visible = largeImageType == "custom" || highlight == "large_image_custom_url") {
                         EditTextPreference(
                             title = { Text(stringResource(R.string.large_image_custom_url)) },
+                            highlightKey = "large_image_custom_url",
                             icon = { Icon(painterResource(R.drawable.link), null) },
                             value = largeImageCustomUrl,
                             onValueChange = onLargeImageCustomUrlChange,
@@ -613,6 +620,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     item {
                         ListPreference(
                             title = { Text(stringResource(R.string.large_text)) },
+                            highlightKey = "large_text",
                             icon = { Icon(painterResource(R.drawable.text_fields), null) },
                             selectedValue = largeTextSource,
                             values = DiscordLargeTextOptions,
@@ -621,9 +629,10 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                         )
                     }
 
-                    item(visible = largeTextSource == "custom") {
+                    item(visible = largeTextSource == "custom" || highlight == "custom_large_text") {
                         EditTextPreference(
                             title = { Text(stringResource(R.string.custom_large_text)) },
+                            highlightKey = "custom_large_text",
                             icon = { Icon(painterResource(R.drawable.text_fields), null) },
                             value = largeTextCustom,
                             onValueChange = onLargeTextCustomChange,
@@ -632,20 +641,20 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     }
 
                     item {
-                    HighlightablePreference(highlightKey = "discord_rpc", highlight = highlight) {
                         ListPreference(
                             title = { Text(stringResource(R.string.small_image)) },
+                            highlightKey = "small_image",
                             icon = { Icon(painterResource(R.drawable.image), null) },
                             selectedValue = smallImageType,
                             values = DiscordSmallImageOptions,
                             valueText = { discordImageTypeLabel(it) },
                             onValueSelected = onSmallImageTypeChange,
                         )
-                    }
 
-                    item(visible = smallImageType == "custom") {
+                    item(visible = smallImageType == "custom" || highlight == "small_image_custom_url") {
                         EditTextPreference(
                             title = { Text(stringResource(R.string.small_image_custom_url)) },
+                            highlightKey = "small_image_custom_url",
                             icon = { Icon(painterResource(R.drawable.link), null) },
                             value = smallImageCustomUrl,
                             onValueChange = onSmallImageCustomUrlChange,
@@ -681,6 +690,7 @@ fun DiscordSettings(navController: NavController, highlight: String? = null) {
                     isPlaying = playerConnection.player.isPlaying,
                 )
             }
+        }
         }
         }
 

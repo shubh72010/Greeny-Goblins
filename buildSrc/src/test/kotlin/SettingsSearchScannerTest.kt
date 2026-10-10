@@ -36,14 +36,13 @@ class SettingsSearchScannerTest {
                 fun AppearanceSettings(navController: NavController, highlight: String?) {
                     PreferenceGroup(title = stringResource(R.string.theme)) {
                         item {
-                            HighlightablePreference(highlightKey = "pure_black", highlight = highlight) {
-                                SwitchPreference(
-                                    title = { Text(stringResource(R.string.pure_black)) },
-                                    icon = { Icon(painterResource(R.drawable.dark_mode), null) },
-                                    checked = pureBlack,
-                                    onCheckedChange = {},
-                                )
-                            }
+                            SwitchPreference(
+                                title = { Text(stringResource(R.string.pure_black)) },
+                                icon = { Icon(painterResource(R.drawable.dark_mode), null) },
+                                checked = pureBlack,
+                                onCheckedChange = {},
+                                highlightKey = "pure_black",
+                            )
                         }
                     }
                 }
@@ -57,6 +56,32 @@ class SettingsSearchScannerTest {
         assertEquals("dark_mode", entry.iconName)
         assertEquals("stringResource(R.string.theme)", entry.subtitleExpr)
         assertEquals(listOf("pure", "black", "theme"), entry.keywords)
+    }
+
+    @Test
+    fun `every row deep-links without a manual wrapper`() {
+        val entries =
+            scan(
+                """
+                fun InternetSettings(navController: NavController, highlight: String?) {
+                    PreferenceGroup(title = stringResource(R.string.proxy)) {
+                        item {
+                            SwitchPreference(
+                                title = { Text(stringResource(R.string.enable_proxy)) },
+                                checked = proxyEnabled,
+                                onCheckedChange = {},
+                                highlightKey = "enable_proxy",
+                            )
+                        }
+                    }
+                }
+                """.trimIndent(),
+                screen = "InternetSettings",
+            )
+
+        val entry = entries.single()
+        assertEquals("InternetSettings.enable_proxy", entry.key)
+        assertEquals("settings/internet?highlight=enable_proxy", entry.route)
     }
 
     @Test

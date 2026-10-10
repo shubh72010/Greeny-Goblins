@@ -20,6 +20,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -32,11 +33,11 @@ import moe.rukamori.archivetune.constants.ListenBrainzEnabledKey
 import moe.rukamori.archivetune.constants.ListenBrainzTokenKey
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
-import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -58,6 +59,7 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = SettingsDimensions.ScreenBottomPadding),
         ) {
+            CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
             SettingsEditorialHeader(
                 title = stringResource(R.string.integration),
                 onBack = { navController.navigateUp() },
@@ -66,6 +68,7 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.discord_integration)) },
+                        highlightKey = "discord_integration",
                         icon = { Icon(painterResource(R.drawable.discord), null) },
                         onClick = {
                             navController.navigate("settings/discord")
@@ -78,6 +81,7 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.subsonic_integration)) },
+                        highlightKey = "subsonic_integration",
                         icon = { Icon(painterResource(R.drawable.storage), null) },
                         onClick = {
                             navController.navigate("settings/subsonic")
@@ -90,6 +94,7 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.lastfm_integration)) },
+                        highlightKey = "lastfm_integration",
                         icon = { Icon(painterResource(R.drawable.token), null) },
                         onClick = {
                             navController.navigate("settings/lastfm")
@@ -98,15 +103,14 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
                 }
 
                 item {
-                    HighlightablePreference(highlightKey = "listenbrainz", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.listenbrainz_scrobbling)) },
+                        highlightKey = "listenbrainz_scrobbling",
                         description = stringResource(R.string.listenbrainz_scrobbling_description),
                         icon = { Icon(painterResource(R.drawable.token), null) },
                         checked = listenBrainzEnabled,
                         onCheckedChange = onListenBrainzEnabledChange,
                     )
-                    }
                 }
 
                 item {
@@ -122,10 +126,13 @@ fun IntegrationScreen(navController: NavController, highlight: String? = null) {
                                 },
                             )
                         },
+                        // ponytail: matches the blank-token title the scanner indexes; set-token state won't pulse.
+                        highlightKey = "set_listenbrainz_token",
                         icon = { Icon(painterResource(R.drawable.token), null) },
                         onClick = { showListenBrainzTokenEditor.value = true },
                     )
                 }
+            }
             }
         }
     }

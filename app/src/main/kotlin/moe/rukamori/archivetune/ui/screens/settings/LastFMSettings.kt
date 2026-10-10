@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -60,6 +61,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.LastFmProvider
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.InfoLabel
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -78,6 +80,7 @@ import kotlin.math.roundToInt
 fun LastFMSettings(
     navController: NavController,
     viewModel: LastFmSettingsViewModel = hiltViewModel(),
+    highlight: String? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -94,6 +97,7 @@ fun LastFMSettings(
             state = state,
             topPadding = topPadding,
             modifier = Modifier.weight(1f),
+            highlight = highlight,
             onOpenServiceEditor = viewModel::openServiceEditor,
             onDismissServiceEditor = viewModel::dismissServiceEditor,
             onServiceProviderChange = viewModel::updateServiceProvider,
@@ -146,6 +150,7 @@ private fun LastFmSettingsContent(
     onTimingDelaySecondsChange: (Int) -> Unit,
     onSaveTimingEditor: () -> Unit,
     modifier: Modifier = Modifier,
+    highlight: String? = null,
 ) {
     Column(
         modifier
@@ -154,6 +159,7 @@ private fun LastFmSettingsContent(
             .verticalScroll(rememberScrollState())
             .padding(bottom = SettingsDimensions.ScreenBottomPadding),
     ) {
+        CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
         when (state) {
             LastFmSettingsScreenState.Loading -> {
                 LastFmSettingsLoading()
@@ -178,6 +184,7 @@ private fun LastFmSettingsContent(
                     onOpenTimingEditor = onOpenTimingEditor,
                 )
             }
+        }
         }
     }
 
@@ -264,6 +271,7 @@ private fun LastFmSettingsSuccess(
         item {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.lastfm_service_provider)) },
+                highlightKey = "lastfm_service_provider",
                 description = "$providerName\n$endpointDescription",
                 icon = { Icon(painterResource(R.drawable.token), null) },
                 onClick = onOpenServiceEditor,
@@ -273,6 +281,7 @@ private fun LastFmSettingsSuccess(
         item {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.lastfm_api_credentials)) },
+                highlightKey = "lastfm_api_credentials",
                 description =
                     if (model.apiKeyOverride.isBlank() && model.secretOverride.isBlank()) {
                         stringResource(R.string.lastfm_api_credentials_default)
@@ -319,6 +328,7 @@ private fun LastFmSettingsSuccess(
         item {
             SwitchPreference(
                 title = { Text(stringResource(R.string.enable_scrobbling)) },
+                highlightKey = "enable_scrobbling",
                 checked = model.scrobblingEnabled,
                 onCheckedChange = onScrobblingChange,
                 isEnabled = model.canEnableScrobbling,
@@ -328,6 +338,7 @@ private fun LastFmSettingsSuccess(
         item {
             SwitchPreference(
                 title = { Text(stringResource(R.string.lastfm_now_playing)) },
+                highlightKey = "lastfm_now_playing",
                 checked = model.nowPlayingEnabled,
                 onCheckedChange = onNowPlayingChange,
                 isEnabled = model.canEnableScrobbling && model.scrobblingEnabled,
@@ -339,6 +350,7 @@ private fun LastFmSettingsSuccess(
         item {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.scrobble_min_track_duration)) },
+                highlightKey = "scrobble_min_track_duration",
                 description = stringResource(R.string.duration_seconds_short, model.minTrackDurationSeconds),
                 onClick = { onOpenTimingEditor(LastFmTimingSetting.MIN_TRACK_DURATION) },
             )
@@ -347,6 +359,7 @@ private fun LastFmSettingsSuccess(
         item {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.scrobble_delay_percent)) },
+                highlightKey = "scrobble_delay_percent",
                 description =
                     stringResource(
                         R.string.percent_format,
@@ -359,6 +372,7 @@ private fun LastFmSettingsSuccess(
         item {
             PreferenceEntry(
                 title = { Text(stringResource(R.string.scrobble_delay_minutes)) },
+                highlightKey = "scrobble_delay_minutes",
                 description = stringResource(R.string.duration_seconds_short, model.scrobbleDelaySeconds),
                 onClick = { onOpenTimingEditor(LastFmTimingSetting.DELAY_SECONDS) },
             )

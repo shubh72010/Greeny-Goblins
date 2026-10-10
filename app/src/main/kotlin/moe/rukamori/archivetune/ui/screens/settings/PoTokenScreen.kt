@@ -52,6 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -81,6 +82,7 @@ import moe.rukamori.archivetune.constants.PoTokenSourceUrlKey
 import moe.rukamori.archivetune.constants.VisitorDataKey
 import moe.rukamori.archivetune.constants.WebClientPoTokenEnabledKey
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
@@ -99,6 +101,7 @@ private val MaxSheetWidth = 640.dp
 fun PoTokenScreen(
     navController: NavController,
     viewModel: PoTokenViewModel = hiltViewModel(),
+    highlight: String? = null,
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -255,6 +258,7 @@ fun PoTokenScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { innerPadding ->
+        CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
         LazyColumn(
             modifier =
                 Modifier
@@ -289,6 +293,7 @@ fun PoTokenScreen(
                         item {
                             SwitchPreference(
                                 title = { Text(stringResource(R.string.web_client_po_token)) },
+                                highlightKey = "web_client_po_token",
                                 description = stringResource(R.string.web_client_po_token_desc),
                                 icon = { Icon(painterResource(R.drawable.token), null) },
                                 checked = webClientPoTokenEnabled,
@@ -374,6 +379,7 @@ fun PoTokenScreen(
                     }
                 }
             }
+        }
         }
     }
 }

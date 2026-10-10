@@ -43,6 +43,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -138,10 +139,12 @@ fun InternetWarningBox(modifier: Modifier = Modifier) {
     }
 }
 
+private val proxyAuthHighlightKeys =
+    setOf("proxy_username", "proxy_password", "stream_bypass_proxy", "test_proxy_connection")
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun InternetSettings(navController: NavController, highlight: String? = null) {
-    val context = LocalContext.current
+fun InternetSettings(navController: NavController, highlight: String? = null) {    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val (dnsOverHttpsEnabled, onDnsOverHttpsEnabledChange) = rememberPreference(key = EnableDnsOverHttpsKey, defaultValue = false)
@@ -176,6 +179,7 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
     Scaffold { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
 
+        CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
         Column(
             Modifier
                 .padding(top = topPadding)
@@ -197,10 +201,11 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                         icon = { Icon(painterResource(R.drawable.security), null) },
                         checked = dnsOverHttpsEnabled,
                         onCheckedChange = onDnsOverHttpsEnabledChange,
+                        highlightKey = "dns_over_https",
                     )
                 }
 
-                item(visible = dnsOverHttpsEnabled) {
+                item(visible = dnsOverHttpsEnabled || highlight == "dns_provider") {
                     ListPreference(
                         title = { Text(stringResource(R.string.dns_provider)) },
                         icon = { Icon(painterResource(R.drawable.website), null) },
@@ -208,14 +213,16 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                         values = dnsProviders,
                         valueText = { it },
                         onValueSelected = onDnsProviderChange,
+                        highlightKey = "dns_provider",
                     )
                 }
 
-                item(visible = dnsOverHttpsEnabled && dnsProvider == "Custom") {
+                item(visible = (dnsOverHttpsEnabled && dnsProvider == "Custom") || highlight == "dns_custom_url") {
                     EditTextPreference(
                         title = { Text(stringResource(R.string.dns_custom_url)) },
                         value = customDnsUrl,
                         onValueChange = onCustomDnsUrlChange,
+                        highlightKey = "dns_custom_url",
                     )
                 }
             }
@@ -230,10 +237,11 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                             onProxyEnabledChange(it)
                             ProxyUtils.applyYouTubeProxy(it, proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword)
                         },
+                        highlightKey = "enable_proxy",
                     )
                 }
 
-                item(visible = proxyEnabled) {
+                item(visible = proxyEnabled || highlight == "proxy_type") {
                     ListPreference(
                         title = { Text(stringResource(R.string.proxy_type)) },
                         selectedValue = proxyType,
@@ -243,10 +251,11 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                             onProxyTypeChange(it)
                             ProxyUtils.applyYouTubeProxy(proxyEnabled, it, proxyHost, proxyPort, proxyUsername, proxyPassword)
                         },
+                        highlightKey = "proxy_type",
                     )
                 }
 
-                item(visible = proxyEnabled) {
+                item(visible = proxyEnabled || highlight == "proxy_host") {
                     EditTextPreference(
                         title = { Text(stringResource(R.string.proxy_host)) },
                         value = proxyHost,
@@ -254,10 +263,11 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                             onProxyHostChange(it)
                             ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, it, proxyPort, proxyUsername, proxyPassword)
                         },
+                        highlightKey = "proxy_host",
                     )
                 }
 
-                item(visible = proxyEnabled) {
+                item(visible = proxyEnabled || highlight == "proxy_port") {
                     NumberEditTextPreference(
                         title = { Text(stringResource(R.string.proxy_port)) },
                         value = proxyPort,
@@ -266,11 +276,13 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                             ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, it, proxyUsername, proxyPassword)
                         },
                         isInputValid = { it.toIntOrNull() in 1..65535 },
+                        highlightKey = "proxy_port",
                     )
                 }
             }
 
-            if (proxyEnabled) {
+            // The auth group only exists when the proxy is on; a deep link forces it visible.
+            if (proxyEnabled || highlight in proxyAuthHighlightKeys) {
                 PreferenceGroup(title = stringResource(R.string.proxy_auth)) {
                     item {
                         EditTextPreference(
@@ -280,6 +292,7 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                                 onProxyUsernameChange(it)
                                 ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, proxyPort, it, proxyPassword)
                             },
+                            highlightKey = "proxy_username",
                         )
                     }
 
@@ -291,6 +304,7 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                                 onProxyPasswordChange(it)
                                 ProxyUtils.applyYouTubeProxy(proxyEnabled, proxyType, proxyHost, proxyPort, proxyUsername, it)
                             },
+                            highlightKey = "proxy_password",
                         )
                     }
 
@@ -304,6 +318,7 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                                 onStreamBypassProxyChange(it)
                                 YouTube.streamBypassProxy = it
                             },
+                            highlightKey = "stream_bypass_proxy",
                         )
                     }
 
@@ -311,6 +326,7 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.test_proxy_connection)) },
                             icon = { Icon(painterResource(R.drawable.check), null) },
+                            highlightKey = "test_proxy_connection",
                             onClick = {
                                 if (testingProxy) return@PreferenceEntry
                                 scope.launch(Dispatchers.IO) {
@@ -380,6 +396,7 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                         icon = { Icon(painterResource(R.drawable.wifi_proxy), null) },
                         checked = ipRotationEnabled,
                         isBusy = loadingIpRotation || refreshingIpRotation,
+                        highlightKey = "ip_rotation",
                         onCheckedChange = { enabled ->
                             onIpRotationEnabledChange(enabled)
                             if (enabled) {
@@ -412,6 +429,7 @@ fun InternetSettings(navController: NavController, highlight: String? = null) {
                     )
                 }
             }
+        }
         }
     }
 
@@ -451,11 +469,13 @@ private fun IpRotationPreference(
     isBusy: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onRefresh: () -> Unit,
+    highlightKey: String? = null,
 ) {
     PreferenceEntry(
         title = title,
         description = description,
         icon = icon,
+        highlightKey = highlightKey,
         trailingContent = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

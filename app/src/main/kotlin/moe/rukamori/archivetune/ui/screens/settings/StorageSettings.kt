@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -84,6 +85,7 @@ import moe.rukamori.archivetune.storage.StorageLocationRepository
 import moe.rukamori.archivetune.ui.component.ActionPromptDialog
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
@@ -301,6 +303,7 @@ fun StorageSettings(
     ) { innerPadding ->
         val topPadding = innerPadding.calculateTopPadding()
 
+        CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
         Column(
             Modifier
                 .padding(top = topPadding)
@@ -329,6 +332,7 @@ fun StorageSettings(
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.clear_all_downloads)) },
+                        highlightKey = "clear_all_downloads",
                         description = stringResource(R.string.size_used, formatFileSize(downloadCacheSize)),
                         icon = {
                             Icon(
@@ -360,6 +364,7 @@ fun StorageSettings(
                 item {
                     ListPreference(
                         title = { Text(stringResource(R.string.max_song_cache_size)) },
+                        highlightKey = "max_song_cache_size",
                         description =
                             if (maxSongCacheSize == -1) {
                                 stringResource(R.string.size_used, formatFileSize(playerCacheSize))
@@ -388,13 +393,14 @@ fun StorageSettings(
                         onValueSelected = onMaxSongCacheSizeChange,
                     )
                 }
-                item(visible = maxSongCacheSize > 0) {
+                item(visible = maxSongCacheSize > 0 || highlight == "size_used") {
                     CacheUsagePreference(progress = playerCacheProgress)
                 }
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.clear_song_cache)) },
                         onClick = { clearCacheDialog = true },
+                        highlightKey = "clear_song_cache",
                     )
                 }
             }
@@ -418,6 +424,7 @@ fun StorageSettings(
                 item {
                     ListPreference(
                         title = { Text(stringResource(R.string.max_image_cache_size)) },
+                        highlightKey = "max_image_cache_size",
                         description =
                             when {
                                 maxImageCacheSize < 0 -> {
@@ -454,13 +461,14 @@ fun StorageSettings(
                         onValueSelected = onMaxImageCacheSizeChange,
                     )
                 }
-                item(visible = maxImageCacheSize > 0) {
+                item(visible = maxImageCacheSize > 0 || highlight == "size_used") {
                     CacheUsagePreference(progress = imageCacheProgress)
                 }
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.clear_image_cache)) },
                         onClick = { clearImageCacheDialog = true },
+                        highlightKey = "clear_image_cache",
                     )
                 }
             }
@@ -484,6 +492,7 @@ fun StorageSettings(
                 item {
                     ListPreference(
                         title = { Text(stringResource(R.string.max_cache_size)) },
+                        highlightKey = "max_cache_size",
                         description =
                             when {
                                 maxCanvasCacheSize < 0 -> {
@@ -520,13 +529,14 @@ fun StorageSettings(
                         onValueSelected = onMaxCanvasCacheSizeChange,
                     )
                 }
-                item(visible = maxCanvasCacheSize > 0) {
+                item(visible = maxCanvasCacheSize > 0 || highlight == "size_used") {
                     CacheUsagePreference(progress = canvasCacheProgress)
                 }
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.clear_canvas_cache)) },
                         onClick = { clearCanvasCacheDialog = true },
+                        highlightKey = "clear_canvas_cache",
                     )
                 }
             }
@@ -545,6 +555,7 @@ fun StorageSettings(
                     },
                 )
             }
+        }
         }
     }
 
@@ -581,6 +592,7 @@ private fun StorageFolderSection(
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.storage_folder_pick)) },
+                        highlightKey = "storage_folder_pick",
                         description = stringResource(R.string.please_wait),
                         icon = {
                             Icon(
@@ -601,6 +613,7 @@ private fun StorageFolderSection(
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.storage_folder_pick)) },
+                        highlightKey = "storage_folder_pick",
                         description = stringResource(state.messageResId),
                         icon = {
                             Icon(
@@ -630,6 +643,7 @@ private fun StorageFolderSection(
                 checked = smartTrimmer && isSmartTrimmerAvailable,
                 onCheckedChange = onSmartTrimmerChange,
                 isEnabled = isSmartTrimmerAvailable,
+                highlightKey = "smart_trimmer",
             )
         }
     }
@@ -906,6 +920,7 @@ private fun CacheUsagePreference(progress: Float) {
         title = {
             Text(stringResource(R.string.size_used, percentage))
         },
+        highlightKey = "size_used",
         content = {
             Spacer(Modifier.padding(top = 8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {

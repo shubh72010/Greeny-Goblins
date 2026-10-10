@@ -49,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,10 +77,10 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ShowStreamSourceBadgeKey
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
-import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -133,6 +134,7 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
                     ).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
             SettingsEditorialHeader(
                 title = stringResource(R.string.experiment_settings),
                 onBack = { navController.navigateUp() },
@@ -141,6 +143,7 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.show_discord_debug_ui)) },
+                        highlightKey = "show_discord_debug_ui",
                         description = stringResource(R.string.enable_discord_debug_lines),
                         icon = { Icon(painterResource(R.drawable.discord), null) },
                         checked = showDevDebug,
@@ -151,6 +154,7 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.show_nerd_stats)) },
+                        highlightKey = "show_nerd_stats",
                         description = stringResource(R.string.description_show_nerd_stats),
                         icon = { Icon(painterResource(R.drawable.stats), null) },
                         checked = showNerdStats,
@@ -159,20 +163,20 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
                 }
 
                 item {
-                    HighlightablePreference(highlightKey = "show_codec", highlight = highlight) {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.display_codec_on_player)) },
+                        highlightKey = "display_codec_on_player",
                         description = stringResource(R.string.description_display_codec_on_player),
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         checked = showCodecOnPlayer,
                         onCheckedChange = onShowCodecOnPlayerChange,
                     )
-                    }
                 }
 
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.show_stream_source_badge)) },
+                        highlightKey = "show_stream_source_badge",
                         description = stringResource(R.string.show_stream_source_badge_desc),
                         icon = { Icon(painterResource(R.drawable.graphic_eq), null) },
                         checked = showStreamSourceBadge,
@@ -183,6 +187,7 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
                 item {
                     SwitchPreference(
                         title = { Text(stringResource(R.string.lyrics_video_debug_title)) },
+                        highlightKey = "lyrics_video_debug_title",
                         description = stringResource(R.string.lyrics_video_debug_desc),
                         icon = { Icon(painterResource(R.drawable.slow_motion_video), null) },
                         checked = lyricsVideoDebug,
@@ -193,6 +198,7 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
                 item {
                     PreferenceEntry(
                         title = { Text(stringResource(R.string.debug_logs)) },
+                        highlightKey = "debug_logs",
                         description = stringResource(R.string.view_debug_logs_description),
                         icon = {
                             Icon(
@@ -240,6 +246,7 @@ fun DebugSettings(navController: NavController, highlight: String? = null) {
             }
 
             Spacer(modifier = Modifier.height(SettingsDimensions.ScreenBottomPadding))
+            }
         }
     }
 }

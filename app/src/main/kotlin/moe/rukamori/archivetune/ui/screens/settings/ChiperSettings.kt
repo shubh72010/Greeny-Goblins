@@ -53,6 +53,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -73,6 +74,7 @@ import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.morideobfuscator.CipherRuntimeStatus
 import moe.rukamori.archivetune.ui.component.IconButton
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
@@ -90,6 +92,7 @@ private val CipherMessageMaxWidth = 480.dp
 fun ChiperSettings(
     navController: NavController,
     viewModel: ChiperSettingsViewModel = hiltViewModel(),
+    highlight: String? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -108,6 +111,7 @@ fun ChiperSettings(
         onNavigateUp = navController::navigateUp,
         onNavigateToMain = navController::backToMain,
         onRefresh = viewModel::refresh,
+        highlight = highlight,
     )
 }
 
@@ -118,6 +122,7 @@ private fun ChiperSettingsContent(
     onNavigateUp: () -> Unit,
     onNavigateToMain: () -> Unit,
     onRefresh: () -> Unit,
+    highlight: String? = null,
 ) {
     val scrollBehavior = appBarScrollBehavior()
 
@@ -189,6 +194,7 @@ private fun ChiperSettingsContent(
                 CipherSettingsSuccess(
                     data = state.data,
                     onRefresh = onRefresh,
+                    highlight = highlight,
                     contentPadding =
                         PaddingValues(
                             top = innerPadding.calculateTopPadding(),
@@ -215,6 +221,7 @@ private fun CipherSettingsSuccess(
     onRefresh: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    highlight: String? = null,
 ) {
     val lastUpdatedText =
         remember(data.lastUpdatedMillis) {
@@ -241,6 +248,7 @@ private fun CipherSettingsSuccess(
             { data.intervalProgress }
         }
 
+    CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = contentPadding,
@@ -280,6 +288,7 @@ private fun CipherSettingsSuccess(
                     item {
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.mori_cipher_player_id)) },
+                            highlightKey = "mori_cipher_player_id",
                             description = data.playerId,
                             icon = { Icon(painterResource(R.drawable.integration), null) },
                         )
@@ -287,6 +296,7 @@ private fun CipherSettingsSuccess(
                     item {
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.mori_cipher_last_updated)) },
+                            highlightKey = "mori_cipher_last_updated",
                             description = lastUpdatedText,
                             icon = { Icon(painterResource(R.drawable.timer), null) },
                         )
@@ -310,6 +320,7 @@ private fun CipherSettingsSuccess(
                     item {
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.mori_cipher_refresh)) },
+                            highlightKey = "mori_cipher_refresh",
                             description = manualRefreshDescription,
                             icon = { Icon(painterResource(R.drawable.sync), null) },
                             trailingContent = {
@@ -324,6 +335,7 @@ private fun CipherSettingsSuccess(
                     item {
                         PreferenceEntry(
                             title = { Text(stringResource(R.string.mori_cipher_automatic_updates)) },
+                            highlightKey = "mori_cipher_automatic_updates",
                             description = stringResource(R.string.mori_cipher_automatic_updates_description),
                             icon = { Icon(painterResource(R.drawable.info), null) },
                         )
@@ -331,6 +343,7 @@ private fun CipherSettingsSuccess(
                 }
             }
         }
+    }
     }
 }
 

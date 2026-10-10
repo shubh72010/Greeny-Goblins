@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,10 +57,10 @@ import moe.rukamori.archivetune.lyrics.LyricsFilter
 import moe.rukamori.archivetune.ui.component.EditTextPreference
 import moe.rukamori.archivetune.ui.component.IconButton
 import moe.rukamori.archivetune.ui.component.ListPreference
+import moe.rukamori.archivetune.ui.component.LocalSettingsHighlight
 import moe.rukamori.archivetune.ui.component.PreferenceEntry
 import moe.rukamori.archivetune.ui.component.PreferenceGroup
 import moe.rukamori.archivetune.ui.component.SwitchPreference
-import moe.rukamori.archivetune.ui.screens.settings.HighlightablePreference
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
@@ -118,11 +119,12 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
             .verticalScroll(rememberScrollState())
             .padding(bottom = SettingsDimensions.ScreenBottomPadding),
     ) {
+        CompositionLocalProvider(LocalSettingsHighlight provides highlight) {
         PreferenceGroup(title = stringResource(R.string.general)) {
             item {
-                    HighlightablePreference(highlightKey = "content_lang", highlight = highlight) {
                 ListPreference(
                     title = { Text(stringResource(R.string.content_language)) },
+                    highlightKey = "content_language",
                     icon = { Icon(painterResource(R.drawable.language), null) },
                     selectedValue = contentLanguage,
                     values = listOf(SYSTEM_DEFAULT) + LanguageCodeToName.keys.toList(),
@@ -135,13 +137,12 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                         onContentLanguageChange(newValue)
                     },
                 )
-                    }
             }
 
             item {
-                    HighlightablePreference(highlightKey = "content_country", highlight = highlight) {
                 ListPreference(
                     title = { Text(stringResource(R.string.content_country)) },
+                    highlightKey = "content_country",
                     icon = { Icon(painterResource(R.drawable.location_on), null) },
                     selectedValue = contentCountry,
                     values = listOf(SYSTEM_DEFAULT) + CountryCodeToName.keys.toList(),
@@ -162,12 +163,12 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                         onContentCountryChange(newValue)
                     },
                 )
-                    }
             }
 
             item {
                 ListPreference(
                     title = { Text(stringResource(R.string.you_might_like_source)) },
+                    highlightKey = "you_might_like_source",
                     icon = { Icon(painterResource(R.drawable.playlist_play), null) },
                     selectedValue = playlistSuggestionSource,
                     values =
@@ -188,37 +189,34 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
             }
 
             item {
-                    HighlightablePreference(highlightKey = "hide_explicit", highlight = highlight) {
                 SwitchPreference(
                     title = { Text(stringResource(R.string.hide_explicit)) },
+                    highlightKey = "hide_explicit",
                     icon = { Icon(painterResource(R.drawable.explicit), null) },
                     checked = hideExplicit,
                     onCheckedChange = onHideExplicitChange,
                 )
-                    }
             }
 
             item {
-                    HighlightablePreference(highlightKey = "hide_video", highlight = highlight) {
                 SwitchPreference(
                     title = { Text(stringResource(R.string.hide_video)) },
+                    highlightKey = "hide_video",
                     icon = { Icon(painterResource(R.drawable.slow_motion_video), null) },
                     checked = hideVideo,
                     onCheckedChange = onHideVideoChange,
                 )
-                    }
             }
 
             item {
-                    HighlightablePreference(highlightKey = "hide_blocked_titles", highlight = highlight) {
                 SwitchPreference(
                     title = { Text(stringResource(R.string.hide_blocked_titles)) },
+                    highlightKey = "hide_blocked_titles",
                     description = stringResource(R.string.hide_blocked_titles_summary),
                     icon = { Icon(painterResource(R.drawable.filter_alt), null) },
                     checked = hideBlockedTitles,
                     onCheckedChange = onHideBlockedTitlesChange,
                 )
-                    }
             }
         }
 
@@ -226,6 +224,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
             item {
                 SwitchPreference(
                     title = { Text("Filter mode") },
+                    highlightKey = "filter_mode",
                     description = "Censor filtered words in lyrics, optionally skip them in audio",
                     icon = { Icon(painterResource(R.drawable.filter_alt), null) },
                     checked = filterEnabled,
@@ -245,6 +244,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                 item {
                     SwitchPreference(
                         title = { Text("Censor lyrics") },
+                        highlightKey = "censor_lyrics",
                         icon = { Icon(painterResource(R.drawable.format_align_left), null) },
                         checked = censorOn,
                         onCheckedChange = onCensorChange,
@@ -253,6 +253,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                 item {
                     SwitchPreference(
                         title = { Text("Skip filtered parts in audio") },
+                        highlightKey = "skip_filtered_parts_in_audio",
                         icon = { Icon(painterResource(R.drawable.fast_forward), null) },
                         checked = skipOn,
                         onCheckedChange = onSkipChange,
@@ -261,6 +262,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                 item {
                     PreferenceEntry(
                         title = { Text("Custom word list") },
+                        highlightKey = "custom_word_list",
                         description = if (customWordsRaw.isBlank()) "None — tap to type or import" else "${LyricsFilter.parseWords(customWordsRaw).size} custom words",
                         icon = { Icon(painterResource(R.drawable.edit), null) },
                         onClick = { showWordsDialog = true },
@@ -276,6 +278,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                 // treated as "en" for migration.
                 ListPreference(
                     title = { Text(stringResource(R.string.app_language)) },
+                    highlightKey = "app_language",
                     icon = { Icon(painterResource(R.drawable.language), null) },
                     selectedValue = appLanguage.takeIf { it != SYSTEM_DEFAULT } ?: "en",
                     values = LanguageCodeToName.keys.toList(),
@@ -302,6 +305,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
             item {
                 EditTextPreference(
                     title = { Text(stringResource(R.string.top_length)) },
+                    highlightKey = "top_length",
                     icon = { Icon(painterResource(R.drawable.trending_up), null) },
                     value = lengthTop,
                     isInputValid = { it.toIntOrNull()?.let { num -> num > 0 } == true },
@@ -312,6 +316,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
             item {
                 ListPreference(
                     title = { Text(stringResource(R.string.set_quick_picks)) },
+                    highlightKey = "set_quick_picks",
                     icon = { Icon(painterResource(R.drawable.home_outlined), null) },
                     selectedValue = quickPicks,
                     values = listOf(QuickPicks.QUICK_PICKS, QuickPicks.LAST_LISTEN, QuickPicks.DONT_SHOW),
@@ -325,6 +330,7 @@ fun ContentSettings(navController: NavController, highlight: String? = null) {
                     onValueSelected = onQuickPicksChange,
                 )
             }
+        }
         }
     }
 
