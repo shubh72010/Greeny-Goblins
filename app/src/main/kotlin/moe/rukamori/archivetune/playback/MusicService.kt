@@ -488,6 +488,12 @@ class MusicService :
     var queueTitle: String? = null
     private var infiniteQueueJob: Job? = null
     private var infiniteQueueGeneration = 0L
+    // Last playQueue wins: rapid taps start overlapping fetches, and a stale
+    // job finishing last used to overwrite the newer queue while the optimistic
+    // visual already showed the newer song (A shown, B heard).
+    private var playQueueJob: Job? = null
+    private var playQueuePreloadJob: Job? = null
+    private var playQueueGeneration = 0L
     private val persistentStateLock = Any()
     private val persistentSaveGeneration = AtomicLong(0L)
 
@@ -4312,6 +4318,11 @@ class MusicService :
         }
         cancelRestoredQueueHydration()
         ensureScopesActive()
+        val playGeneration = ++playQueueGeneration
+        playQueuePreloadJob?.cancel()
+        playQueuePreloadJob = null
+        playQueueJob?.cancel()
+        playQueueJob = null
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
         cancelInfiniteQueueBootstrap()
         suppressAutoPlayback = false
@@ -4331,104 +4342,123 @@ class MusicService :
         if (queue.preloadItem != null) {
             if (shouldFadePreload) {
                 val preloadItem = queue.preloadItem!!.toMediaItem()
-                scope.launch {
-                    volumeFadeSwap(globalCrossfadeDuration()) {
-                        player.setMediaItem(preloadItem)
-                        player.prepare()
-                        player.playWhenReady = playWhenReady
+                playQueuePreloadJob =
+                    scope.launch {
+                        volumeFadeSwap(globalCrossfadeDuration()) {
+                            player.setMediaItem(preloadItem)
+                            player.prepare()
+                            player.playWhenReady = playWhenReady
+                        }
                     }
-                }
             } else {
                 player.setMediaItem(queue.preloadItem!!.toMediaItem())
                 player.prepare()
                 player.playWhenReady = playWhenReady
             }
         }
-        scope.launch(SilentHandler) {
-            val hideExplicit = dataStore.get(HideExplicitKey, false)
-            val hideVideo = dataStore.get(HideVideoKey, false)
-            val hideBlockedTitles = dataStore.get(HideBlockedTitlesKey, false)
-            val autoLoadMoreEnabled = dataStore.get(AutoLoadMoreKey, true)
-            var initialStatus =
-                withContext(Dispatchers.IO) {
-                    queue
-                        .getInitialStatus()
-                        .filterExplicit(hideExplicit)
-                        .filterBlockedTitles(hideBlockedTitles)
-                        .filterVideo(hideVideo)
-                }
-            if (!autoLoadMoreEnabled && queue.shouldExpandToFullQueueWhenAutoLoadMoreDisabled() && queue.hasNextPage()) {
-                val expandedItems = initialStatus.items.toMutableList()
-                var pagesLoaded = 0
-                while (queue.hasNextPage() && pagesLoaded < 200) {
-                    pagesLoaded++
-                    val nextItems =
+        playQueueJob =
+            scope.launch(SilentHandler) {
+                try {
+                    val hideExplicit = dataStore.get(HideExplicitKey, false)
+                    val hideVideo = dataStore.get(HideVideoKey, false)
+                    val hideBlockedTitles = dataStore.get(HideBlockedTitlesKey, false)
+                    val autoLoadMoreEnabled = dataStore.get(AutoLoadMoreKey, true)
+                    var initialStatus =
                         withContext(Dispatchers.IO) {
                             queue
-                                .nextPage()
+                                .getInitialStatus()
                                 .filterExplicit(hideExplicit)
                                 .filterBlockedTitles(hideBlockedTitles)
                                 .filterVideo(hideVideo)
                         }
-                    if (nextItems.isNotEmpty()) {
-                        expandedItems += nextItems
+                    if (!autoLoadMoreEnabled && queue.shouldExpandToFullQueueWhenAutoLoadMoreDisabled() && queue.hasNextPage()) {
+                        val expandedItems = initialStatus.items.toMutableList()
+                        var pagesLoaded = 0
+                        while (queue.hasNextPage() && pagesLoaded < 200) {
+                            pagesLoaded++
+                            val nextItems =
+                                withContext(Dispatchers.IO) {
+                                    queue
+                                        .nextPage()
+                                        .filterExplicit(hideExplicit)
+                                        .filterBlockedTitles(hideBlockedTitles)
+                                        .filterVideo(hideVideo)
+                                }
+                            if (nextItems.isNotEmpty()) {
+                                expandedItems += nextItems
+                            }
+                        }
+                        initialStatus = initialStatus.copy(items = expandedItems)
                     }
-                }
-                initialStatus = initialStatus.copy(items = expandedItems)
-            }
-            if (initialStatus.title != null) {
-                queueTitle = initialStatus.title
-            }
-            if (initialStatus.items.isEmpty()) {
-                optimisticPlayMediaId = null
-                return@launch
-            }
-            if (queue.preloadItem != null) {
-                val preloadMediaId = checkNotNull(queue.preloadItem).id.trim()
-                val insertionIndex =
-                    initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size)
-                val itemsBeforeCurrent =
-                    initialStatus.items
-                        .subList(0, insertionIndex)
-                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
-                val itemsAfterCurrent =
-                    initialStatus.items
-                        .subList(insertionIndex, initialStatus.items.size)
-                        .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+                    // A newer tap superseded this one: never touch the player,
+                    // the newer generation owns the queue and the visual now.
+                    if (playGeneration != playQueueGeneration) return@launch
+                    if (initialStatus.title != null) {
+                        queueTitle = initialStatus.title
+                    }
+                    if (initialStatus.items.isEmpty()) {
+                        optimisticPlayMediaId = null
+                        runCatching { currentMediaMetadata.value = player.currentMetadata }
+                        return@launch
+                    }
+                    if (queue.preloadItem != null) {
+                        val preloadMediaId = checkNotNull(queue.preloadItem).id.trim()
+                        val insertionIndex =
+                            initialStatus.mediaItemIndex.coerceIn(0, initialStatus.items.size)
+                        val itemsBeforeCurrent =
+                            initialStatus.items
+                                .subList(0, insertionIndex)
+                                .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
+                        val itemsAfterCurrent =
+                            initialStatus.items
+                                .subList(insertionIndex, initialStatus.items.size)
+                                .filterNot { preloadMediaId.isNotEmpty() && it.mediaId.trim() == preloadMediaId }
 
-                player.addMediaItems(0, itemsBeforeCurrent)
-                player.addMediaItems(itemsAfterCurrent)
-                if (player.shuffleModeEnabled) {
-                    applyCurrentFirstShuffleOrder()
-                }
-            } else {
-                val items = initialStatus.items
-                val index = initialStatus.mediaItemIndex
-                // Show the resolved target now; the fade-swap below still takes
-                // its full duration before the audio switches.
-                items.getOrNull(index)?.metadata?.let { publishOptimisticPlay(it) }
-                val shouldFadeQueue = crossfadeEnabled && crossfadeDurationMs >= MIN_CROSSFADE_DURATION_MS &&
-                    togetherSessionState.value is moe.rukamori.archivetune.together.TogetherSessionState.Idle &&
-                    deckMixerPlayer == null
-                if (shouldFadeQueue && player.playWhenReady && player.playbackState == Player.STATE_READY && player.mediaItemCount > 0) {
-                    volumeFadeSwap(globalCrossfadeDuration()) {
-                        player.setMediaItems(items, index, initialStatus.position)
-                        player.prepare()
-                        player.playWhenReady = playWhenReady
+                        player.addMediaItems(0, itemsBeforeCurrent)
+                        player.addMediaItems(itemsAfterCurrent)
                         if (player.shuffleModeEnabled) {
                             applyCurrentFirstShuffleOrder()
                         }
+                    } else {
+                        val items = initialStatus.items
+                        val index = initialStatus.mediaItemIndex
+                        // Show the resolved target now; the fade-swap below still takes
+                        // its full duration before the audio switches.
+                        items.getOrNull(index)?.metadata?.let { publishOptimisticPlay(it) }
+                        val shouldFadeQueue = crossfadeEnabled && crossfadeDurationMs >= MIN_CROSSFADE_DURATION_MS &&
+                            togetherSessionState.value is moe.rukamori.archivetune.together.TogetherSessionState.Idle &&
+                            deckMixerPlayer == null
+                        if (shouldFadeQueue && player.playWhenReady && player.playbackState == Player.STATE_READY && player.mediaItemCount > 0) {
+                            volumeFadeSwap(globalCrossfadeDuration()) {
+                                player.setMediaItems(items, index, initialStatus.position)
+                                player.prepare()
+                                player.playWhenReady = playWhenReady
+                                if (player.shuffleModeEnabled) {
+                                    applyCurrentFirstShuffleOrder()
+                                }
+                            }
+                        } else {
+                            player.setMediaItems(items, index, initialStatus.position)
+                            player.prepare()
+                            player.playWhenReady = playWhenReady
+                            if (player.shuffleModeEnabled) {
+                                applyCurrentFirstShuffleOrder()
+                            }
+                        }
                     }
-                } else {
-                    player.setMediaItems(items, index, initialStatus.position)
-                    player.prepare()
-                    player.playWhenReady = playWhenReady
-                    if (player.shuffleModeEnabled) {
-                        applyCurrentFirstShuffleOrder()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "playQueue failed")
+                    // Fetch failed after the optimistic visual was published (or the
+                    // preload was set): snap the visual back to actual player state
+                    // instead of showing a song that never landed.
+                    if (playGeneration == playQueueGeneration) {
+                        optimisticPlayMediaId = null
+                        runCatching { currentMediaMetadata.value = player.currentMetadata }
                     }
                 }
             }
-        }
     }
 
     private fun applyCurrentFirstShuffleOrder() {
@@ -4660,6 +4690,11 @@ class MusicService :
     fun stopAndClearPlayback(clearPersistentState: Boolean = false) {
         cancelRestoredQueueHydration()
         cancelInfiniteQueueBootstrap()
+        playQueueGeneration++
+        playQueueJob?.cancel()
+        playQueueJob = null
+        playQueuePreloadJob?.cancel()
+        playQueuePreloadJob = null
         suppressAutoPlayback = true
         removeDeckMix()
         cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)

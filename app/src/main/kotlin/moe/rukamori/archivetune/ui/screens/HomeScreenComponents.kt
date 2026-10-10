@@ -121,7 +121,6 @@ import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.innertube.pages.HomePage
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -1592,10 +1591,7 @@ private fun YouTubeGridItemWrapper(
                         when (item) {
                             is SongItem -> {
                                 playerConnection.playQueue(
-                                    YouTubeQueue(
-                                        item.endpoint ?: WatchEndpoint(videoId = item.id),
-                                        item.toMediaMetadata(),
-                                    ),
+                                    YouTubeQueue.radio(item.toMediaMetadata()),
                                 )
                             }
 

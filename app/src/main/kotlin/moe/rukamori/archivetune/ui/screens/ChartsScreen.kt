@@ -39,7 +39,6 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.ui.component.IconButton
@@ -268,10 +267,7 @@ fun ChartsScreen(
                                                                 playerConnection.player.togglePlayPause()
                                                             } else {
                                                                 playerConnection.playQueue(
-                                                                    YouTubeQueue(
-                                                                        endpoint = WatchEndpoint(videoId = song.id),
-                                                                        preloadItem = song.toMediaMetadata(),
-                                                                    ),
+                                                                    YouTubeQueue.radio(song.toMediaMetadata()),
                                                                 )
                                                             }
                                                         },
@@ -325,10 +321,7 @@ fun ChartsScreen(
                                                             playerConnection.player.togglePlayPause()
                                                         } else {
                                                             playerConnection.playQueue(
-                                                                YouTubeQueue(
-                                                                    endpoint = WatchEndpoint(videoId = video.id),
-                                                                    preloadItem = video.toMediaMetadata(),
-                                                                ),
+                                                                YouTubeQueue.radio(video.toMediaMetadata()),
                                                             )
                                                         }
                                                     },

@@ -140,7 +140,6 @@ import moe.rukamori.archivetune.innertube.models.BrowseEndpoint
 import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
 import moe.rukamori.archivetune.innertube.models.PlaylistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.pages.ArtistPage
 import moe.rukamori.archivetune.innertube.pages.ArtistSectionLayout
 import moe.rukamori.archivetune.models.toMediaMetadata
@@ -1099,10 +1098,7 @@ item(key = "header") {
                                                         playerConnection.player.togglePlayPause()
                                                     } else {
                                                         playerConnection.playQueue(
-                                                            YouTubeQueue(
-                                                                WatchEndpoint(videoId = song.id),
-                                                                song.toMediaMetadata(),
-                                                            ),
+                                                            YouTubeQueue.radio(song.toMediaMetadata()),
                                                         )
                                                     }
                                                 },
@@ -1168,10 +1164,7 @@ item(key = "header") {
                                                             when (item) {
                                                                 is SongItem -> {
                                                                     playerConnection.playQueue(
-                                                                        YouTubeQueue(
-                                                                            WatchEndpoint(videoId = item.id),
-                                                                            item.toMediaMetadata(),
-                                                                        ),
+                                                                        YouTubeQueue.radio(item.toMediaMetadata()),
                                                                     )
                                                                 }
 

@@ -90,7 +90,6 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongWithStats
 import moe.rukamori.archivetune.extensions.toMediaItem
 import moe.rukamori.archivetune.extensions.togglePlayPause
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.queues.ListQueue
@@ -397,10 +396,7 @@ fun StatsScreen(
                             playerConnection?.player?.togglePlayPause()
                         } else {
                             playerConnection?.playQueue(
-                                YouTubeQueue(
-                                    endpoint = WatchEndpoint(song.id),
-                                    preloadItem = songEntity.toMediaMetadata(),
-                                ),
+                                YouTubeQueue.radio(songEntity.toMediaMetadata()),
                             )
                         }
                     },

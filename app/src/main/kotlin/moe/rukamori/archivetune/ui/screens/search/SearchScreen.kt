@@ -75,7 +75,6 @@ import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.innertube.models.AlbumItem
 import moe.rukamori.archivetune.innertube.models.ArtistItem
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.search.SearchDiscoveryUiModel
@@ -511,10 +510,7 @@ private fun SuggestedSongsSection(
                                         playerConnection.player.togglePlayPause()
                                     } else {
                                         playerConnection.playQueue(
-                                            YouTubeQueue(
-                                                endpoint = song.endpoint ?: WatchEndpoint(videoId = song.id),
-                                                preloadItem = song.toMediaMetadata(),
-                                            ),
+                                            YouTubeQueue.radio(song.toMediaMetadata()),
                                         )
                                     }
                                 },
