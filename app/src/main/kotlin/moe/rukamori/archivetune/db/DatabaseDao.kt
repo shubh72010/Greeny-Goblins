@@ -1510,7 +1510,7 @@ interface DatabaseDao {
     fun deleteEventsByIds(eventIds: List<Long>)
 
     @Transaction
-    @Query("SELECT * FROM search_history WHERE `query` LIKE :query || '%' ORDER BY id DESC")
+    @Query("SELECT * FROM search_history WHERE `query` LIKE :query || '%' ORDER BY id DESC LIMIT 50")
     fun searchHistory(query: String = ""): Flow<List<SearchHistory>>
 
     @Transaction

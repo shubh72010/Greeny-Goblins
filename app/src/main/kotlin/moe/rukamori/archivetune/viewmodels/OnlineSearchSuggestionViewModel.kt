@@ -13,8 +13,11 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -32,7 +35,7 @@ import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import javax.inject.Inject
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class OnlineSearchSuggestionViewModel
     @Inject
@@ -47,11 +50,16 @@ class OnlineSearchSuggestionViewModel
         init {
             viewModelScope.launch {
                 query
+                    // One network+parse wave per pause in typing, not per keystroke:
+                    // without this, fast typing fires N overlapping searchSuggestions
+                    // parses + full recomposes that OOM small-heap devices.
+                    .debounce(250)
+                    .distinctUntilChanged()
                     .flatMapLatest { query ->
-                        if (query.isEmpty()) {
+                        if (query.isBlank()) {
                             database.searchHistory().map { history ->
                                 SearchSuggestionViewState(
-                                    history = history,
+                                    history = history.take(20),
                                 )
                             }
                         } else {
@@ -67,7 +75,7 @@ class OnlineSearchSuggestionViewModel
                                                 ?.queries
                                                 ?.filter { query ->
                                                     history.none { it.query == query }
-                                                }.orEmpty(),
+                                                }?.take(10).orEmpty(),
                                         items =
                                             result
                                                 ?.recommendedItems
@@ -82,6 +90,7 @@ class OnlineSearchSuggestionViewModel
                                                         false,
                                                     ),
                                                 )?.filterVideo(context.dataStore.get(HideVideoKey, false))
+                                                ?.take(12)
                                                 .orEmpty(),
                                     )
                                 }

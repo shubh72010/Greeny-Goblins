@@ -7,6 +7,8 @@
 
 package moe.rukamori.archivetune.repository
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -24,6 +26,9 @@ import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint
 import moe.rukamori.archivetune.innertube.pages.ChartsPage
 import moe.rukamori.archivetune.innertube.pages.MoodAndGenres
+import moe.rukamori.archivetune.utils.DeviceTier
+import moe.rukamori.archivetune.utils.StartupGate
+import moe.rukamori.archivetune.utils.deviceTier
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,37 +45,61 @@ data class SearchDiscoveryData(
 class SearchDiscoveryRepository
     @Inject
     constructor(
+        @ApplicationContext private val context: Context,
         private val database: MusicDatabase,
     ) {
         suspend fun loadDiscovery(): Result<SearchDiscoveryData> =
             withContext(Dispatchers.IO) {
                 try {
-                    coroutineScope {
-                        val explorePageDeferred = async { YouTube.explore().getOrThrow() }
-                        val chartsPageDeferred = async { YouTube.getChartsPage().getOrThrow() }
-                        val suggestedSongsDeferred = async { loadSuggestedSongs() }
-                        val searchedAlbumsDeferred =
-                            async {
-                                searchItems<AlbumItem>(
-                                    query = TopAlbumsQuery,
-                                    filter = YouTube.SearchFilter.FILTER_ALBUM,
-                                )
-                            }
-                        val suggestedArtistsDeferred = async { loadSuggestedArtists() }
-
-                        val explorePage = explorePageDeferred.await()
-                        val chartsPage = chartsPageDeferred.await()
-
+                    // Medium: never compete with cold start — the Search tab keeps
+                    // its Loading shimmer until this returns.
+                    StartupGate.awaitMedium(context)
+                    if (context.deviceTier() == DeviceTier.CONSTRAINED) {
+                        // Serial trickle: peak heap is one response graph at a time.
+                        val explorePage = YouTube.explore().getOrThrow()
+                        val chartsPage = YouTube.getChartsPage().getOrThrow()
                         Result.success(
                             SearchDiscoveryData(
                                 moodAndGenres = explorePage.moodAndGenres,
                                 newReleaseAlbums = explorePage.newReleaseAlbums,
                                 chartSections = chartsPage.sections,
-                                suggestedSongs = suggestedSongsDeferred.await(),
-                                searchedAlbums = searchedAlbumsDeferred.await(),
-                                suggestedArtists = suggestedArtistsDeferred.await(),
+                                suggestedSongs = loadSuggestedSongs(),
+                                searchedAlbums =
+                                    searchItems<AlbumItem>(
+                                        query = TopAlbumsQuery,
+                                        filter = YouTube.SearchFilter.FILTER_ALBUM,
+                                    ),
+                                suggestedArtists = loadSuggestedArtists(),
                             ),
                         )
+                    } else {
+                        coroutineScope {
+                            val explorePageDeferred = async { YouTube.explore().getOrThrow() }
+                            val chartsPageDeferred = async { YouTube.getChartsPage().getOrThrow() }
+                            val suggestedSongsDeferred = async { loadSuggestedSongs() }
+                            val searchedAlbumsDeferred =
+                                async {
+                                    searchItems<AlbumItem>(
+                                        query = TopAlbumsQuery,
+                                        filter = YouTube.SearchFilter.FILTER_ALBUM,
+                                    )
+                                }
+                            val suggestedArtistsDeferred = async { loadSuggestedArtists() }
+
+                            val explorePage = explorePageDeferred.await()
+                            val chartsPage = chartsPageDeferred.await()
+
+                            Result.success(
+                                SearchDiscoveryData(
+                                    moodAndGenres = explorePage.moodAndGenres,
+                                    newReleaseAlbums = explorePage.newReleaseAlbums,
+                                    chartSections = chartsPage.sections,
+                                    suggestedSongs = suggestedSongsDeferred.await(),
+                                    searchedAlbums = searchedAlbumsDeferred.await(),
+                                    suggestedArtists = suggestedArtistsDeferred.await(),
+                                ),
+                            )
+                        }
                     }
                 } catch (throwable: Throwable) {
                     if (throwable is CancellationException) throw throwable
@@ -96,18 +125,34 @@ class SearchDiscoveryRepository
                 emptyList()
             }
 
-        private suspend fun loadSuggestedSongs(): List<SongItem> =
-            coroutineScope {
-                val seedSongs =
-                    database
-                        .mostPlayedSongs(
-                            fromTimeStamp = AllHistoryTimestamp,
-                            limit = MaxHistoryLookupItems,
-                        ).first()
-                        .filterNot { song -> song.song.isLocal }
-                        .take(MaxSuggestionSeedItems)
-                val seedSongIds = seedSongs.mapTo(HashSet()) { song -> song.id }
+        private suspend fun loadSuggestedSongs(): List<SongItem> {
+            val seedSongs =
+                database
+                    .mostPlayedSongs(
+                        fromTimeStamp = AllHistoryTimestamp,
+                        limit = MaxHistoryLookupItems,
+                    ).first()
+                    .filterNot { song -> song.song.isLocal }
+                    .take(MaxSuggestionSeedItems)
+            val seedSongIds = seedSongs.mapTo(HashSet()) { song -> song.id }
 
+            if (context.deviceTier() == DeviceTier.CONSTRAINED) {
+                // Serial + trim-as-you-go: same final content as below (seed order,
+                // first-seen wins, capped) with one seed's responses resident.
+                val acc = ArrayList<SongItem>(MaxSuggestedItems)
+                val seen = HashSet<String>(MaxSuggestedItems)
+                for (song in seedSongs) {
+                    if (acc.size >= MaxSuggestedItems) break
+                    val related = loadRelatedSongs(song).ifEmpty { searchRelatedSongs(song) }
+                    for (item in related) {
+                        if (acc.size >= MaxSuggestedItems) break
+                        if (item.id !in seedSongIds && seen.add(item.id)) acc += item
+                    }
+                }
+                return acc
+            }
+
+            return coroutineScope {
                 seedSongs
                     .map { song ->
                         async {
@@ -120,6 +165,7 @@ class SearchDiscoveryRepository
                     .distinctBy { song -> song.id }
                     .take(MaxSuggestedItems)
             }
+        }
 
         private suspend fun loadRelatedSongs(song: Song): List<SongItem> =
             try {
@@ -152,18 +198,33 @@ class SearchDiscoveryRepository
                 filter = YouTube.SearchFilter.FILTER_SONG,
             )
 
-        private suspend fun loadSuggestedArtists(): List<ArtistItem> =
-            coroutineScope {
-                val seedArtists =
-                    database
-                        .mostPlayedArtists(
-                            fromTimeStamp = AllHistoryTimestamp,
-                            limit = MaxHistoryLookupItems,
-                        ).first()
-                        .filter { artist -> artist.artist.isYouTubeArtist }
-                        .take(MaxSuggestionSeedItems)
-                val seedArtistIds = seedArtists.mapTo(HashSet()) { artist -> artist.id }
+        private suspend fun loadSuggestedArtists(): List<ArtistItem> {
+            val seedArtists =
+                database
+                    .mostPlayedArtists(
+                        fromTimeStamp = AllHistoryTimestamp,
+                        limit = MaxHistoryLookupItems,
+                    ).first()
+                    .filter { artist -> artist.artist.isYouTubeArtist }
+                    .take(MaxSuggestionSeedItems)
+            val seedArtistIds = seedArtists.mapTo(HashSet()) { artist -> artist.id }
 
+            if (context.deviceTier() == DeviceTier.CONSTRAINED) {
+                // Serial + trim-as-you-go, same content as below.
+                val acc = ArrayList<ArtistItem>(MaxSuggestedItems)
+                val seen = HashSet<String>(MaxSuggestedItems)
+                for (artist in seedArtists) {
+                    if (acc.size >= MaxSuggestedItems) break
+                    val related = loadRelatedArtists(artist).ifEmpty { searchRelatedArtists(artist) }
+                    for (item in related) {
+                        if (acc.size >= MaxSuggestedItems) break
+                        if (item.id !in seedArtistIds && seen.add(item.id)) acc += item
+                    }
+                }
+                return acc
+            }
+
+            return coroutineScope {
                 seedArtists
                     .map { artist ->
                         async {
@@ -176,6 +237,7 @@ class SearchDiscoveryRepository
                     .distinctBy { artist -> artist.id }
                     .take(MaxSuggestedItems)
             }
+        }
 
         private suspend fun loadRelatedArtists(artist: Artist): List<ArtistItem> =
             try {

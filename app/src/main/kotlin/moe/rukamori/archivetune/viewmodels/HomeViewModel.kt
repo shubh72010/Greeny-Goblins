@@ -60,6 +60,7 @@ import moe.rukamori.archivetune.innertube.utils.hasYouTubeLoginCookie
 import moe.rukamori.archivetune.models.SimilarRecommendation
 import moe.rukamori.archivetune.utils.SavedAccount
 import moe.rukamori.archivetune.utils.SpeedDialPinType
+import moe.rukamori.archivetune.utils.StartupGate
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
@@ -195,6 +196,8 @@ class HomeViewModel
         private val isInitialLoadComplete = MutableStateFlow(false)
         private val loadError = MutableStateFlow<Int?>(null)
         private val isLoadingMore = MutableStateFlow(false)
+        private var mediumJob: Job? = null
+        private var refreshJob: Job? = null
 
         private val quickPicksMode =
             context.dataStore.data
@@ -341,6 +344,14 @@ class HomeViewModel
                     .filter { it is Song || it is Album }
         }
 
+        private fun refreshAllYtItems() {
+            _allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
+                homePage.value
+                    ?.sections
+                    ?.flatMap { it.items }
+                    .orEmpty()
+        }
+
         private suspend fun quickPicksWithFallback(primary: List<Song>): List<Song> {
             val hidden = hiddenRecommendationIds()
             val primaryPicks = primary.toQuickPickSample(hidden)
@@ -461,17 +472,17 @@ class HomeViewModel
                     }
         }
 
-        private suspend fun load() {
+        // Light: Room/cache reads only, synchronous. Online work lives in
+        // [startMedium] so initial load never blocks on network.
+        private suspend fun loadLight() {
             if (isLoading.value) return
             isLoading.value = true
             loadError.value = null
 
             try {
+                // Light: Room/cache reads only — this scope stays free of network
+                // so cached rows render before any online parse allocates.
                 supervisorScope {
-                    val hideExplicit = context.dataStore.get(HideExplicitKey, false)
-                    val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
-                    val hideVideo = context.dataStore.get(HideVideoKey, false)
-                    val blockedArtistIds = database.getBlockedArtistIds().toSet()
                     val hiddenSongIds = hiddenRecommendationIds()
                     val fromTimeStamp = System.currentTimeMillis() - 86400000 * 7 * 2
 
@@ -515,47 +526,14 @@ class HomeViewModel
                                 .take(5)
                         keepListening.value = (keepListeningSongs + keepListeningAlbums + keepListeningArtists).shuffled()
                     }
-
-                    launch {
-                        YouTube
-                            .home()
-                            .onSuccess { page ->
-                                homePage.value =
-                                    page.copy(
-                                        chips = filterHomeChips(page.chips),
-                                        sections =
-                                            page.sections.map { section ->
-                                                section.copy(
-                                                    items =
-                                                        section.items
-                                                            .filterExplicit(hideExplicit)
-                                                        .filterBlockedTitles(hideBlockedTitles)
-                                                            .filterVideo(hideVideo)
-                                                            .filterBlockedArtists(blockedArtistIds)
-                                                            .filterHiddenSongs(hiddenSongIds),
-                                                )
-                                            },
-                                    )
-                            }.onFailure {
-                                reportException(it)
-                                loadError.value = R.string.error_unknown
-                            }
-                    }
                 }
 
                 updateAllLocalItems()
-
-                viewModelScope.launch(Dispatchers.IO) {
-                    loadSimilarRecommendations()
-                }
-
-                _allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
-                    homePage.value
-                        ?.sections
-                        ?.flatMap { it.items }
-                        .orEmpty()
-
+                refreshAllYtItems()
+                // Light done: cached content (if any) renders now. isLoading stays
+                // true so a cache-empty launch keeps its shimmer until Medium lands.
                 isInitialLoadComplete.value = true
+
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -563,8 +541,66 @@ class HomeViewModel
                 loadError.value = R.string.error_unknown
             } finally {
                 isInitialLoadComplete.value = true
-                isLoading.value = false
             }
+        }
+
+        // Medium: online sections trickle in after first frame (see StartupGate).
+        // Returns the exact Job started so a caller can await its own work rather
+        // than whatever happens to be current later. Only the current job may
+        // clear isLoading — a superseded job's finally must not reset state
+        // owned by its replacement.
+        private fun startMedium(): Job {
+            mediumJob?.cancel()
+            lateinit var job: Job
+            job =
+                viewModelScope.launch(Dispatchers.IO) {
+                    try {
+                        StartupGate.awaitMedium(context)
+                        val hideExplicit = context.dataStore.get(HideExplicitKey, false)
+                        val hideBlockedTitles = context.dataStore.get(HideBlockedTitlesKey, false)
+                        val hideVideo = context.dataStore.get(HideVideoKey, false)
+                        val blockedArtistIds = database.getBlockedArtistIds().toSet()
+                        val hiddenSongIds = hiddenRecommendationIds()
+                        supervisorScope {
+                            launch {
+                                YouTube
+                                    .home()
+                                    .onSuccess { page ->
+                                        homePage.value =
+                                            page.copy(
+                                                chips = filterHomeChips(page.chips),
+                                                sections =
+                                                    page.sections.map { section ->
+                                                        section.copy(
+                                                            items =
+                                                                section.items
+                                                                    .filterExplicit(hideExplicit)
+                                                                .filterBlockedTitles(hideBlockedTitles)
+                                                                    .filterVideo(hideVideo)
+                                                                    .filterBlockedArtists(blockedArtistIds)
+                                                                    .filterHiddenSongs(hiddenSongIds),
+                                                        )
+                                                    },
+                                            )
+                                    }.onFailure {
+                                        reportException(it)
+                                        loadError.value = R.string.error_unknown
+                                    }
+                            }
+                            launch { loadSimilarRecommendations() }
+                        }
+                        refreshAllYtItems()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        reportException(e)
+                        loadError.value = R.string.error_unknown
+                    } finally {
+                        if (mediumJob === job) isLoading.value = false
+                    }
+                }
+            mediumJob = job
+            return job
         }
 
         private suspend fun loadSimilarRecommendations() {
@@ -642,11 +678,7 @@ class HomeViewModel
 
             similarRecommendations.value = (artistRecommendations + songRecommendations).shuffled()
 
-            _allYtItems.value = similarRecommendations.value?.flatMap { it.items }.orEmpty() +
-                homePage.value
-                    ?.sections
-                    ?.flatMap { it.items }
-                    .orEmpty()
+            refreshAllYtItems()
         }
 
         private fun clearAccountData() {
@@ -820,22 +852,32 @@ class HomeViewModel
         }
 
         private fun refresh() {
-            if (isRefreshing.value) return
-            viewModelScope.launch(Dispatchers.IO) {
-                isRefreshing.value = true
-                try {
-                    supervisorScope {
-                        launch { load() }
-                        launch { refreshQuickPicks() }
+            // Overlapping pull reuses the in-flight refresh: its spinner is already
+            // visible and fresh data is already incoming, so there is no newer work
+            // to start. (refresh() is fire-and-forget from the UI; nothing awaits it.)
+            if (refreshJob?.isActive == true) return
+            refreshJob =
+                viewModelScope.launch(Dispatchers.IO) {
+                    isRefreshing.value = true
+                    try {
+                        supervisorScope {
+                            launch { loadLight() }
+                            launch { refreshQuickPicks() }
+                            launch {
+                                // Replace in-flight Medium: the user asked for fresh
+                                // data. Await the exact job started here, so a newer
+                                // refresh can never make this one return early.
+                                startMedium().join()
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        reportException(e)
+                    } finally {
+                        isRefreshing.value = false
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    reportException(e)
-                } finally {
-                    isRefreshing.value = false
                 }
-            }
         }
 
         fun switchToAccount(
@@ -903,7 +945,13 @@ class HomeViewModel
             observeQuickPicks()
 
             viewModelScope.launch(Dispatchers.IO) {
-                load()
+                try {
+                    loadLight()
+                } finally {
+                    // Initial load: Medium runs fire-and-forget (staging), but it
+                    // must still start — it owns isLoading's reset on every path.
+                    startMedium()
+                }
             }
 
             viewModelScope.launch(Dispatchers.IO) {

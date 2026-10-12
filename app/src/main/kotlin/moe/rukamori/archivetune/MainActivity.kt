@@ -299,6 +299,7 @@ import moe.rukamori.archivetune.utils.Updater
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLowRamDevice
+import moe.rukamori.archivetune.utils.StartupGate
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
@@ -572,6 +573,12 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
+            LaunchedEffect(Unit) {
+                // Light→Medium staging: first composition is in, gated online
+                // loaders (Home/Discovery) may start their trickle.
+                StartupGate.markSettled()
+            }
+
             val updateChannel by rememberEnumPreference(UpdateChannelKey, defaultValue = defaultUpdateChannel)
 
             LaunchedEffect(Unit) {
