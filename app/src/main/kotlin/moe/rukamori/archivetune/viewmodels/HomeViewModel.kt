@@ -544,11 +544,15 @@ class HomeViewModel
             }
         }
 
-        // Medium: online sections trickle in after first frame (see StartupGate).
+        // Medium: online Home section trickles in after first frame (see StartupGate).
         // Returns the exact Job started so a caller can await its own work rather
         // than whatever happens to be current later. Only the current job may
         // clear isLoading — a superseded job's finally must not reset state
         // owned by its replacement.
+        //
+        // Similar-recommendations intentionally trickle detached (pre-staging
+        // behavior): neither the shimmer nor the refresh spinner waits for them;
+        // their flows update on completion.
         private fun startMedium(): Job {
             mediumJob?.cancel()
             lateinit var job: Job
@@ -587,7 +591,6 @@ class HomeViewModel
                                         loadError.value = R.string.error_unknown
                                     }
                             }
-                            launch { loadSimilarRecommendations() }
                         }
                         refreshAllYtItems()
                     } catch (e: CancellationException) {
@@ -600,6 +603,8 @@ class HomeViewModel
                     }
                 }
             mediumJob = job
+            // Trickle: detached like before staging (see note above).
+            viewModelScope.launch(Dispatchers.IO) { loadSimilarRecommendations() }
             return job
         }
 

@@ -1,5 +1,14 @@
 name: Build and Scan
 
+# Pipeline (6 stages):
+# 1. Trigger — push / pull_request / workflow_dispatch per branch+event rules below.
+# 2. Build APKs — Setup Java/Gradle + signing creds; assemble GmsMobileUniversal debug+release.
+#    Local dev JDK is OpenJDK 21.0.12.1 (javac 21.0.12.1, source/target 21); CI uses Temurin 21 (same major/bytecode).
+# 3. Verify certificates — release APK must match JusPlayer cert (apksigner, exact SHA256, no debug key).
+# 4. VirusTotal analysis — upload each APK, poll analysis, 10-minute timeout, 429 retries.
+# 5. Gate the release — cert mismatch / VT malicious / timeout / existing tag all fail the job.
+# 6. Publish and notify — upload artifacts (2 APKs), attest provenance, create GitHub Release on main.
+
 on:
   push:
     branches: [main, dev]
@@ -38,6 +47,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
+      # CI JDK mirrors local dev: OpenJDK 21.0.12.1 (source/target 21) — same major, same bytecode.
       - name: Setup JDK 21
         uses: actions/setup-java@v5
         with:
@@ -177,6 +187,7 @@ jobs:
             echo "::warning::No keystore password secret found to verify - gradle will fail if wrong."
           fi
 
+      # CI JDK mirrors local dev: OpenJDK 21.0.12.1 (source/target 21) — same major, same bytecode.
       - name: Setup JDK 21
         uses: actions/setup-java@v5
         with:
@@ -455,13 +466,6 @@ jobs:
           name: apks-v${{ steps.version.outputs.versionName }}-${{ github.run_number }}
           path: |
             dist/*.apk
-            dist/*.sha256
-            dist/*.sha512
-            dist/virustotal*.txt
-            dist/virustotal*.json
-            dist/virustotal.txt
-            dist/*_certs.txt
-            dist/*_size.txt
 
       - name: Attest build provenance
         if: github.ref == 'refs/heads/main'
@@ -469,7 +473,6 @@ jobs:
         with:
           subject-path: |
             dist/app-release.apk
-            dist/app-release.apk.sha256
 
       - name: Prepare dynamic release notes
         if: github.ref == 'refs/heads/main'
@@ -482,29 +485,34 @@ jobs:
           TAG="v$VN"
           RELEASE_SIZE=$(cat dist/release_size.txt)
           DEBUG_SIZE=$(cat dist/debug_size.txt)
-          RELEASE_SHA=$(cat dist/app-release.apk.sha256 | cut -d' ' -f1)
-          CERT_COLON=$(cat dist/release_cert_sha256.txt)
-          VT_SUMMARY=$(cat dist/virustotal.txt 2>/dev/null || echo "VirusTotal scan pending")
+          VT_RELEASE=$(cat dist/virustotal-release.txt 2>/dev/null || echo "VirusTotal scan of app-release.apk pending")
+          VT_DEBUG=$(cat dist/virustotal-debug.txt 2>/dev/null || echo "VirusTotal scan of app-debug.apk pending")
           # Human sizes
           RELEASE_HR=$(numfmt --to=iec-i --suffix=B "$RELEASE_SIZE" 2>/dev/null || echo "${RELEASE_SIZE} bytes")
           DEBUG_HR=$(numfmt --to=iec-i --suffix=B "$DEBUG_SIZE" 2>/dev/null || echo "${DEBUG_SIZE} bytes")
+          # Changelog: commits since previous tag (v13.8.0-style list)
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s" --no-merges | head -n 100)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges -n 30)
+          fi
+          if [ -z "$CHANGELOG" ]; then CHANGELOG="- No changes listed"; fi
           cat > /tmp/release_notes.md <<EOF
-          **Release $TAG** (versionCode $VC) — GmsMobileUniversal Release+Debug
+          # $TAG
 
-          **APKs**
-          - \`app-release.apk\` — $RELEASE_HR ($RELEASE_SIZE bytes) — SHA256 \`$RELEASE_SHA\`
-          - \`app-debug.apk\` — $DEBUG_HR ($DEBUG_SIZE bytes) — debuggable, \`.debug\` suffix
+          - Release $TAG (versionCode $VC)
 
-          **Signature:** \`JusPlayer Release\` SHA256 \`$CERT_COLON\` — verify with \`apksigner verify --print-certs\`.
+          # Changelog
+          $CHANGELOG
 
-          **Checksums:** see \`*.sha256\` / \`*.sha512\` artifacts.
+          ## APKs
+          - \`app-release.apk\` - $RELEASE_HR ($RELEASE_SIZE bytes)
+          - \`app-debug.apk\` - $DEBUG_HR ($DEBUG_SIZE bytes)
 
-          **VirusTotal**
-          $VT_SUMMARY
+          $VT_RELEASE
 
-          **Build:** \`assembleGmsMobileUniversalRelease\` (R8 + shrinkResources) + \`assembleGmsMobileUniversalDebug\` — attested with \`actions/attest-build-provenance\`.
-
-          > Debug \`moe.rukamori.archivetune.debug\` installs side-by-side with release.
+          $VT_DEBUG
           EOF
           cat /tmp/release_notes.md
           # Check tag does not already exist (version is single source)
@@ -525,15 +533,6 @@ jobs:
           generate_release_notes: false
           files: |
             dist/app-release.apk
-            dist/app-release.apk.sha256
-            dist/app-release.apk.sha512
             dist/app-debug.apk
-            dist/app-debug.apk.sha256
-            dist/app-debug.apk.sha512
-            dist/virustotal-release.txt
-            dist/virustotal-release.json
-            dist/virustotal-debug.txt
-            dist/virustotal-debug.json
-            dist/virustotal.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

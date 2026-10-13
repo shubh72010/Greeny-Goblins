@@ -4397,6 +4397,8 @@ class MusicService :
                         queueTitle = initialStatus.title
                     }
                     if (initialStatus.items.isEmpty()) {
+                        // Diagnostic: preload plays on while up-next stays empty.
+                        Timber.tag(TAG).w("playQueue: empty initialStatus for preload=${queue.preloadItem?.id}")
                         optimisticPlayMediaId = null
                         runCatching { currentMediaMetadata.value = player.currentMetadata }
                         return@launch
