@@ -203,6 +203,9 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # 'tools' was removed from the SDK repository (sdkmanager 404s); runner already ships cmdline-tools.
+          packages: platform-tools
 
       - name: Build Release APK (GmsMobileUniversal - real key, R8)
         env:
