@@ -10,7 +10,7 @@ package moe.rukamori.archivetune.playback.queues
 import androidx.media3.common.MediaItem
 import moe.rukamori.archivetune.extensions.ExtraIsMusicVideo
 import moe.rukamori.archivetune.extensions.metadata
-import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
+import moe.rukamori.archivetune.extensions.containsBlockedTitleWord
 import moe.rukamori.archivetune.models.MediaMetadata
 
 interface Queue {

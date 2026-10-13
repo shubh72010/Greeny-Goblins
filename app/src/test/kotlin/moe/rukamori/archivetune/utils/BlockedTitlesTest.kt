@@ -11,8 +11,8 @@ import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongEntity
 import moe.rukamori.archivetune.extensions.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.models.SongItem
-import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
-import moe.rukamori.archivetune.innertube.models.filterBlockedTitles as filterYouTubeBlockedTitles
+import moe.rukamori.archivetune.extensions.containsBlockedTitleWord
+import moe.rukamori.archivetune.extensions.filterBlockedTitles as filterYouTubeBlockedTitles
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

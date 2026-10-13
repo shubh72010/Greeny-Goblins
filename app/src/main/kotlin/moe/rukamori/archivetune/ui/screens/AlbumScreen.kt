@@ -106,7 +106,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AppBarHeight
 import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
-import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
+import moe.rukamori.archivetune.extensions.containsBlockedTitleWord
 import moe.rukamori.archivetune.db.entities.Album
 import moe.rukamori.archivetune.extensions.togglePlayPause
 import moe.rukamori.archivetune.playback.queues.LocalAlbumRadio

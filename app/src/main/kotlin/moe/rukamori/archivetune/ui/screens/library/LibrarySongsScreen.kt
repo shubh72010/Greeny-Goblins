@@ -72,7 +72,7 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
-import moe.rukamori.archivetune.innertube.models.containsBlockedTitleWord
+import moe.rukamori.archivetune.extensions.containsBlockedTitleWord
 import moe.rukamori.archivetune.constants.PureBlackKey
 import moe.rukamori.archivetune.constants.SongFilter
 import moe.rukamori.archivetune.constants.SongFilterKey

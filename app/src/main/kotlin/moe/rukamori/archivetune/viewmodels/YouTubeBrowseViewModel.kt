@@ -20,6 +20,7 @@ import moe.rukamori.archivetune.constants.HideExplicitKey
 import moe.rukamori.archivetune.constants.HideVideoKey
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.extensions.filterBlockedArtists
+import moe.rukamori.archivetune.extensions.filterBlockedTitles
 import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.innertube.pages.BrowseResult
 import moe.rukamori.archivetune.utils.dataStore
