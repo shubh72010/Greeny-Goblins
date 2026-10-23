@@ -81,8 +81,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Scaffold
@@ -261,6 +259,7 @@ import moe.rukamori.archivetune.ui.component.StarDialog
 import moe.rukamori.archivetune.ui.component.StartupCover
 import moe.rukamori.archivetune.ui.component.TopSearch
 import moe.rukamori.archivetune.ui.component.TvNavigationRail
+import moe.rukamori.archivetune.ui.utils.AdaptiveContentPane
 import moe.rukamori.archivetune.ui.component.rememberBottomSheetState
 import moe.rukamori.archivetune.ui.component.shimmer.ShimmerTheme
 import moe.rukamori.archivetune.ui.menu.YouTubeSongMenu
@@ -1601,48 +1600,29 @@ class MainActivity : ComponentActivity() {
                                             }
                                             handlePrimaryNavigationClick(screen, isSelected)
                                         },
+                                        onSettingsClick = { navController.navigate("settings") },
                                     )
                                 } else {
-                                    NavigationRail(
-                                        containerColor = if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
-                                        contentColor = if (pureBlack) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        header = { Spacer(Modifier.height(24.dp)) },
-                                    ) {
-                                        navigationItems.fastForEach { screen ->
+                                    TvNavigationRail(
+                                        items = navigationItems,
+                                        selectedItemRoute = currentRoute,
+                                        containerColor =
+                                            if (pureBlack) Color.Black else MaterialTheme.colorScheme.surfaceContainer,
+                                        onItemClick = { screen ->
+                                            val wasPlayerActive = playerBottomSheetState.isExpanded
+
+                                            if (wasPlayerActive) {
+                                                playerBottomSheetState.collapse(if (disableAnimations) snap() else spring())
+                                            }
+
                                             val isSelected =
                                                 navBackStackEntry?.destination?.hierarchy?.any { it.route == screen.route } == true
 
-                                            NavigationRailItem(
-                                                selected = isSelected,
-                                                icon = {
-                                                    Icon(
-                                                        painter =
-                                                            painterResource(
-                                                                id = if (isSelected) screen.iconIdActive else screen.iconIdInactive,
-                                                            ),
-                                                        contentDescription = null,
-                                                    )
-                                                },
-                                                label = {
-                                                    Text(
-                                                        text = stringResource(screen.titleId),
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                    )
-                                                },
-                                                onClick = {
-                                                    val wasPlayerActive = playerBottomSheetState.isExpanded
-
-                                                    if (wasPlayerActive) {
-                                                        playerBottomSheetState.collapse(if (disableAnimations) snap() else spring())
-                                                    }
-
-                                                    if (wasPlayerActive && isSelected) return@NavigationRailItem
-                                                    handlePrimaryNavigationClick(screen, isSelected)
-                                                },
-                                            )
-                                        }
-                                    }
+                                            if (wasPlayerActive && isSelected) return@TvNavigationRail
+                                            handlePrimaryNavigationClick(screen, isSelected)
+                                        },
+                                        onSettingsClick = { navController.navigate("settings") },
+                                    )
                                 }
                             }
 
@@ -2273,6 +2253,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
+                                AdaptiveContentPane(enabled = useRail && !isTvDevice && currentRoute != Screens.Home.route) {
                                 NavHost(
                                     navController = navController,
                                     startDestination =
@@ -2370,6 +2351,7 @@ class MainActivity : ComponentActivity() {
                                         homeScrollConnection = homeScrollBehavior.nestedScrollConnection,
                                         searchScrollConnection = searchScrollBehavior.nestedScrollConnection,
                                     )
+                                }
                                 }
                             }
                         }

@@ -21,6 +21,7 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,6 +42,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -50,7 +52,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.ui.screens.Screens
 
 @Composable
@@ -58,25 +62,28 @@ fun TvNavigationRail(
     items: List<Screens>,
     selectedItemRoute: String?,
     modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     firstItemFocusRequester: FocusRequester? = null,
     contentFocusRequester: FocusRequester? = null,
     onItemClick: (Screens) -> Unit,
+    onSettingsClick: (() -> Unit)? = null,
 ) {
     LaunchedEffect(firstItemFocusRequester) {
         firstItemFocusRequester?.requestFocus()
     }
 
     Surface(
-        modifier = modifier.fillMaxHeight(),
-        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = modifier.padding(top = 24.dp).fillMaxHeight().width(72.dp),
+        color = containerColor,
         contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(16.dp),
     ) {
         Column(
             modifier =
                 Modifier
                     .fillMaxHeight()
-                    .padding(horizontal = 16.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(horizontal = 8.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             items.forEachIndexed { index, screen ->
@@ -102,6 +109,33 @@ fun TvNavigationRail(
                             ),
                     onClick = { onItemClick(screen) },
                 )
+            }
+            if (onSettingsClick != null) {
+                Spacer(Modifier.weight(1f))
+                Box(
+                    modifier =
+                        Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable(onClick = onSettingsClick)
+                            .padding(horizontal = 4.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            painter = painterResource(R.drawable.settings),
+                            contentDescription = stringResource(R.string.settings),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(22.dp),
+                        )
+                        Text(
+                            text = stringResource(R.string.settings),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
     }
@@ -130,7 +164,7 @@ private fun TvNavigationRailItem(
             when {
                 focused -> MaterialTheme.colorScheme.secondaryContainer
                 selected -> MaterialTheme.colorScheme.surfaceContainerHighest
-                else -> MaterialTheme.colorScheme.surfaceContainerLow
+                else -> Color.Transparent
             },
         label = "",
     )
@@ -148,8 +182,8 @@ private fun TvNavigationRailItem(
         modifier =
             modifier
                 .scale(scale)
-                .width(104.dp)
-                .clip(RoundedCornerShape(28.dp))
+                .width(56.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(containerColor)
                 .onKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
@@ -171,12 +205,12 @@ private fun TvNavigationRailItem(
                     indication = null,
                     role = Role.Tab,
                     onClick = onClick,
-                ).padding(horizontal = 12.dp, vertical = 14.dp),
+                ).padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Box(
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(22.dp),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -191,8 +225,10 @@ private fun TvNavigationRailItem(
         Text(
             text = stringResource(screen.titleId),
             color = contentColor,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (selected || focused) FontWeight.SemiBold else FontWeight.Medium,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            fontWeight = if (selected || focused) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
 }
