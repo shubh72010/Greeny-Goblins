@@ -79,6 +79,7 @@ import moe.rukamori.archivetune.ui.screens.settings.StorageSettings
 import moe.rukamori.archivetune.ui.screens.settings.SubsonicSettings
 import moe.rukamori.archivetune.ui.screens.settings.ThemeCreatorScreen
 import moe.rukamori.archivetune.ui.screens.settings.UpdateScreen
+import moe.rukamori.archivetune.ui.screens.smartskip.HyprMixScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.navigationBuilder(
@@ -117,6 +118,9 @@ fun NavGraphBuilder.navigationBuilder(
     }
     composable("stats") {
         StatsScreen(navController)
+    }
+    composable("hyprmix") {
+        HyprMixScreen(navController)
     }
     composable("news") {
         NewsScreen(navController)

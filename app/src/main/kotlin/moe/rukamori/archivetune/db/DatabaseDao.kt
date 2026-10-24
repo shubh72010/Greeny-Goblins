@@ -36,6 +36,7 @@ import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.EventWithSong
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.LearnedSkip
 import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
 import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.ListeningBySlot
@@ -46,6 +47,7 @@ import moe.rukamori.archivetune.db.entities.MusicAnalysisEntity
 import moe.rukamori.archivetune.db.entities.MusicAnalysisSampleEntity
 import moe.rukamori.archivetune.db.entities.LyricsHistoryEntity
 import moe.rukamori.archivetune.db.entities.PlayCountEntity
+import moe.rukamori.archivetune.db.entities.PlaySession
 import moe.rukamori.archivetune.db.entities.Playlist
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistPlayCount
@@ -54,6 +56,7 @@ import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.db.entities.PlaylistTagMap
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.SearchHistory
+import moe.rukamori.archivetune.db.entities.SeekRecord
 import moe.rukamori.archivetune.db.entities.SetVideoIdEntity
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongAlbumMap
@@ -1649,6 +1652,52 @@ interface DatabaseDao {
         eventId: Long,
         playTime: Long,
     )
+
+    // HyprMix: raw session + seek evidence, plus the materialized rule per song.
+    @Insert
+    fun insert(playSession: PlaySession): Long
+
+    @Insert
+    fun insert(seekRecord: SeekRecord)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    fun insert(learnedSkip: LearnedSkip)
+
+    @Query("SELECT * FROM play_session WHERE startedAt >= :since ORDER BY startedAt")
+    fun playSessionsSince(since: Long): List<PlaySession>
+
+    @Query("SELECT * FROM seek_record WHERE songId = :songId ORDER BY at")
+    fun seekRecords(songId: String): List<SeekRecord>
+
+    @Query("SELECT * FROM learned_skip")
+    fun learnedSkips(): List<LearnedSkip>
+
+    @Query("SELECT * FROM learned_skip")
+    fun learnedSkipsFlow(): Flow<List<LearnedSkip>>
+
+    @Query("SELECT * FROM learned_skip WHERE songId = :songId LIMIT 1")
+    fun learnedSkip(songId: String): LearnedSkip?
+
+    @Query("DELETE FROM learned_skip WHERE songId = :songId")
+    fun deleteLearnedSkip(songId: String)
+
+    @Query("SELECT COUNT(*) FROM play_session")
+    fun playSessionCount(): Int
+
+    @Query("DELETE FROM play_session WHERE startedAt < :cutoff")
+    fun prunePlaySessions(cutoff: Long)
+
+    @Query("DELETE FROM seek_record WHERE at < :cutoff")
+    fun pruneSeekRecords(cutoff: Long)
+
+    @Query("DELETE FROM play_session")
+    fun clearPlaySessions()
+
+    @Query("DELETE FROM seek_record")
+    fun clearSeekRecords()
+
+    @Query("DELETE FROM learned_skip")
+    fun clearLearnedSkips()
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insert(map: RelatedSongMap)

@@ -53,6 +53,15 @@ fun buildSettingsGroups(
                             onClick = { navController.navigate("stats") },
                         ),
                         SettingsItem(
+                            key = "hyprmix",
+                            icon = painterResource(R.drawable.auto_awesome),
+                            title = stringResource(R.string.hyprmix),
+                            subtitle = stringResource(R.string.hyprmix_settings_subtitle),
+                            accentColor = MaterialTheme.colorScheme.secondary,
+                            keywords = listOf("hyprmix", "skip", "intro", "personalized", "queue", "sessions"),
+                            onClick = { navController.navigate("hyprmix") },
+                        ),
+                        SettingsItem(
                             key = "appearance",
                             icon = painterResource(R.drawable.palette),
                             title = stringResource(R.string.appearance),

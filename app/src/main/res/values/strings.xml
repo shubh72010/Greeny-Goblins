@@ -1125,4 +1125,33 @@
     <string name="modular_reset_layout">Reset layout</string>
     <string name="modular_save_layout">Save layout</string>
 
+    <!-- HyprMix -->
+    <string name="hyprmix">HyprMix</string>
+    <string name="hyprmix_settings_subtitle">Skip-aware queue built from your own sessions</string>
+    <string name="hyprmix_record_title">Record sessions</string>
+    <string name="hyprmix_record_subtitle">Saves when each song started and how long it played. Nothing leaves the device.</string>
+    <string name="hyprmix_learn_title">Learn from skips</string>
+    <string name="hyprmix_learn_subtitle">Turns repeated, consistent seeks into a start point. Turning this off keeps what was already learned.</string>
+    <string name="hyprmix_autoskip_title">Auto-skip learned parts</string>
+    <string name="hyprmix_autoskip_subtitle">Only applies to songs started from HyprMix. Normal playback is never touched.</string>
+    <string name="hyprmix_intro_chip">starts %1$s</string>
+    <string name="hyprmix_no_intro">no start point</string>
+    <string name="hyprmix_edit_intro_title">Start point</string>
+    <string name="hyprmix_edit_intro_hint">Learned from %1$d consistent skips. Adjust it, or reset to let HyprMix relearn.</string>
+    <string name="hyprmix_edit_intro_manual">Set by you</string>
+    <string name="hyprmix_reset">Reset to learned</string>
+    <string name="hyprmix_save">Save</string>
+    <string name="hyprmix_delete_all">Delete all learning data</string>
+    <string name="hyprmix_empty">Nothing to build a queue from yet. Record a few sessions, then come back.</string>
+    <string name="hyprmix_play">Play HyprMix</string>
+    <string name="hyprmix_summary">%1$d songs · %2$d plays recorded</string>
+    <string name="hyprmix_rank">#%1$d</string>
+    <string name="hyprmix_plays">%1$d plays</string>
+    <string name="hyprmix_finished">%1$d finished</string>
+    <string name="hyprmix_skipped">%1$d skipped</string>
+    <string name="hyprmix_after_skip">%1$d after a skip</string>
+    <string name="hyprmix_score">score %1$s</string>
+    <string name="hyprmix_last_played">last %1$d d ago</string>
+    <string name="hyprmix_learned_from">learned from %1$d skips</string>
+
 </resources>

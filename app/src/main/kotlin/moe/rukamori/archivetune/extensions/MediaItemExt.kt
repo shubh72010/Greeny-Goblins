@@ -23,7 +23,21 @@ import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.isLocalMediaId
 
 const val ExtraIsMusicVideo = "com.jusdots.jusplayer.extra.IS_MUSIC_VIDEO"
+const val ExtraHyprMix = "com.jusdots.jusplayer.extra.HYPR_MIX"
 private const val NotificationArtworkSizePx = 1080
+
+/** Marks items that came from the HyprMix screen, so auto-skip can never leak into normal playback. */
+val MediaItem.isHyprMixItem: Boolean
+    get() = mediaMetadata.extras?.getBoolean(ExtraHyprMix, false) == true
+
+fun MediaItem.withHyprMix(): MediaItem {
+    val mediaMetadata = mediaMetadata
+    val extras = Bundle().apply { putAll(mediaMetadata.extras ?: Bundle.EMPTY) }
+    extras.putBoolean(ExtraHyprMix, true)
+    return buildUpon()
+        .setMediaMetadata(mediaMetadata.buildUpon().setExtras(extras).build())
+        .build()
+}
 
 val MediaItem.metadata: MediaMetadata?
     get() = localConfiguration?.tag as? MediaMetadata

@@ -105,6 +105,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -135,6 +136,9 @@ import moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey
 import moe.rukamori.archivetune.visualizer.HapticMode
 import moe.rukamori.archivetune.constants.HapticVisualizerIntensityKey
 import moe.rukamori.archivetune.constants.HapticVisualizerModeKey
+import moe.rukamori.archivetune.constants.HyprMixAutoSkipEnabledKey
+import moe.rukamori.archivetune.constants.HyprMixLearningEnabledKey
+import moe.rukamori.archivetune.constants.HyprMixRecordingEnabledKey
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
 import moe.rukamori.archivetune.constants.AutoDownloadOnLikeKey
@@ -210,6 +214,7 @@ import moe.rukamori.archivetune.db.entities.AlbumEntity
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.LearnedSkip
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.Song
 import moe.rukamori.archivetune.db.entities.SongEntity
@@ -221,6 +226,7 @@ import moe.rukamori.archivetune.extensions.collectLatest
 import moe.rukamori.archivetune.extensions.currentMetadata
 import moe.rukamori.archivetune.extensions.directorySizeBytes
 import moe.rukamori.archivetune.extensions.findNextMediaItemById
+import moe.rukamori.archivetune.extensions.isHyprMixItem
 import moe.rukamori.archivetune.extensions.mediaItems
 import moe.rukamori.archivetune.extensions.metadata
 import moe.rukamori.archivetune.extensions.setOffloadEnabled
@@ -256,6 +262,8 @@ import moe.rukamori.archivetune.playback.queues.YouTubeQueue
 import moe.rukamori.archivetune.playback.queues.filterBlockedTitles
 import moe.rukamori.archivetune.playback.queues.filterExplicit
 import moe.rukamori.archivetune.playback.queues.filterVideo
+import moe.rukamori.archivetune.smartskip.PlaySessionRecorder
+import moe.rukamori.archivetune.smartskip.SkipLearning
 import moe.rukamori.archivetune.playback.haptic.HapticVisualizer
 import moe.rukamori.archivetune.playback.haptic.HapticVisualizerMode
 import moe.rukamori.archivetune.visualizer.BeatEngineMode
@@ -548,6 +556,13 @@ class MusicService :
     private var historyThresholdJob: Job? = null
     private val pendingHistoryFinalizations = mutableMapOf<String, MutableList<PendingHistoryFinalization>>()
     private val historyRecordingJobs = ConcurrentHashMap<Long, kotlinx.coroutines.Deferred<ImmediateHistoryResult>>()
+
+    // HyprMix: raw session recorder + learned intro rules, kept off the history pipeline.
+    private val hyprMixRecorder = PlaySessionRecorder()
+
+    @Volatile
+    private var hyprMixIntroRules: Map<String, Long> = emptyMap()
+    private var hyprMixSuppressedSeekElapsedMs = 0L
 
     val currentMediaMetadata = MutableStateFlow<moe.rukamori.archivetune.models.MediaMetadata?>(null)
     val queueRestoreCompleted = MutableStateFlow(false)
@@ -1146,6 +1161,7 @@ class MusicService :
     override fun onCreate() {
         super.onCreate()
         ensureScopesActive()
+        loadHyprMixRules()
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -6670,6 +6686,106 @@ class MusicService :
             .coerceIn(HISTORY_DURATION_MIN, HISTORY_DURATION_MAX)
             .toLong() * 1000L
 
+    private fun hyprMixRecordingEnabled(): Boolean =
+        runCatching { dataStore[HyprMixRecordingEnabledKey] }.getOrNull() == true
+
+    private fun hyprMixAutoSkipEnabled(): Boolean =
+        runCatching { dataStore[HyprMixAutoSkipEnabledKey] }.getOrNull() == true
+
+    private fun hyprMixLearningEnabled(): Boolean =
+        runCatching { dataStore[HyprMixLearningEnabledKey] }.getOrNull() == true
+
+    private fun loadHyprMixRules() {
+        ioScope.launch(SilentHandler) {
+            database
+                .learnedSkipsFlow()
+                .catch { reportException(it) }
+                .collect { rules ->
+                    hyprMixIntroRules =
+                        rules.filter { it.introUntilMs > 0L }.associate { it.songId to it.introUntilMs }
+                }
+        }
+    }
+
+    /**
+     * Closes the previous item's HyprMix session. Always called, before the history
+     * session resets — persistence is the only thing the switches gate, so toggling
+     * recording never leaves the recorder mid-song.
+     */
+    private fun finishHyprMixSession(endedNaturally: Boolean) {
+        val finished = hyprMixRecorder.finishItem(endedNaturally, android.os.SystemClock.elapsedRealtime()) ?: return
+        if (!hyprMixRecordingEnabled()) return
+
+        ioScope.launch(SilentHandler) {
+            try {
+                database.withTransaction {
+                    insert(finished.session)
+                    finished.seeks.forEach { insert(it) }
+                }
+                if (hyprMixLearningEnabled()) relearnHyprMixRule(finished)
+            } catch (e: SQLException) {
+            } catch (throwable: Throwable) {
+                reportException(throwable)
+            }
+        }
+    }
+
+    private fun relearnHyprMixRule(finished: PlaySessionRecorder.Finished) {
+        val songId = finished.session.songId
+        val existing = database.learnedSkip(songId)
+        if (existing?.manual == true) return
+        // A missing duration read must not wipe an existing rule.
+        if (finished.session.durationMs < SkipLearning.MIN_TRACK_MS) return
+
+        val learned = SkipLearning.learnIntro(finished.session.durationMs, database.seekRecords(songId))
+        if (learned == null) {
+            if (existing != null) database.deleteLearnedSkip(songId)
+            return
+        }
+
+        database.insert(
+            LearnedSkip(
+                songId = songId,
+                introUntilMs = learned.introUntilMs,
+                samples = learned.samples,
+                manual = false,
+                updatedAt = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    /**
+     * Applies a learned intro cut, but only to items stamped by the HyprMix screen —
+     * that extra is the whole feature scope, so normal playback can never be affected.
+     */
+    private fun applyHyprMixIntroSkip(mediaItem: MediaItem?) {
+        if (mediaItem?.isHyprMixItem != true) return
+        if (!hyprMixAutoSkipEnabled()) return
+        if (crossfadeHandoffInProgress || isGlobalCrossfadePreviewActive()) return
+
+        val introUntilMs = hyprMixIntroRules[mediaItem.mediaId] ?: return
+        if (introUntilMs <= 0L) return
+        if (player.currentPosition >= introUntilMs - 1_000L) return
+
+        // Our own seek must never be recorded as a user skip, or the rule feeds itself.
+        hyprMixSuppressedSeekElapsedMs = android.os.SystemClock.elapsedRealtime()
+        player.seekTo(introUntilMs)
+    }
+
+    private fun recordHyprMixSeek(
+        fromMs: Long,
+        toMs: Long,
+        nowElapsedMs: Long,
+    ) {
+        if (!hyprMixRecordingEnabled()) return
+        if (isCrossfading || crossfadeHandoffInProgress || isGlobalCrossfadePreviewActive()) return
+
+        val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
+        if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest) return
+
+        hyprMixRecorder.recordSeek(fromMs, toMs, nowElapsedMs, System.currentTimeMillis())
+    }
+
     private fun currentHistoryPlayedMs(nowElapsedMs: Long = android.os.SystemClock.elapsedRealtime()): Long {
         val runningPlayMs =
             currentHistoryStartedAtElapsedMs
@@ -6969,7 +7085,21 @@ class MusicService :
     ) {
         super.onMediaItemTransition(mediaItem, reason)
 
+        finishHyprMixSession(
+            endedNaturally =
+                reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT,
+        )
+        hyprMixRecorder.startItem(
+            songId = mediaItem?.mediaId,
+            positionMs = player.currentPosition.coerceAtLeast(0L),
+            nowElapsedMs = android.os.SystemClock.elapsedRealtime(),
+            wallClockMs = System.currentTimeMillis(),
+        )
+
         beginHistorySession(mediaItem?.mediaId, forceNew = true)
+
+        applyHyprMixIntroSkip(mediaItem)
 
         // Pre-load lyrics for upcoming songs in queue
         val currentIndex = player.currentMediaItemIndex
@@ -7226,6 +7356,8 @@ class MusicService :
         ) {
             updateHistoryTrackingPlaybackState()
         }
+        hyprMixRecorder.setPlaying(player.isPlaying, android.os.SystemClock.elapsedRealtime())
+        if (player.duration > 0L) hyprMixRecorder.setDuration(player.duration)
         val joined = togetherSessionState.value as? moe.rukamori.archivetune.together.TogetherSessionState.Joined
         if (joined?.role is moe.rukamori.archivetune.together.TogetherRole.Guest &&
             events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED)
@@ -7424,6 +7556,12 @@ class MusicService :
         super.onPositionDiscontinuity(oldPosition, newPosition, reason)
         val isSeekDiscontinuity =
             reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
+        if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+            val nowElapsedMs = android.os.SystemClock.elapsedRealtime()
+            if (nowElapsedMs - hyprMixSuppressedSeekElapsedMs > 1_000L && oldPosition.mediaItemIndex == newPosition.mediaItemIndex) {
+                recordHyprMixSeek(oldPosition.positionMs, newPosition.positionMs, nowElapsedMs)
+            }
+        }
         if (isSeekDiscontinuity) {
             if (!crossfadeHandoffInProgress) {
                 cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)

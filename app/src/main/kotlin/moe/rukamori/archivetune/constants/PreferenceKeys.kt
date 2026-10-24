@@ -949,3 +949,8 @@ val LyricsFilterCensorCharKey = stringPreferencesKey("lyricsFilterCensorChar")
 
 // Deck mixer prototype (feature flag, no persistence)
 val EnableDeckMixKey = booleanPreferencesKey("enableDeckMix")
+
+// ── HyprMix (skip-aware queue) — all three switches are independent ──
+val HyprMixRecordingEnabledKey = booleanPreferencesKey("hyprMixRecordingEnabled")
+val HyprMixAutoSkipEnabledKey = booleanPreferencesKey("hyprMixAutoSkipEnabled")
+val HyprMixLearningEnabledKey = booleanPreferencesKey("hyprMixLearningEnabled")

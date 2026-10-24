@@ -33,6 +33,7 @@ import moe.rukamori.archivetune.db.entities.AlbumEntity
 import moe.rukamori.archivetune.db.entities.ArtistEntity
 import moe.rukamori.archivetune.db.entities.Event
 import moe.rukamori.archivetune.db.entities.FormatEntity
+import moe.rukamori.archivetune.db.entities.LearnedSkip
 import moe.rukamori.archivetune.db.entities.LibraryTopMixEntity
 import moe.rukamori.archivetune.db.entities.LibraryTopMixSongMap
 import moe.rukamori.archivetune.db.entities.LyricsEntity
@@ -40,12 +41,14 @@ import moe.rukamori.archivetune.db.entities.LyricsHistoryEntity
 import moe.rukamori.archivetune.db.entities.MusicAnalysisEntity
 import moe.rukamori.archivetune.db.entities.MusicAnalysisSampleEntity
 import moe.rukamori.archivetune.db.entities.PlayCountEntity
+import moe.rukamori.archivetune.db.entities.PlaySession
 import moe.rukamori.archivetune.db.entities.PlaylistEntity
 import moe.rukamori.archivetune.db.entities.PlaylistSongMap
 import moe.rukamori.archivetune.db.entities.PlaylistSongMapPreview
 import moe.rukamori.archivetune.db.entities.PlaylistTagMap
 import moe.rukamori.archivetune.db.entities.RelatedSongMap
 import moe.rukamori.archivetune.db.entities.SearchHistory
+import moe.rukamori.archivetune.db.entities.SeekRecord
 import moe.rukamori.archivetune.db.entities.SetVideoIdEntity
 import moe.rukamori.archivetune.db.entities.SongAlbumMap
 import moe.rukamori.archivetune.db.entities.SongArtistMap
@@ -62,7 +65,7 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
 private const val TAG = "MusicDatabase"
-private const val CURRENT_VERSION = 36
+private const val CURRENT_VERSION = 37
 
 class MusicDatabase(
     private val delegate: InternalDatabase,
@@ -133,6 +136,9 @@ class MusicDatabase(
         LibraryTopMixSongMap::class,
         MusicAnalysisEntity::class,
         MusicAnalysisSampleEntity::class,
+        PlaySession::class,
+        SeekRecord::class,
+        LearnedSkip::class,
     ],
     views = [
         SortedSongArtistMap::class,
@@ -163,6 +169,7 @@ class MusicDatabase(
         AutoMigration(from = 20, to = 21, spec = Migration20To21::class),
         AutoMigration(from = 21, to = 22),
         AutoMigration(from = 35, to = 36),
+        AutoMigration(from = 36, to = 37),
     ],
 )
 @TypeConverters(Converters::class)
