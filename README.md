@@ -150,7 +150,7 @@ a string reads like machine output in your language.
 - [Read You](https://github.com/Ashinch/ReadYou) and [Seal](https://github.com/JunkFood02/Seal) — UI inspiration.
 - Everyone who filed an issue, tested a build, or fixed a translation.
 
-**Maintainers:** shubh72010 (lead) · oliver-lebaigue-2-bright-bench (contributor)
+**Maintainers:** @shubh72010 (lead dev)
 
 ---
 
