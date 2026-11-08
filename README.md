@@ -4,7 +4,8 @@
 
 # JusPlayer
 
-**A YouTube Music client for Android.**
+**A YouTube Music client for Android.**<br>
+_No ads, no Premium — your playlists, your files, your lyrics, on phone, tablet or TV._
 
 Fork of [ArchiveTune](https://github.com/rukamori/ArchiveTune) by Rukamori · GPL-3.0 · Android 8.0+<br>
 _docs: [English](README.md) · [日本語](README_JA.md)_
@@ -26,13 +27,11 @@ _docs: [English](README.md) · [日本語](README_JA.md)_
 
 ## What this is
 
-A music player that plays from three places: your YouTube Music account, local files on the
-device, and a Subsonic/OpenSubsonic server (Navidrome, Airsonic-Advanced, Gonic, Ampache). No ads,
-no account required for local or Subsonic playback, no telemetry.
+A music player for your YouTube Music account — the streaming library, plus the music files already
+on your phone, plus a Subsonic server if you run one. No ads, no Premium, no tracking.
 
-It's a fork, so most of the app's bones are ArchiveTune's. What I've added on top is listed under
-[What's different](#whats-different) and in detail in [FEATURES.md](FEATURES.md) — that file is
-written from the source tree, not from this page.
+It's a fork, so most of the app's bones are ArchiveTune's. What I've added on top is below and in
+detail in [FEATURES.md](FEATURES.md) — that file is written from the source tree, not from this page.
 
 > [!IMPORTANT]
 > **Region:** if YouTube Music doesn't serve your country, you need a VPN/proxy set to a supported
@@ -40,29 +39,31 @@ written from the source tree, not from this page.
 
 ---
 
-## What's different
+## What you get
 
-Six things that are the actual reason to use this fork over anything else. Each one is in the code,
-not in the pitch:
+- **No ads, no Premium.** Play anything from YouTube Music without ads and without paying, and keep
+  listening with the screen off or the app in the background.
+- **Your library is already there.** Sign in once and your liked songs, playlists and subscriptions
+  appear as they are. Switching from Spotify? Import your playlists instead of rebuilding them.
+- **Offline listening.** Download songs, albums or playlists and play them on a plane, on the metro,
+  anywhere. Plus a sleep timer, skip-silence and crossfade between tracks.
+- **Lyrics that follow the song.** Line-by-line and word-by-word, from 12 providers, with translation
+  and romanization when you don't know the language.
+- **It looks how you want.** Colours pulled from the album art, 69 palettes, 10 player layouts,
+  8 home-screen widgets, an always-on-display player, and a font you can swap.
+- **Listen together.** Start a session on your Wi-Fi or over the internet — everyone hears the same
+  song at the same time, and guests can add tracks.
+- **Your own files and your own server.** Local music on the phone and Navidrome/Airsonic/Gonic/
+  Ampache sit in the same library as streaming, with no separate app.
+- **Phone, tablet, TV.** Layouts that fit the screen, plus Android Auto and Google Cast (`gms` build).
+- **Find that song.** Shazam-style recognition from the microphone or from whatever's playing on your
+  phone — useful when you hear something in a café.
+- **Your listening stays yours.** No analytics, no telemetry, no ads. Statistics, fingerprints and
+  history are stored on the device only. Open source, GPL-3.0.
 
-- **Dual-engine playback.** InnerTube clients and the bundled JusPlayer Engine both resolve the
-  track; at `Highest` quality the app picks the higher bitrate and breaks ties under 8 kbps by
-  codec rank (Opus > AAC > other). The player shows which engine won.
-- **Crossfade and gapless on one audio path.** Audio blends over a second `ExoPlayer` while the UI
-  switches on the tap frame, so taps never look ignored and the queue never snaps back mid-fade.
-- **Subsonic matched playback.** A queued YouTube track plays your server's copy when it exists,
-  with a "server only" mode that skips what your server doesn't have instead of falling back.
-- **HyprMix.** Learns your skipped intros and songs you keep bailing on, entirely on-device
-  (Bayesian-smoothed, so one bad session can't bury a track). Nothing is uploaded.
-- **Music Together.** Host or join a listening session over LAN (no server) or online. Guests send
-  requests, the host applies them, everyone stays in sync.
-- **Searchable settings.** 240 indexed rows — type "theme" or "proxy" and it deep-links to the
-  exact toggle.
-
-Plus: 10 player designs, 8 player backgrounds, 69 palettes + custom, modular player layout editor,
-word-by-word lyrics from 12 sources, 8 home-screen widgets, an AOD player, Android Auto, Google Cast
-(`gms` build), Last.fm / Libre.fm / ListenBrainz scrobbling, Discord rich presence, and a full TV
-build.
+Under the hood there's more — dual-engine stream resolution with bitrate/codec tie-breaks, a
+240-row searchable settings tree, 27 languages, 20 build variants — but you don't need any of it to
+press play.
 
 → [Everything else, feature by feature](FEATURES.md)
 
@@ -71,23 +72,23 @@ build.
 ## Install
 
 Download the APK from [Releases](https://github.com/shubh72010/Greeny-Goblins/releases/latest) and
-install it. Two flavours:
+install it. There are two builds — pick one:
 
-| Build | Use it if |
+| File name contains | What it is |
 |---|---|
-| `gms` | You want Google Cast. Pulls in Google Play Services. |
-| `foss` | You want no Google dependencies at all. No Cast. |
+| `gms` | The normal one. Includes Google Cast (casting to a TV or speaker). |
+| `foss` | The same app with no Google code inside. No Cast. |
 
-The app has a built-in updater with Stable and Canary channels, so you don't have to re-download
-by hand.
+The app updates itself (Stable and Canary channels), so you don't have to re-download by hand.
 
 > [!WARNING]
 > The GitHub Releases page above is the only trusted download source. Builds from anywhere else
 > are not mine.
 
-**What you need for what:** YouTube Music account for library/playlists · Subsonic server for
-Subsonic playback · Spotify account for playlist import · your own OpenAI-compatible endpoint for
-the optional AI mixes/translation · `gms` build for Cast · `tv` build for the TV layout.
+**What needs what:** a YouTube Music account for your library · a Subsonic server for Subsonic
+playback · a Spotify account for importing playlists · an API key from any AI service for the
+optional AI mixes/translation · the `gms` build for Cast · the `tv` build for the TV layout.
+Local files need nothing at all.
 
 **Not here:** SponsorBlock, a Wear OS app, iOS, desktop, and no Google Play listing. This is an
 independent third-party client — not affiliated with Google or YouTube.
