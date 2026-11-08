@@ -1,244 +1,159 @@
 <div align="center">
 
-  <img src="./assets/logo.svg" width="160" height="160" alt="JusPlayer Logo" style="border-radius: 22%">
+<img src="./assets/logo.svg" width="120" height="120" alt="JusPlayer icon">
 
-  <h1>JusPlayer</h1>
+# JusPlayer
 
-  <p align="center">
-    <a href="README.md">
-      <img src="https://img.shields.io/badge/🇺🇸%20English-6366f1?style=for-the-badge&labelColor=1e1e2e" />
-    </a>
-    <a href="README_JA.md">
-      <img src="https://img.shields.io/badge/🇯🇵%20日本語-6366f1?style=for-the-badge&labelColor=1e1e2e" />
-    </a>
-  </p>
+**A YouTube Music client for Android.**
 
-  <p align="center">
-    <strong>Redefining the YouTube Music Experience on Android.</strong>
-    <br />
-    <em>It's high-performance, privacy-focused, and packed with features for people who really care about their experience.</em>
-  </p>
+Fork of [ArchiveTune](https://github.com/rukamori/ArchiveTune) by Rukamori · GPL-3.0 · Android 8.0+<br>
+_docs: [English](README.md) · [日本語](README_JA.md)_
 
-  <p align="center">
-    <a href="#features"><b>Features</b></a> •
-    <a href="#screenshots"><b>Screenshots</b></a> •
-    <a href="#download-now"><b>Download</b></a> •
-    <a href="https://github.com/shubh72010/Greeny-Goblins/issues/new/choose"><b>Support</b></a>
-  </p>
+[**⬇ Download the APK**](https://github.com/shubh72010/Greeny-Goblins/releases/latest) &nbsp;·&nbsp; [All releases](https://github.com/shubh72010/Greeny-Goblins/releases) &nbsp;·&nbsp; [Full feature list](FEATURES.md) &nbsp;·&nbsp; [Discord](https://discord.gg/8VDJB7HztQ)
 
-  <div align="center">
-    <img src="https://img.shields.io/github/v/release/shubh72010/Greeny-Goblins?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Latest Version" />
-    <img src="https://img.shields.io/github/downloads/shubh72010/Greeny-Goblins/total?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Downloads" />
-    <img src="https://img.shields.io/github/stars/shubh72010/Greeny-Goblins?style=for-the-badge&color=6366f1&labelColor=1e1e2e&logo=github" alt="Stars" />
-    <img src="https://img.shields.io/github/license/shubh72010/Greeny-Goblins?style=for-the-badge&color=6366f1&labelColor=1e1e2e" alt="License" />
-    <img src="https://img.shields.io/badge/Architecture-MVVM-6366f1?style=for-the-badge&labelColor=1e1e2e&logo=kotlin" alt="MVVM Architecture" />
-    <img src="https://img.shields.io/badge/Language-Kotlin-7f52ff?style=for-the-badge&logo=kotlin&color=6366f1&labelColor=1e1e2e" alt="Kotlin Language" />
-    <img src="https://img.shields.io/badge/Toolkit-Jetpack_Compose-4285f4?style=for-the-badge&logo=jetpack-compose&color=6366f1&labelColor=1e1e2e" alt="Jetpack Compose Toolkit" />
-    <img src="https://img.shields.io/badge/Design-Material_3-000000?style=for-the-badge&logo=material-design&color=6366f1&labelColor=1e1e2e" alt="Material Design 3" />
-    <a href="https://discord.gg/8VDJB7HztQ"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" /></a>
-  </div>
+<img src="https://img.shields.io/github/v/release/shubh72010/Greeny-Goblins?label=release&color=6366f1" alt="Latest release" />
+<img src="https://img.shields.io/github/downloads/shubh72010/Greeny-Goblins/total?label=downloads&color=6366f1" alt="Downloads" />
+<img src="https://img.shields.io/badge/license-GPL--3.0-6366f1" alt="GPL-3.0" />
 
-</div>
-
-> **Fork of [ArchiveTune](https://github.com/rukamori/ArchiveTune)** by Rukamori.
-
-<hr />
-
-**JusPlayer** isn't just another generic YouTube Music wrapper. It's a fully custom-built player made from the ground up, because we think your music should stay private, look clean, and work exactly the way you expect. If you care about sound quality and want something that actually feels good to use, this is it.
-
----
-
-> [!IMPORTANT]  
-> **Geographic Availability:** If YouTube Music is not supported in your region, a VPN or proxy set to a supported region is required for initial data fetching.
-
----
-
-## 📸 Showcase
-
-<div align="center">
-
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_1.png" alt="Browse" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_2.png" alt="Live Lyrics" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_3.png" alt="Theme Customization" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_4.png" alt="Live Statistics" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_5.png" alt="Artist" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_6.png" alt="Album" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_7.png" alt="Player" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_8.png" alt="Settings" width="30%" />
-<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_9.png" alt="Settings" width="30%" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_7.png" width="24%" alt="Player" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_2.png" width="24%" alt="Live lyrics" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_1.png" width="24%" alt="Browse" />
+<img src="./fastlane/metadata/android/en-US/images/phoneScreenshots/screenshot_4.png" width="24%" alt="Listening statistics" />
 
 </div>
 
 ---
 
-## ✨ Features
+## What this is
 
-<div align="center">
+A music player that plays from three places: your YouTube Music account, local files on the
+device, and a Subsonic/OpenSubsonic server (Navidrome, Airsonic-Advanced, Gonic, Ampache). No ads,
+no account required for local or Subsonic playback, no telemetry.
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <div align="left">
-        <h3>Playback</h3>
-        <ul>
-          <li>Multiple account support with quick switching</li>
-          <li>Ad-free playback with background listening</li>
-          <li>Your playlists, liked songs, and subscriptions appear after sign-in</li>
-          <li>Support local file and local song playback
-          <li>Fast startup and lightweight performance</li>
-          <li>Built for a private, uninterrupted listening experience</li>
-        </ul>
-      </div>
-    </td>
-    <td width="50%" valign="top">
-      <div align="left">
-        <h3>Audio</h3>
-        <ul>
-          <li>EBU R128 loudness normalization</li>
-          <li>Tempo, pitch, and playback speed controls</li>
-          <li>Crossfade between tracks</li>
-          <li>System equalizer and spatial audio integration</li>
-        </ul>
-      </div>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <div align="left">
-        <h3>Lyrics &amp; Discovery</h3>
-        <ul>
-          <li>Live synced lyrics</li>
-          <li>Lyrics translation, AI Lyrics translation and romanization</li>
-          <li>Music recognition for songs around you</li>
-          <li>Listening statistics whenever you want them</li>
-        </ul>
-      </div>
-    </td>
-    <td width="50%" valign="top">
-      <div align="left">
-        <h3>Sync &amp; Social</h3>
-        <ul>
-          <li>Import playlist from spotify</li>
-          <li>YouTube Music account integration</li>
-          <li>Last.fm scrobbling</li>
-          <li>ListenBrainz history sync</li>
-          <li>Discord rich presence support</li>
-        </ul>
-      </div>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <div align="left">
-        <h3>Interface</h3>
-        <ul>
-          <li>Material 3 design language</li>
-          <li>Album-art powered dynamic colors</li>
-          <li>Up to 9 different player styles</li>
-          <li>Up to 8 different player background styles</li>
-          <li>Responsive layouts for different screen sizes</li>
-          <li>Clean browsing, player, artist, album, and lyrics views</li>
-        </ul>
-      </div>
-    </td>
-    <td width="50%" valign="top">
-      <div align="left">
-        <h3>Customization</h3>
-        <ul>
-          <li>Deep playback and interface settings</li>
-          <li>Dynamic color theming options</li>
-          <li>Gesture customization</li>
-          <li>Animation and layout tuning</li>
-          <li>Flexible controls to shape the app around your workflow</li>
-        </ul>
-      </div>
-    </td>
-  </tr>
-</table>
+It's a fork, so most of the app's bones are ArchiveTune's. What I've added on top is listed under
+[What's different](#whats-different) and in detail in [FEATURES.md](FEATURES.md) — that file is
+written from the source tree, not from this page.
 
-</div>
+> [!IMPORTANT]
+> **Region:** if YouTube Music doesn't serve your country, you need a VPN/proxy set to a supported
+> region for the first fetch. The app has built-in proxy, DoH and IP-rotation settings for this.
 
 ---
 
-## 📥 Download Now
+## What's different
 
-<div align="center">
+Six things that are the actual reason to use this fork over anything else. Each one is in the code,
+not in the pitch:
 
-<table>
-  <thead>
-    <tr>
-      <th align="center">GitHub</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center">
-        <a href="https://github.com/shubh72010/Greeny-Goblins/releases/latest">
-          <img src="./assets/badge_github.png" height="50" alt="Get JusPlayer on GitHub">
-        </a>
-      </td>
-    </tr>
-  </tbody>
-</table>
+- **Dual-engine playback.** InnerTube clients and the bundled JusPlayer Engine both resolve the
+  track; at `Highest` quality the app picks the higher bitrate and breaks ties under 8 kbps by
+  codec rank (Opus > AAC > other). The player shows which engine won.
+- **Crossfade and gapless on one audio path.** Audio blends over a second `ExoPlayer` while the UI
+  switches on the tap frame, so taps never look ignored and the queue never snaps back mid-fade.
+- **Subsonic matched playback.** A queued YouTube track plays your server's copy when it exists,
+  with a "server only" mode that skips what your server doesn't have instead of falling back.
+- **HyprMix.** Learns your skipped intros and songs you keep bailing on, entirely on-device
+  (Bayesian-smoothed, so one bad session can't bury a track). Nothing is uploaded.
+- **Music Together.** Host or join a listening session over LAN (no server) or online. Guests send
+  requests, the host applies them, everyone stays in sync.
+- **Searchable settings.** 240 indexed rows — type "theme" or "proxy" and it deep-links to the
+  exact toggle.
 
-</div>
+Plus: 10 player designs, 8 player backgrounds, 69 palettes + custom, modular player layout editor,
+word-by-word lyrics from 12 sources, 8 home-screen widgets, an AOD player, Android Auto, Google Cast
+(`gms` build), Last.fm / Libre.fm / ListenBrainz scrobbling, Discord rich presence, and a full TV
+build.
 
-> [!WARNING]  
-> **Notes:** The trusted download source is listed above; we are not responsible for any risks you may encounter from downloading from other sources.
-
-## ❓ Need Help or Have Questions?
-Join Our Discord Server for Support and Discussion.
-
-[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/8VDJB7HztQ)
+→ [Everything else, feature by feature](FEATURES.md)
 
 ---
 
-## 🌍 Globalization
+## Install
 
-JusPlayer belongs to everyone. Help us localize the experience for your region.
+Download the APK from [Releases](https://github.com/shubh72010/Greeny-Goblins/releases/latest) and
+install it. Two flavours:
 
-[![Static Badge](https://img.shields.io/badge/translate-help?style=for-the-badge&logo=weblate&labelColor=grey)](https://translate.codeberg.org/engage/archivetune/)
+| Build | Use it if |
+|---|---|
+| `gms` | You want Google Cast. Pulls in Google Play Services. |
+| `foss` | You want no Google dependencies at all. No Cast. |
 
-<div align="center">
-  <a href="https://translate.codeberg.org/engage/archivetune/">
-    <img src="https://translate.codeberg.org/widget/archivetune/horizontal-blue.svg" alt="Translation status" />
-  </a>
-</div>
+The app has a built-in updater with Stable and Canary channels, so you don't have to re-download
+by hand.
 
-### ✨ Project Contributors
+> [!WARNING]
+> The GitHub Releases page above is the only trusted download source. Builds from anywhere else
+> are not mine.
 
-- **shubh72010** — lead developer
-- **oliver-lebaigue-2-bright-bench** — contributor
+**What you need for what:** YouTube Music account for library/playlists · Subsonic server for
+Subsonic playback · Spotify account for playlist import · your own OpenAI-compatible endpoint for
+the optional AI mixes/translation · `gms` build for Cast · `tv` build for the TV layout.
 
-### 🛠️ Development & Engineering
-Interested in building the project or contributing? JusPlayer is built on a high-performance Kotlin stack.
-<a href="CONTRIBUTING.md"><b>Read the Build & Contribution Guide →</b></a>
-
----
-
-### Open-Source Acknowledgments
-
-JusPlayer is made possible by the work of many open-source projects and communities:
-
-- Forked from [ArchiveTune](https://github.com/rukamori/ArchiveTune) by Rukamori.
-- **Metrolist** by [Mostafa Alagamy](https://github.com/mostafaalagamy/Metrolist) for the base framework.
-- **SimpMusic** by [maxrave-dev](https://github.com/maxrave-dev/SimpMusic) for the lyrics API provider.
-- [BetterLyrics](https://better-lyrics.boidu.dev/) for word-by-word lyrics, unison and artwork provider support.
-- [Material Color Utilities](https://github.com/material-foundation/material-color-utilities)
-- [Read You](https://github.com/Ashinch/ReadYou) and [Seal](https://github.com/JunkFood02/Seal) for UI component inspiration.
-- Translators, beta testers, contributors, and community members who continue to support the project.
+**Not here:** SponsorBlock, a Wear OS app, iOS, desktop, and no Google Play listing. This is an
+independent third-party client — not affiliated with Google or YouTube.
 
 ---
 
-## ⚖️ Legal Disclaimer
+## Build it
 
-JusPlayer is an independent third-party client.
-- Not affiliated with Google LLC or YouTube.
-- Does not bypass YouTube's technical protections.
-- Users are encouraged to support artists by purchasing music via official channels.
+JDK 21. The project has 3 flavour dimensions (`gms`/`foss` × `mobile`/`tv` × `universal`/per-ABI),
+so every task needs a variant name — bare `assembleDebug` tries to build all 20 and will not do what
+you want.
+
+```bash
+./gradlew assembleGmsMobileUniversalDebug              # one debug APK
+./gradlew :app:compileGmsMobileUniversalDebugKotlin    # fastest correctness check
+./gradlew :app:lintGmsMobileUniversalDebug             # lint
+./gradlew :app:testGmsMobileUniversalDebugUnitTest     # unit tests
+./gradlew assembleGmsMobileUniversalRelease            # signed release (needs keystore secrets)
+```
+
+Full setup, signing keys and architecture notes: [CONTRIBUTING.md](CONTRIBUTING.md) ·
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
-<div align="center">
-  <p><b>If JusPlayer elevated your music experience, please consider giving us a ⭐</b></p>
-</div>
+## How this is built
+
+Written by me, with AI assistance. I use whatever free models happen to be available in
+[opencode](https://opencode.ai) at the time — they change weekly, so there's no single model to
+credit — plus the assistants' own tooling. I review every change, run the build and tests, test on
+real devices, and decide what ships. Design, feature decisions and the crossfade/playback behaviour
+are mine. If it's broken, it's my bug, not a model's.
+
+I'm saying this up front because you're going to see it in the commit history anyway, and because a
+music player should be honest about where its audio and your data come from — same principle.
+
+Found a real bug? [Open an issue](https://github.com/shubh72010/Greeny-Goblins/issues/new/choose)
+with steps and a log from the in-app log viewer. That's more useful than telling me it looks
+generated.
+
+---
+
+## Translating
+
+The app ships 27 locale sets and is translated on Weblate. Corrections are welcome — especially if
+a string reads like machine output in your language.
+
+[![Translation status](https://translate.codeberg.org/widget/archivetune/horizontal-blue.svg)](https://translate.codeberg.org/engage/archivetune/)
+
+---
+
+## Credits
+
+- [ArchiveTune](https://github.com/rukamori/ArchiveTune) by Rukamori — the fork base.
+- [Metrolist](https://github.com/mostafaalagamy/Metrolist) by Mostafa Alagamy — the underlying framework.
+- [SimpMusic](https://github.com/maxrave-dev/SimpMusic) by maxrave-dev — lyrics API provider.
+- [BetterLyrics](https://better-lyrics.boidu.dev/) — word-by-word lyrics, unison and artwork providers.
+- [Material Color Utilities](https://github.com/material-foundation/material-color-utilities).
+- [Read You](https://github.com/Ashinch/ReadYou) and [Seal](https://github.com/JunkFood02/Seal) — UI inspiration.
+- Everyone who filed an issue, tested a build, or fixed a translation.
+
+**Maintainers:** shubh72010 (lead) · oliver-lebaigue-2-bright-bench (contributor)
+
+---
+
+## License
+
+GPL-3.0. Third-party client; not affiliated with Google LLC or YouTube; doesn't bypass YouTube's
+technical protections. Please buy the music you love from the artists.
