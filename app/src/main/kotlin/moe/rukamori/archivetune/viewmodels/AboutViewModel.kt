@@ -613,6 +613,21 @@ class AboutViewModel
                 amazingProjects =
                     TeamMemberCollection.of(
                         TeamMember(
+                            avatarUrl = "https://voidwarelabs.in/apple-touch-icon.png",
+                            name = "VoidwareLabs",
+                            positionResId = R.string.about_position_empty,
+                            profileUrl = "https://voidwarelabs.in/",
+                            links =
+                                AboutLinkCollection.of(
+                                    AboutLinkUiModel(
+                                        id = "website",
+                                        iconResId = R.drawable.website,
+                                        labelResId = R.string.about_content_desc_website,
+                                        url = "https://voidwarelabs.in/",
+                                    ),
+                                ),
+                        ),
+                        TeamMember(
                             avatarUrl = "https://github.com/Aleks-Levet.png",
                             name = "better-nothing-music-visualizer",
                             positionResId = R.string.about_position_empty,
