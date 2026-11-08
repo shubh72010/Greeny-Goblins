@@ -31,7 +31,7 @@ Kotlin/Jetpack Compose YouTube Music client `moe.rukamori.archivetune` (`app/src
 - Crossfade is two systems on one audio path and is the easiest thing to break: the audio blend duration must stay as configured, but the UI switches *instantly* via `globalCrossfadePreviewIndex` (crossfade) and `optimisticPlayMediaId` (playQueue taps). Every new `currentMediaMetadata` write needs the `!isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()` guard, or the UI snaps back mid-fade. Details in `AGENTS.md`.
 - Subsonic is provider-agnostic (`subsonic/`); track ids are `subsonic:<serverId>:<kind>:<id>` and must survive the `SubsonicId` round-trip. Credentials are runtime DataStore values, never build secrets.
 - BNMV external: `BngvTeeAudioProcessor` → `VisualizerHub` → `BnmvIntegrationManager` → 512 bins 30Hz–16kHz → 768B UDP 8889 (handshake 8888). `GlyphRenderer` etc dead code.
-- Version in `app/build.gradle.kts` (`versionCode 142`, `versionName 15.0.0`) — release builds and the GitHub release are driven off this.
+- Version in `app/build.gradle.kts` (`versionCode 143`, `versionName 15.1.0`) — release builds and the GitHub release are driven off this.
 
 ## Conventions
 

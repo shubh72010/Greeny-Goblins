@@ -1,7 +1,7 @@
 # JusPlayer — Complete Feature List
 
 YouTube Music client for Android. Ad-free playback, real audio engineering, deep customization.
-This file is generated from what is actually in the source tree (v15.0.0, `versionCode 142`), not from
+This file is generated from what is actually in the source tree (v15.1.0, `versionCode 143`), not from
 marketing copy.
 
 - **Package:** `moe.rukamori.archivetune` · **Fork of:** ArchiveTune (GPL-3.0) · **Platform:** Android 8.0+ (`minSdk 26`, `targetSdk 37`)

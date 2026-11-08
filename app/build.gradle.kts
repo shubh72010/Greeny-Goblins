@@ -68,8 +68,8 @@ android {
     applicationId = "com.jusdots.jusplayer"
         minSdk = 26
         targetSdk = 37
-        versionCode = 142
-        versionName = "15.0.0"
+        versionCode = 143
+        versionName = "15.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
