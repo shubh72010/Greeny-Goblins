@@ -7,6 +7,7 @@
 
 package moe.rukamori.archivetune.ui.screens.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -1053,6 +1054,7 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
         }
     }
 
+    val ctx = LocalContext.current
     if (showArtistSignatureDialog) {
         var field by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(artistSignatureApiUrl)) }
         androidx.compose.material3.AlertDialog(
@@ -1060,10 +1062,21 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
             title = { Text(stringResource(R.string.artist_signature_api_title)) },
             text = {
                 Column {
-                    Text(
-                        text = "Host your own signature images and enter a URL template using {artist} or {id}, e.g. https://example.com/sig/{artist}.png",
-                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                    )
+                    Column {
+                        Text(
+                            text = "Reference API (self-host): github.com/itsmeadarsh2008/artist-signature",
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.clickable {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/itsmeadarsh2008/artist-signature"))
+                                ctx.startActivity(intent)
+                            },
+                        )
+                        Text(
+                            text = "Host it, then enter its base URL here. The app checks GET /v1/health before saving.",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                        )
+                    }
                     androidx.compose.material3.OutlinedTextField(
                         value = field,
                         onValueChange = { field = it },
