@@ -153,6 +153,7 @@ fun BackupAndRestore(
     var showRestoreValidationError by rememberSaveable { mutableStateOf(false) }
     var restoreValidationErrorMessage by remember { mutableStateOf("") }
     var showSpotifyLogin by rememberSaveable { mutableStateOf(false) }
+    var showAmazonMusicImportDialog by rememberSaveable { mutableStateOf(false) }
     var pendingBackupCategories by remember { mutableStateOf(BackupCategory.entries.toSet()) }
     var pendingRestoreCategories by remember { mutableStateOf(BackupCategory.entries.toSet()) }
     var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
@@ -288,6 +289,16 @@ fun BackupAndRestore(
                         onClick = { importPlaylistFromCsv.launch(CSV_MIME_TYPES) },
                     )
                 }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.import_amazon_music)) },
+                        highlightKey = "import_amazon_music",
+                        description = stringResource(R.string.import_amazon_music_desc),
+                        icon = { Icon(painterResource(R.drawable.library_music), null) },
+                        onClick = { showAmazonMusicImportDialog = true },
+                    )
+                }
             }
 
             PreferenceGroup(title = stringResource(R.string.external_service)) {
@@ -357,6 +368,36 @@ fun BackupAndRestore(
         ) {
             Text(
                 text = restoreValidationErrorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+
+    if (showAmazonMusicImportDialog) {
+        DefaultDialog(
+            onDismiss = { showAmazonMusicImportDialog = false },
+            title = { Text(stringResource(R.string.import_amazon_music_help_title)) },
+            buttons = {
+                TextButton(
+                    onClick = { showAmazonMusicImportDialog = false },
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+                TextButton(
+                    onClick = {
+                        showAmazonMusicImportDialog = false
+                        importPlaylistFromCsv.launch(CSV_MIME_TYPES)
+                    },
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Text(stringResource(R.string.import_amazon_music_choose_csv))
+                }
+            },
+        ) {
+            Text(
+                text = stringResource(R.string.import_amazon_music_help_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
