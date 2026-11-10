@@ -98,6 +98,8 @@ import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
+import moe.rukamori.archivetune.constants.PerformanceModeKey
 import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
@@ -115,6 +117,7 @@ import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import java.util.Locale
 import kotlin.math.abs
@@ -147,6 +150,9 @@ fun Thumbnail(
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
 
     val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
+    val performanceMode by rememberPreference(PerformanceModeKey, false)
+    // shortcut: performance mode only gates canvas + backdrop blur in the big card; upgrade by also gating haptics, high-refresh and animations globally.
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
     val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
     val canvasSource by rememberEnumPreference(
         key = CanvasSourceKey,
@@ -429,6 +435,7 @@ fun Thumbnail(
                                 }
                             val shouldUseCanvas =
                                 archiveTuneCanvasEnabled &&
+                                    !performanceMode &&
                                     playerDesignStyle != PlayerDesignStyle.V7 &&
                                     playerDesignStyle != PlayerDesignStyle.V8 &&
                                     item.mediaId.isNotBlank() &&
@@ -544,7 +551,7 @@ fun Thumbnail(
                                         Modifier
                                             .size(containerMaxWidth - (PlayerHorizontalPadding * 2)),
                                 ) {
-                                    if (hidePlayerThumbnail) {
+                                    if (hidePlayerThumbnail || isSongInSet(hiddenCoverIds, item.mediaId)) {
                                         // Show app logo when thumbnail is hidden
                                         Box(
                                             modifier =
@@ -586,7 +593,7 @@ fun Thumbnail(
 
                                         val thumbnailBgRequest = rememberOfflineArtworkImageRequest(displayUrl)
                                         val thumbnailArtworkRequest = rememberOfflineArtworkImageRequest(displayUrl)
-                                        val thumbnailBgBlurEnabled = backdropEnabled && backdropBlurAmount > 0
+                                        val thumbnailBgBlurEnabled = !performanceMode && backdropEnabled && backdropBlurAmount > 0
 
                                         if (thumbnailBgBlurEnabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                                             val blurRadiusPx = (backdropBlurAmount * 60 / 100f).coerceAtMost(60f)

@@ -72,6 +72,8 @@ import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
 import moe.rukamori.archivetune.constants.HistoryDuration
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.LowDataModeKey
+import moe.rukamori.archivetune.constants.HeadphoneCorrectionEnabledKey
+import moe.rukamori.archivetune.constants.PerformanceModeKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
@@ -125,6 +127,16 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
         rememberPreference(
             LowDataModeKey,
             defaultValue = true,
+        )
+    val (performanceMode, onPerformanceModeChange) =
+        rememberPreference(
+            PerformanceModeKey,
+            defaultValue = false,
+        )
+    val (headphoneCorrectionEnabled, onHeadphoneCorrectionEnabledChange) =
+        rememberPreference(
+            HeadphoneCorrectionEnabledKey,
+            defaultValue = false,
         )
     val (persistentQueue, onPersistentQueueChange) =
         rememberPreference(
@@ -548,6 +560,28 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
                         icon = { Icon(painterResource(R.drawable.android_cell), null) },
                         checked = lowDataMode,
                         onCheckedChange = onLowDataModeChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.performance_mode_title)) },
+                        highlightKey = "performance_mode_title",
+                        description = stringResource(R.string.performance_mode_description),
+                        icon = { Icon(painterResource(R.drawable.android_cell), null) },
+                        checked = performanceMode,
+                        onCheckedChange = onPerformanceModeChange,
+                    )
+                }
+
+                item {
+                    SwitchPreference(
+                        title = { Text(stringResource(R.string.headphone_correction_title)) },
+                        highlightKey = "headphone_correction_title",
+                        description = stringResource(R.string.headphone_correction_description),
+                        icon = { Icon(painterResource(R.drawable.android_cell), null) },
+                        checked = headphoneCorrectionEnabled,
+                        onCheckedChange = onHeadphoneCorrectionEnabledChange,
                     )
                 }
 

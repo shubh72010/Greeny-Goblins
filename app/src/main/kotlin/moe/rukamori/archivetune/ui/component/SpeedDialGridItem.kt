@@ -43,9 +43,12 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.innertube.models.SongItem
 import moe.rukamori.archivetune.innertube.models.YTItem
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.rememberPreference
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -58,6 +61,8 @@ fun SpeedDialGridItem(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val hideCover = isSongInSet(hiddenCoverIds, item.id)
     val motionScheme = MaterialTheme.motionScheme
     val containerColor by animateColorAsState(
         targetValue =
@@ -116,12 +121,16 @@ fun SpeedDialGridItem(
                         .build()
                 }
 
-            AsyncImage(
-                model = request,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (!hideCover) {
+                AsyncImage(
+                    model = request,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+            }
 
             Box(
                 modifier =

@@ -90,6 +90,8 @@ import moe.rukamori.archivetune.ui.component.playerLiquidGlass
 import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
 import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
@@ -354,7 +356,9 @@ private fun MiniPlayerArtwork(
                     ),
         ) {
             val baseThumbnailUrl = mediaMetadata?.thumbnailUrl
-            if (baseThumbnailUrl != null) {
+            val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+            val hideCover = mediaMetadata?.id != null && isSongInSet(hiddenCoverIds, mediaMetadata.id)
+            if (baseThumbnailUrl != null && !hideCover) {
                 val thumbnailSwapState =
                     rememberThumbnailSwapState(
                         videoId = mediaMetadata?.id,

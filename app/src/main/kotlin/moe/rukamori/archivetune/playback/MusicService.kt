@@ -122,6 +122,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.withTimeout
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
@@ -132,6 +133,8 @@ import moe.rukamori.archivetune.constants.AudioNormalizationKey
 import moe.rukamori.archivetune.constants.AudioOffload
 import moe.rukamori.archivetune.constants.FlashlightVisualizerEnabledKey
 import moe.rukamori.archivetune.constants.GlyphVisualizerEnabledKey
+import moe.rukamori.archivetune.constants.HeadphoneCorrectionEnabledKey
+import moe.rukamori.archivetune.constants.HeadphoneCorrectionProfileKey
 import moe.rukamori.archivetune.constants.HapticVisualizerEnabledKey
 import moe.rukamori.archivetune.visualizer.HapticMode
 import moe.rukamori.archivetune.constants.HapticVisualizerIntensityKey
@@ -6347,6 +6350,17 @@ class MusicService :
         startRadioSeamlessly()
     }
 
+    private fun loadHeadphoneProfile(profileId: String): EqProfile? {
+        return try {
+            val json = Json { ignoreUnknownKeys = true }
+            val raw = applicationContext.assets.open("headphone_profiles.json").bufferedReader().use { it.readText() }
+            val payload = json.decodeFromString<EqProfilesPayload>(raw)
+            payload.profiles.firstOrNull { it.id == profileId }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun decodeBandLevelsMb(raw: String?): List<Int> {
         if (raw.isNullOrBlank()) return emptyList()
         return runCatching { EqualizerJson.json.decodeFromString<List<Int>>(raw) }.getOrNull() ?: emptyList()
@@ -6358,9 +6372,19 @@ class MusicService :
         }.getOrNull().orEmpty()
 
     private fun readEqSettingsFromPrefs(prefs: Preferences): EqSettings {
-        val levels = decodeBandLevelsMb(prefs[EqualizerBandLevelsMbKey])
+        var levels = decodeBandLevelsMb(prefs[EqualizerBandLevelsMbKey])
+        val correctionEnabled = prefs[HeadphoneCorrectionEnabledKey] ?: false
+        // shortcut: ships 4 generic profiles only; upgrade by bundling the full AutoEq dataset per-headphone and adding a profile picker.
+        if (correctionEnabled) {
+            val profileId = prefs[HeadphoneCorrectionProfileKey] ?: "balanced"
+            val profile = loadHeadphoneProfile(profileId)
+            if (profile != null && profile.bandLevelsMb.isNotEmpty()) {
+                val corrected = resampleLevelsByIndex(profile.bandLevelsMb, levels.size.takeIf { it > 0 } ?: profile.bandLevelsMb.size)
+                levels = corrected
+            }
+        }
         return EqSettings(
-            enabled = prefs[EqualizerEnabledKey] ?: false,
+            enabled = (prefs[EqualizerEnabledKey] ?: false) || correctionEnabled,
             bandLevelsMb = levels,
             outputGainEnabled = prefs[EqualizerOutputGainEnabledKey] ?: false,
             outputGainMb = prefs[EqualizerOutputGainMbKey] ?: 0,

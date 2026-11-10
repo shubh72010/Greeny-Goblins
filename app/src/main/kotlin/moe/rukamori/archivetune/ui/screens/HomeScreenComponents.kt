@@ -106,6 +106,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.constants.ListThumbnailSize
 import moe.rukamori.archivetune.constants.QuickPicksDisplayMode
@@ -135,6 +136,8 @@ import moe.rukamori.archivetune.ui.component.MenuState
 import moe.rukamori.archivetune.ui.component.SongGridItem
 import moe.rukamori.archivetune.ui.component.SongListItem
 import moe.rukamori.archivetune.ui.component.SpeedDialGridItem
+import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.ui.component.YouTubeGridItem
 import moe.rukamori.archivetune.ui.menu.AlbumMenu
 import moe.rukamori.archivetune.ui.menu.ArtistMenu
@@ -225,6 +228,8 @@ fun FeaturedHero(
     val isActive = song.id == mediaMetadata?.id
     val context = LocalContext.current
     val density = LocalDensity.current
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val hideCover = isSongInSet(hiddenCoverIds, song.id)
 
     fun play() {
         if (isActive) {
@@ -277,12 +282,16 @@ fun FeaturedHero(
                         onLongClick = ::openMenu,
                     ),
         ) {
-            AsyncImage(
-                model = imageRequest,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            if (!hideCover) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+            }
 
             Box(
                 modifier =
@@ -461,6 +470,8 @@ fun QuickPicksSection(
                     val song = distinctQuickPicks[index]
                     val isActive = song.id == mediaMetadata?.id
                     val context = LocalContext.current
+                    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+                    val hideCover = isSongInSet(hiddenCoverIds, song.id)
                     val imageRequest =
                         remember(song.song.thumbnailUrl, requestWidthPx, requestHeightPx) {
                             ImageRequest
@@ -509,12 +520,16 @@ fun QuickPicksSection(
                                     },
                                 ),
                     ) {
-                        AsyncImage(
-                            model = imageRequest,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        if (!hideCover) {
+                            AsyncImage(
+                                model = imageRequest,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+                        }
 
                         Box(
                             modifier =
@@ -1826,14 +1841,20 @@ fun SimilarRecommendationsTitle(
                         } else {
                             rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value, recommendation.title.id)
                         }
-                    AsyncImage(
-                        model = thumbnailUrl,
-                        contentDescription = null,
-                        modifier =
-                            Modifier
-                                .size(ListThumbnailSize)
-                                .clip(shape),
-                    )
+                    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+                    val hideCover = recommendation.title is SongItem && isSongInSet(hiddenCoverIds, recommendation.title.id)
+                    if (!hideCover) {
+                        AsyncImage(
+                            model = thumbnailUrl,
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .size(ListThumbnailSize)
+                                    .clip(shape),
+                        )
+                    } else {
+                        Box(modifier = Modifier.size(ListThumbnailSize).clip(shape).background(MaterialTheme.colorScheme.surfaceVariant))
+                    }
                 }
             },
         onClick = {

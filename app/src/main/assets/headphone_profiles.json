@@ -1,0 +1,8 @@
+{
+  "profiles": [
+    { "id": "flat", "name": "Flat (no correction)", "bandLevelsMb": [0,0,0,0,0,0,0,0,0,0] },
+    { "id": "bass_shelf", "name": "Bass shelf", "bandLevelsMb": [400,300,200,100,0,0,0,0,0,0] },
+    { "id": "vocal_clarity", "name": "Vocal clarity", "bandLevelsMb": [0,0,0,0,200,300,200,100,0,0] },
+    { "id": "balanced", "name": "Balanced", "bandLevelsMb": [200,150,100,50,0,50,100,150,100,50] }
+  ]
+}

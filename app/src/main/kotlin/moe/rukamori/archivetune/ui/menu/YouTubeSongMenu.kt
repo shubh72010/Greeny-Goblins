@@ -80,6 +80,8 @@ import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
 import moe.rukamori.archivetune.constants.ListItemHeight
 import moe.rukamori.archivetune.constants.ListThumbnailSize
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
+import moe.rukamori.archivetune.constants.QueueOnlySongIdsKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.constants.ThumbnailCornerRadius
 import moe.rukamori.archivetune.db.entities.SongEntity
@@ -101,7 +103,9 @@ import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.utils.toggleSongIdInSet
 import moe.rukamori.archivetune.utils.serializeSpeedDialPins
 import moe.rukamori.archivetune.utils.toggleSpeedDialPin
 import java.time.LocalDateTime
@@ -447,6 +451,38 @@ fun YouTubeSongMenu(
 
         item {
             Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        item {
+            MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
+                val (hiddenCoverIds, onHiddenCoverIdsChange) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+                val coverHidden = isSongInSet(hiddenCoverIds, song.id)
+                ListItem(
+                    headlineContent = { Text(text = stringResource(if (coverHidden) R.string.show_cover_art else R.string.hide_cover_art)) },
+                    leadingContent = { Icon(painter = painterResource(R.drawable.visibility_off), contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        onHiddenCoverIdsChange(toggleSongIdInSet(hiddenCoverIds, song.id))
+                        onDismiss()
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+        }
+
+        item {
+            MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
+                val (queueOnlyIds, onQueueOnlyIdsChange) = rememberPreference(QueueOnlySongIdsKey, "")
+                val queueOnly = isSongInSet(queueOnlyIds, song.id)
+                ListItem(
+                    headlineContent = { Text(text = stringResource(if (queueOnly) R.string.show_everywhere else R.string.only_show_in_queues)) },
+                    leadingContent = { Icon(painter = painterResource(R.drawable.visibility_off), contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        onQueueOnlyIdsChange(toggleSongIdInSet(queueOnlyIds, song.id))
+                        onDismiss()
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
         }
 
         item {

@@ -173,6 +173,10 @@
     <string name="remove_from_speed_dial">Remove from speed dial</string>
     <string name="hide_song_from_recommendations">Don\'t recommend this song</string>
     <string name="show_song_in_recommendations">Recommend this song again</string>
+    <string name="hide_cover_art">Hide cover art</string>
+    <string name="show_cover_art">Show cover art</string>
+    <string name="only_show_in_queues">Only show in queues</string>
+    <string name="show_everywhere">Show everywhere</string>
     <string name="hide_song_duration_title">Don\'t recommend “%1$s” for…</string>
     <string name="hide_song_duration_6_hours">6 hours</string>
     <string name="hide_song_duration_1_day">1 day</string>
@@ -541,6 +545,10 @@
     <string name="audio_quality_low">Low</string>
     <string name="low_data_mode_title">Low Data Mode</string>
     <string name="low_data_mode_description">Reduces mobile data usage by using low-quality streams and disabling playback cache, canvas, and background lyrics preloading on metered networks</string>
+    <string name="performance_mode_title">Performance Mode</string>
+    <string name="performance_mode_description">Makes the app lighter on slower phones by disabling canvas, blur, animations, and haptics</string>
+    <string name="headphone_correction_title">Headphone correction</string>
+    <string name="headphone_correction_description">Applies a built-in correction curve to the equalizer (AutoEq-style)</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>

@@ -34,6 +34,7 @@ import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.QuickPicks
 import moe.rukamori.archivetune.constants.QuickPicksKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
+import moe.rukamori.archivetune.constants.QueueOnlySongIdsKey
 import moe.rukamori.archivetune.constants.SongRecommendationHidesKey
 import moe.rukamori.archivetune.constants.YtmSyncKey
 import moe.rukamori.archivetune.db.MusicDatabase
@@ -65,6 +66,7 @@ import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.parseSongHides
+import moe.rukamori.archivetune.utils.parseSongIdSet
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.utils.toPlaybackAuthState
@@ -313,7 +315,8 @@ class HomeViewModel
             }
 
         private suspend fun hiddenRecommendationIds(): Set<String> =
-            parseSongHides(context.dataStore.get(SongRecommendationHidesKey, "")).keys
+            parseSongHides(context.dataStore.get(SongRecommendationHidesKey, "")).keys +
+                parseSongIdSet(context.dataStore.get(QueueOnlySongIdsKey, ""))
 
         private fun List<Song>.toQuickPickSample(hiddenSongIds: Set<String>): List<Song> =
             filterHiddenSongs(hiddenSongIds)

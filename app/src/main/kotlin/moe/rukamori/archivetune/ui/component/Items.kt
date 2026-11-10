@@ -115,6 +115,7 @@ import moe.rukamori.archivetune.LocalDownloadUtil
 import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.GridThumbnailCornerRadius
 import moe.rukamori.archivetune.constants.GridThumbnailHeight
 import moe.rukamori.archivetune.constants.ListItemHeight
@@ -143,6 +144,7 @@ import moe.rukamori.archivetune.utils.budgets
 import moe.rukamori.archivetune.utils.deviceTier
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
 import kotlin.math.roundToInt
@@ -460,6 +462,7 @@ fun SongListItem(
                     shape = RoundedCornerShape(ThumbnailCornerRadius),
                     placeholderIconRes = if (showSongIconPlaceholder) R.drawable.music_note else null,
                     modifier = Modifier.size(ListThumbnailSize),
+                    mediaId = song.id,
                 )
             },
             trailingContent = trailingContent,
@@ -535,6 +538,7 @@ fun SongGridItem(
             isPlaying = isPlaying,
             shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, GridThumbnailCornerRadius.value, song.id),
             modifier = Modifier.size(GridThumbnailHeight),
+            mediaId = song.id,
         )
         if (!isActive) {
             OverlayPlayButton(
@@ -1461,6 +1465,7 @@ fun YouTubeListItem(
                             rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value, item.id)
                         },
                     modifier = Modifier.size(ListThumbnailSize),
+                    mediaId = item.id,
                 )
             },
             trailingContent = trailingContent,
@@ -1555,6 +1560,7 @@ fun YouTubeGridItem(
             isPlaying = isPlaying,
             shape = shape,
             thumbnailRatio = thumbnailRatio,
+            mediaId = item.id,
         )
 
         if (item is SongItem && !isActive) {
@@ -1689,9 +1695,14 @@ fun ItemThumbnail(
     shouldLoadImage: Boolean = true,
     @DrawableRes placeholderIconRes: Int? = null,
     thumbnailRatio: Float = 1f,
+    mediaId: String? = null,
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val hideCover = mediaId != null && isSongInSet(hiddenCoverIds, mediaId)
+    val effectivePlaceholder = if (hideCover) R.drawable.music_note else placeholderIconRes
 
     BoxWithConstraints(
         contentAlignment = Alignment.Center,
@@ -1711,7 +1722,7 @@ fun ItemThumbnail(
         val artCap = remember { context.deviceTier().budgets().fullscreenArtCapPx }
 
         if (albumIndex == null) {
-            if (placeholderIconRes != null) {
+            if (effectivePlaceholder != null) {
                 Box(
                     modifier =
                         Modifier
@@ -1720,7 +1731,7 @@ fun ItemThumbnail(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        painter = painterResource(placeholderIconRes),
+                        painter = painterResource(effectivePlaceholder),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(ListThumbnailSize * 0.48f),
@@ -1728,7 +1739,7 @@ fun ItemThumbnail(
                 }
             }
 
-            if (shouldLoadImage && !thumbnailUrl.isNullOrBlank()) {
+            if (shouldLoadImage && !thumbnailUrl.isNullOrBlank() && !hideCover) {
                 val request =
                     remember(thumbnailUrl, widthPx, heightPx) {
                         // ponytail: per-surface URL resize capped to measured px (max tier cap) so
@@ -1754,7 +1765,7 @@ fun ItemThumbnail(
                             .fillMaxSize()
                             .let { if (shouldApplySquareCrop) it.aspectRatio(1f) else it },
                 )
-            } else if (placeholderIconRes == null) {
+            } else if (effectivePlaceholder == null) {
                 Box(
                     modifier =
                         Modifier

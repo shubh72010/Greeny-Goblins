@@ -444,6 +444,11 @@ val SpeedDialSongIdsKey = stringPreferencesKey("speedDialSongIds")
 
 /** `songId:expiryEpochMillis,…` — songs temporarily excluded from recommendations. */
 val SongRecommendationHidesKey = stringPreferencesKey("songRecommendationHides")
+val HiddenCoverArtSongIdsKey = stringPreferencesKey("hiddenCoverArtSongIds")
+val QueueOnlySongIdsKey = stringPreferencesKey("queueOnlySongIds")
+val PerformanceModeKey = booleanPreferencesKey("performanceMode")
+val HeadphoneCorrectionEnabledKey = booleanPreferencesKey("headphoneCorrectionEnabled")
+val HeadphoneCorrectionProfileKey = stringPreferencesKey("headphoneCorrectionProfile")
 val PreferredLyricsProviderKey = stringPreferencesKey("lyricsProvider")
 val LyricsProviderOrderKey = stringPreferencesKey("lyricsProviderOrder")
 val QueueEditLockKey = booleanPreferencesKey("queueEditLock")
