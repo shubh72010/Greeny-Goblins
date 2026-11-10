@@ -1053,18 +1053,27 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
         }
     }
 
+    val ctx = LocalContext.current
     if (showArtistSignatureDialog) {
         var field by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(artistSignatureApiUrl)) }
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showArtistSignatureDialog = false },
             title = { Text(stringResource(R.string.artist_signature_api_title)) },
             text = {
-                androidx.compose.material3.OutlinedTextField(
-                    value = field,
-                    onValueChange = { field = it },
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.artist_signature_api_title)) },
-                )
+                Column {
+                    androidx.compose.material3.TextButton(onClick = {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.reddit.com/r/bitchord/comments/1xg23v2/does_anyone_have_the_sourceapi_for_artist_signatures/"))
+                        ctx.startActivity(intent)
+                    }) {
+                        Text("How to get an API: community thread")
+                    }
+                    androidx.compose.material3.OutlinedTextField(
+                        value = field,
+                        onValueChange = { field = it },
+                        singleLine = true,
+                        label = { Text(stringResource(R.string.artist_signature_api_title)) },
+                    )
+                }
             },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = {
