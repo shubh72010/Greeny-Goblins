@@ -213,6 +213,7 @@ val ListenBrainzTokenKey = stringPreferencesKey("listenbrainz_token")
 
 val AiProviderKey = stringPreferencesKey("ai_provider")
 val AiCustomEndpointKey = stringPreferencesKey("ai_custom_endpoint")
+val ArtistSignatureApiUrlKey = stringPreferencesKey("artist_signature_api_url")
 val AiApiKeyKey = stringPreferencesKey("ai_api_key")
 val AiApiValidationStatusKey = stringPreferencesKey("ai_api_validation_status")
 val AiSelectedModelKey = stringPreferencesKey("ai_selected_model")

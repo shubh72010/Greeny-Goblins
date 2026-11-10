@@ -549,6 +549,8 @@
     <string name="performance_mode_description">Makes the app lighter on slower phones by disabling canvas, blur, animations, and haptics</string>
     <string name="headphone_correction_title">Headphone correction</string>
     <string name="headphone_correction_description">Applies a built-in correction curve to the equalizer (AutoEq-style)</string>
+    <string name="artist_signature_api_title">Artist signature API</string>
+    <string name="artist_signature_api_description">URL template for fetching an artist signature image. Use artist or id as placeholders.</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>

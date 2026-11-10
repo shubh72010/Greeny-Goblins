@@ -1842,7 +1842,7 @@ fun SimilarRecommendationsTitle(
                             rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value, recommendation.title.id)
                         }
                     val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
-                    val hideCover = recommendation.title is SongItem && isSongInSet(hiddenCoverIds, recommendation.title.id)
+                    val hideCover = isSongInSet(hiddenCoverIds, recommendation.title.id)
                     if (!hideCover) {
                         AsyncImage(
                             model = thumbnailUrl,

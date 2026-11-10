@@ -128,6 +128,7 @@ import moe.rukamori.archivetune.constants.CONTENT_TYPE_HEADER
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_LIST
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_PLAYLIST
 import moe.rukamori.archivetune.constants.CONTENT_TYPE_SONG
+import moe.rukamori.archivetune.constants.ArtistSignatureApiUrlKey
 import moe.rukamori.archivetune.constants.HideArtistPfpKey
 import moe.rukamori.archivetune.constants.HideBlockedTitlesKey
 import moe.rukamori.archivetune.constants.HideExplicitKey
@@ -200,6 +201,7 @@ fun ArtistScreen(
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val hideBlockedTitles by rememberPreference(key = HideBlockedTitlesKey, defaultValue = false)
     val hideArtistPfp by rememberPreference(key = HideArtistPfpKey, defaultValue = true)
+    val (artistSignatureApiUrl, _) = rememberPreference(ArtistSignatureApiUrlKey, "")
     val isArtistBlocked = (blockState as? ArtistBlockState.Success)?.isBlocked == true
     val artistPage =
         remember(loadedArtistPage, isArtistBlocked) {
@@ -657,6 +659,27 @@ item(key = "header") {
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(horizontal = 24.dp),
                         )
+
+                        // Artist signature (BitChord-style, from a user-configured signature API)
+                        val artistIdForSignature = artistPage?.artist?.id ?: libraryArtist?.artist?.id
+                        val signatureUrl =
+                            if (artistSignatureApiUrl.isNotBlank()) {
+                                artistSignatureApiUrl
+                                    .replace("{artist}", java.net.URLEncoder.encode(artistName ?: "", "UTF-8"))
+                                    .replace("{id}", java.net.URLEncoder.encode(artistIdForSignature ?: "", "UTF-8"))
+                            } else {
+                                null
+                            }
+                        if (signatureUrl != null) {
+                            AsyncImage(
+                                model = signatureUrl,
+                                contentDescription = stringResource(R.string.artist_signature_api_title),
+                                modifier =
+                                    Modifier
+                                        .height(60.dp)
+                                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                            )
+                        }
 
                         // Artist Description (expandable)
                         val description = artistPage?.description

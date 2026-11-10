@@ -72,6 +72,7 @@ import moe.rukamori.archivetune.constants.HISTORY_DURATION_DEFAULT
 import moe.rukamori.archivetune.constants.HistoryDuration
 import moe.rukamori.archivetune.constants.InnerTubeCookieKey
 import moe.rukamori.archivetune.constants.LowDataModeKey
+import moe.rukamori.archivetune.constants.ArtistSignatureApiUrlKey
 import moe.rukamori.archivetune.constants.HeadphoneCorrectionEnabledKey
 import moe.rukamori.archivetune.constants.PerformanceModeKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
@@ -138,6 +139,12 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
             HeadphoneCorrectionEnabledKey,
             defaultValue = false,
         )
+    val (artistSignatureApiUrl, onArtistSignatureApiUrlChange) =
+        rememberPreference(
+            ArtistSignatureApiUrlKey,
+            defaultValue = "",
+        )
+    var showArtistSignatureDialog by remember { mutableStateOf(false) }
     val (persistentQueue, onPersistentQueueChange) =
         rememberPreference(
             PersistentQueueKey,
@@ -582,6 +589,16 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
                         icon = { Icon(painterResource(R.drawable.android_cell), null) },
                         checked = headphoneCorrectionEnabled,
                         onCheckedChange = onHeadphoneCorrectionEnabledChange,
+                    )
+                }
+
+                item {
+                    PreferenceEntry(
+                        title = { Text(stringResource(R.string.artist_signature_api_title)) },
+                        highlightKey = "artist_signature_api_title",
+                        description = stringResource(R.string.artist_signature_api_description),
+                        icon = { Icon(painterResource(R.drawable.android_cell), null) },
+                        onClick = { showArtistSignatureDialog = true },
                     )
                 }
 
@@ -1034,5 +1051,30 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
             }
             }
         }
+    }
+
+    if (showArtistSignatureDialog) {
+        var field by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(artistSignatureApiUrl)) }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showArtistSignatureDialog = false },
+            title = { Text(stringResource(R.string.artist_signature_api_title)) },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = field,
+                    onValueChange = { field = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.artist_signature_api_title)) },
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    onArtistSignatureApiUrlChange(field.text)
+                    showArtistSignatureDialog = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showArtistSignatureDialog = false }) { Text("Cancel") }
+            },
+        )
     }
 }
