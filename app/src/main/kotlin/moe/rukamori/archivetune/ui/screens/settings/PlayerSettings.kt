@@ -1062,6 +1062,7 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
             title = { Text(stringResource(R.string.artist_signature_api_title)) },
             text = {
                 Column {
+<<<<<<< Updated upstream
                     Column {
                         Text(
                             text = "Reference API (self-host): github.com/itsmeadarsh2008/artist-signature",
@@ -1077,6 +1078,12 @@ fun PlayerSettings(navController: NavController, highlight: String? = null) {
                             style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
                         )
                     }
+=======
+                    Text(
+                        text = "Host your own signature image server, then enter its base URL here. The app checks GET /v1/health before saving. URL template supports {artist} and {id}.",
+                        style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                    )
+>>>>>>> Stashed changes
                     androidx.compose.material3.OutlinedTextField(
                         value = field,
                         onValueChange = { field = it },
