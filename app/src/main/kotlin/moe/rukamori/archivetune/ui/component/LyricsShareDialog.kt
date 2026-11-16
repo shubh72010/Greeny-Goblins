@@ -201,6 +201,7 @@ fun LyricsShareImageDialog(
                     requireVertical = options.aspectRatio == LyricsShareAspectRatio.Story,
                     allowNetwork = true,
                     currentIsMusicVideo = mediaMetadata.isMusicVideo,
+                    setVideoId = mediaMetadata.setVideoId,
                 )
                 artwork?.let {
                     val vertical = it.preferredVerticalAnimationUrl ?: it.videoUrlVertical
@@ -408,6 +409,7 @@ private suspend fun shareLyricsAsVideo(
                     requireVertical = options.aspectRatio == LyricsShareAspectRatio.Story,
                     allowNetwork = true,
                     currentIsMusicVideo = mediaMetadata.isMusicVideo,
+                    setVideoId = mediaMetadata.setVideoId,
                 )
                 artwork?.let {
                     val vertical = it.preferredVerticalAnimationUrl ?: it.videoUrlVertical

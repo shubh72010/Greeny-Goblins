@@ -4061,6 +4061,7 @@ fun PlayerBackground(
                     allowNetwork = !lowDataModeActive,
                     currentIsMusicVideo = meta.isMusicVideo,
                     canvasSource = canvasSource,
+                    setVideoId = meta.setVideoId,
                 )
             }.getOrNull()
         } finally {

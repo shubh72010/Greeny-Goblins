@@ -489,6 +489,7 @@ fun Thumbnail(
                                             allowNetwork = shouldFetchCanvas,
                                             currentIsMusicVideo = itemMetadata?.isMusicVideo ?: false,
                                             canvasSource = canvasSource,
+                                            setVideoId = itemMetadata?.setVideoId,
                                         )
                                 } finally {
                                     canvasFetchInFlight = false

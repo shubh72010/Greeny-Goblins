@@ -197,7 +197,7 @@ object AppleMusicProvider {
             Log.d("Found ${scoredResults.size} scored results for term '$term'")
 
             for ((score, obj) in scoredResults) {
-                if (score < 12) {
+                if (score < 18) {
                     Log.d("skipping result with low score: $score")
                     continue
                 }
@@ -370,6 +370,7 @@ object AppleMusicProvider {
 
         val nameMatch = resultName.equals(term, ignoreCase = true)
         val nameFuzzy = resultName.contains(term, ignoreCase = true) || term.contains(resultName, ignoreCase = true)
+        if (!nameFuzzy) return null
         score +=
             when {
                 nameMatch -> 15

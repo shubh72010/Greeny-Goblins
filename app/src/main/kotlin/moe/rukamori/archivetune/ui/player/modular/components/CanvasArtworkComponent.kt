@@ -82,6 +82,7 @@ fun CanvasArtworkComponent(
                     allowNetwork = true,
                     currentIsMusicVideo = meta.isMusicVideo,
                     canvasSource = canvasSource,
+                    setVideoId = meta.setVideoId,
                 )
                 }.getOrNull()
         } finally {

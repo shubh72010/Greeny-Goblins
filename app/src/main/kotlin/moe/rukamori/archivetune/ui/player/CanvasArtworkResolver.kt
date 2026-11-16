@@ -24,6 +24,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
     allowNetwork: Boolean,
     currentIsMusicVideo: Boolean = false,
     canvasSource: CanvasSource = CanvasSource.AUTO,
+    setVideoId: String? = null,
 ): CanvasArtwork? {
     if (canvasSource == CanvasSource.AUTO) {
         withContext(Dispatchers.IO) {
@@ -51,6 +52,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
+                        setVideoId = setVideoId,
                     )
 
                 CanvasSource.APPLE ->
@@ -82,6 +84,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = false,
+                        setVideoId = setVideoId,
                     ) ?: fetchCanvasArtworkForPlayback(
                         songTitleRaw = songTitleRaw,
                         artistNameRaw = artistNameRaw,
@@ -100,6 +103,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
+                        setVideoId = setVideoId,
                     )
             }
 
@@ -182,6 +186,7 @@ private suspend fun fetchYouTubeCanvasFallback(
     requireVertical: Boolean,
     currentIsMusicVideo: Boolean = false,
     fallbackToAnyVideo: Boolean = true,
+    setVideoId: String? = null,
 ): CanvasArtwork? {
     if (requireVertical) return null
     return runCatching {
@@ -192,6 +197,7 @@ private suspend fun fetchYouTubeCanvasFallback(
             requireVertical = false,
             currentIsMusicVideo = currentIsMusicVideo,
             fallbackToAnyVideo = fallbackToAnyVideo,
+            setVideoId = setVideoId,
         )
     }.onFailure { error ->
         Timber.tag(CanvasArtworkLogTag).w(error, "YouTube canvas fallback failed for %s", mediaId)

@@ -47,17 +47,19 @@ object YouTubeCanvasProvider {
         requireVertical: Boolean,
         currentIsMusicVideo: Boolean = false,
         fallbackToAnyVideo: Boolean = true,
+        setVideoId: String? = null,
     ): CanvasArtwork? {
         if (requireVertical) return null
-        if (mediaId.isBlank() && songTitleRaw.isBlank() && artistNameRaw.isBlank()) return null
+        if (mediaId.isBlank() && songTitleRaw.isBlank() && artistNameRaw.isBlank() && setVideoId.isNullOrBlank()) return null
 
         Timber.tag(LogTag).d(
-            "resolveForPlayback mediaId=%s song=%s artist=%s currentIsMusicVideo=%b fallbackToAnyVideo=%b",
+            "resolveForPlayback mediaId=%s song=%s artist=%s currentIsMusicVideo=%b fallbackToAnyVideo=%b setVideoId=%s",
             mediaId,
             songTitleRaw,
             artistNameRaw,
             currentIsMusicVideo,
             fallbackToAnyVideo,
+            setVideoId,
         )
 
         val currentVideoId = mediaId.takeIf { it.isUsableVideoId() }
@@ -67,6 +69,16 @@ object YouTubeCanvasProvider {
             if (current != null) {
                 Timber.tag(LogTag).d("Current track is already a music video (%s); using it", current.videoId)
                 return current.toCanvasArtwork()
+            }
+        }
+
+        // Authoritative link from YouTube Music: the official music video for this song.
+        val linkedId = setVideoId?.takeIf { it.isUsableVideoId() }
+        if (linkedId != null) {
+            val linked = resolveVideo(linkedId)
+            if (linked != null) {
+                Timber.tag(LogTag).d("Using linked music video %s", linked.videoId)
+                return linked.toCanvasArtwork()
             }
         }
 
@@ -460,51 +472,17 @@ object YouTubeCanvasProvider {
             )
         }
 
-        val matched =
-            allSongs
-                .filter { it.id.isUsableVideoId() }
-                .filter { it.id != excludeVideoId }
-                .filter { item ->
-                    val title = item.title.lowercase(Locale.ROOT)
-                    normalizedSong.isBlank() || title.contains(normalizedSong) || normalizedSong.contains(title)
-                }
-        if (matched.isEmpty()) {
-            Timber.tag(LogTag).w("video search found %d raw items for query=%s but none matched", result.items.size, query)
-            return null
+        val best =
+            selectYouTubeMusicVideoCandidate(
+                candidates = allSongs,
+                songTitle = song,
+                artistName = artist,
+                excludeVideoId = excludeVideoId,
+            )
+        if (best == null) {
+            Timber.tag(LogTag).w("video search found %d raw items for query=%s but no confident match", result.items.size, query)
         }
-
-        return matched
-            .sortedWith(
-                compareByDescending<SongItem> { item ->
-                    val title = item.title.lowercase(Locale.ROOT)
-                    val titleScore =
-                        when {
-                            title == normalizedSong -> 4
-                            title.contains(normalizedSong) || normalizedSong.contains(title) -> 2
-                            else -> 0
-                        }
-                    val artistScore =
-                        if (normalizedArtist.isBlank()) {
-                            1
-                        } else if (item.artists.any { artistMatches(it.name, normalizedArtist) }) {
-                            2
-                        } else {
-                            0
-                        }
-                    val durationScore =
-                        item.duration
-                            ?.let { if (it in MinDurationSeconds..MaxDurationSeconds) 1 else -2 }
-                            ?: 0
-                    val officialScore =
-                        when {
-                            title.contains("official") -> 2
-                            title.contains("lyric") -> -2
-                            title.contains("audio") -> -1
-                            else -> 0
-                        }
-                    titleScore + artistScore + durationScore + officialScore
-                },
-            ).firstOrNull()
+        return best
     }
 
     private suspend fun searchForVideo(
@@ -555,45 +533,17 @@ object YouTubeCanvasProvider {
             )
         }
 
-        val matched =
-            allSongs
-                .filter { it.id.isUsableVideoId() }
-                .filter { it.id != excludeVideoId }
-                .filter { item ->
-                    val title = item.title.lowercase(Locale.ROOT)
-                    normalizedSong.isBlank() || title.contains(normalizedSong) || normalizedSong.contains(title)
-                }
-        if (matched.isEmpty()) {
-            Timber.tag(LogTag).w("search found %d raw items for query=%s but none matched", result.items.size, query)
-            return null
+        val best =
+            selectYouTubeMusicVideoCandidate(
+                candidates = allSongs,
+                songTitle = song,
+                artistName = artist,
+                excludeVideoId = excludeVideoId,
+            )
+        if (best == null) {
+            Timber.tag(LogTag).w("search found %d raw items for query=%s but no confident match", result.items.size, query)
         }
-
-        return matched
-            .sortedWith(
-                compareByDescending<SongItem> { item ->
-                    val title = item.title.lowercase(Locale.ROOT)
-                    val titleScore =
-                        when {
-                            title == normalizedSong -> 4
-                            title.contains(normalizedSong) || normalizedSong.contains(title) -> 2
-                            else -> 0
-                        }
-                    val artistScore =
-                        if (normalizedArtist.isBlank()) {
-                            1
-                        } else if (item.artists.any { artistMatches(it.name, normalizedArtist) }) {
-                            2
-                        } else {
-                            0
-                        }
-                    val durationScore =
-                        item.duration
-                            ?.let { if (it in MinDurationSeconds..MaxDurationSeconds) 1 else -2 }
-                            ?: 0
-                    val musicVideoScore = if (item.isMusicVideo()) 5 else 0
-                    titleScore + artistScore + durationScore + musicVideoScore
-                },
-            ).firstOrNull()
+        return best
     }
 
     private fun SongItem.isMusicVideo(): Boolean =

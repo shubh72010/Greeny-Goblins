@@ -1145,6 +1145,7 @@ fun BottomSheetPlayer(
                         allowNetwork = shouldFetchV7Canvas,
                         currentIsMusicVideo = metadata.isMusicVideo,
                         canvasSource = canvasSource,
+                        setVideoId = metadata.setVideoId,
                     )
             } finally {
                 v7CanvasFetchInFlight = false
@@ -1182,6 +1183,7 @@ fun BottomSheetPlayer(
                         allowNetwork = shouldFetchArtworkCanvas,
                         currentIsMusicVideo = metadata.isMusicVideo,
                         canvasSource = canvasSource,
+                        setVideoId = metadata.setVideoId,
                     )
             } finally {
                 artworkCanvasFetchInFlight = false
