@@ -620,6 +620,7 @@ fun BottomSheetPlayer(
                 PlayerBackgroundStyle.GLOW -> Color.White
                 PlayerBackgroundStyle.GLOW_ANIMATED -> Color.White
                 PlayerBackgroundStyle.CUSTOM -> Color.White
+                PlayerBackgroundStyle.JUSPLAYER_CANVAS -> Color.White
             }
         }
 
@@ -636,6 +637,7 @@ fun BottomSheetPlayer(
                 PlayerBackgroundStyle.GLOW -> Color.Black
                 PlayerBackgroundStyle.GLOW_ANIMATED -> Color.Black
                 PlayerBackgroundStyle.CUSTOM -> Color.Black
+                PlayerBackgroundStyle.JUSPLAYER_CANVAS -> Color.Black
             }
         }
 
@@ -1089,10 +1091,12 @@ fun BottomSheetPlayer(
             }
         val shouldUseV7Canvas =
             archiveTuneCanvasEnabled &&
+                playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                 playerDesignStyle == PlayerDesignStyle.V7 &&
                 !aodModeEnabled
         val shouldUseArtworkCanvas =
             archiveTuneCanvasEnabled &&
+                playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                 (playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9) &&
                 !aodModeEnabled
         val shouldFetchV7Canvas = shouldUseV7Canvas && !lowDataModeActive
@@ -1234,6 +1238,7 @@ fun BottomSheetPlayer(
                 playerCustomBlur = playerCustomBlur,
                 playerCustomContrast = playerCustomContrast,
                 playerCustomBrightness = playerCustomBrightness,
+                isPlaying = isPlaying,
                 modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
             )
         }
@@ -1334,7 +1339,7 @@ fun BottomSheetPlayer(
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V7PlayerBackdrop(
-                            thumbnailUrl = v7SwapState.displayUrl,
+                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) null else v7SwapState.displayUrl,
                             canvasStaticUrl = v7CanvasArtwork?.static,
                             canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
                             canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
@@ -1399,7 +1404,7 @@ fun BottomSheetPlayer(
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V8PlayerBackdrop(
-                            thumbnailUrl = v8SwapState.displayUrl,
+                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) null else v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
                             modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
                         )
@@ -1497,7 +1502,7 @@ fun BottomSheetPlayer(
                     )
                 } else if (playerDesignStyle == PlayerDesignStyle.V10) {
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)).padding(bottom = queueSheetState.collapsedBound + 16.dp).nestedScroll(state.preUpPostDownNestedScrollConnection)) {
-                        enrichedMetadata?.thumbnailUrl?.let { thumb ->
+                        enrichedMetadata?.thumbnailUrl?.takeIf { playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS }?.let { thumb ->
                             // ponytail: 20dp ceiling + disableBlur/low-RAM gate, pre-sized like V8
                             val v10BackdropModel = remember(thumb) { thumb.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx) }
                             val v10BackdropRequest = rememberOfflineArtworkImageRequest(v10BackdropModel)
@@ -1672,7 +1677,7 @@ fun BottomSheetPlayer(
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V7PlayerBackdrop(
-                            thumbnailUrl = v7SwapState.displayUrl,
+                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) null else v7SwapState.displayUrl,
                             canvasStaticUrl = v7CanvasArtwork?.static,
                             canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
                             canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
@@ -1735,7 +1740,7 @@ fun BottomSheetPlayer(
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V8PlayerBackdrop(
-                            thumbnailUrl = v8SwapState.displayUrl,
+                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) null else v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
                             modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
                         )
@@ -1838,7 +1843,7 @@ fun BottomSheetPlayer(
                             .nestedScroll(state.preUpPostDownNestedScrollConnection),
                     ) {
                         // ambient blurred cover = fills "empty" feeling, cheap (no Palette)
-                        enrichedMetadata?.thumbnailUrl?.let { thumb ->
+                        enrichedMetadata?.thumbnailUrl?.takeIf { playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS }?.let { thumb ->
                             // ponytail: 20dp ceiling + disableBlur/low-RAM gate, pre-sized like V8
                             val ambientBackdropModel = remember(thumb) { thumb.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx) }
                             val ambientBackdropRequest = rememberOfflineArtworkImageRequest(ambientBackdropModel)

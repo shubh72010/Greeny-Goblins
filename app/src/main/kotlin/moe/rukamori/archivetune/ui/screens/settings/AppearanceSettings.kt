@@ -789,6 +789,7 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
                                 PlayerBackgroundStyle.BLUR_GRADIENT -> stringResource(R.string.blur_gradient)
                                 PlayerBackgroundStyle.GLOW -> stringResource(R.string.glow)
                                 PlayerBackgroundStyle.GLOW_ANIMATED -> "Glow Animated"
+                                PlayerBackgroundStyle.JUSPLAYER_CANVAS -> stringResource(R.string.archivetune_canvas)
                             }
                         },
                     )

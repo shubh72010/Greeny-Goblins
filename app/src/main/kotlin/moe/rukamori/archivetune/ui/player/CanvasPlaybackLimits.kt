@@ -1,11 +1,12 @@
 package moe.rukamori.archivetune.ui.player
 
-object CanvasPlaybackLimits {
-    const val MAX_WIDTH = 1200
-}
-
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+
+object CanvasPlaybackLimits {
+    const val MAX_WIDTH = 1200
+    var maxFrameRate: Int = 60
+}
 
 @Composable
 fun ArtworkMeshBackdrop(modifier: Modifier = Modifier, content: @Composable () -> Unit = {}) { content() }

@@ -42,6 +42,8 @@ import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
 import moe.rukamori.archivetune.constants.ModularCoverArtStyle
 import moe.rukamori.archivetune.constants.ModularCoverArtStyleKey
+import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
+import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.lyrics.LyricsEntry
 import moe.rukamori.archivetune.lyrics.LyricsUtils
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -59,17 +61,20 @@ fun registerCoverArtComponent() {
         val (coverArtStyle) = rememberEnumPreference(ModularCoverArtStyleKey, defaultValue = ModularCoverArtStyle.NORMAL)
         val (hideThumbnail) = rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
         val (cropToSquare) = rememberPreference(CropThumbnailToSquareKey, defaultValue = true)
-        val cornerRadius = LocalThumbnailCornerRadius.current
-        CoverArtComponent(
-            metadata = metadata,
-            playerConnection = playerConnection,
-            isPlaying = isPlaying,
-            coverArtStyle = coverArtStyle,
-            hideThumbnail = hideThumbnail,
-            cropToSquare = cropToSquare,
-            cornerRadius = cornerRadius,
-            modifier = modifier,
-        )
+        val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BLUR)
+        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
+            val cornerRadius = LocalThumbnailCornerRadius.current
+            CoverArtComponent(
+                metadata = metadata,
+                playerConnection = playerConnection,
+                isPlaying = isPlaying,
+                coverArtStyle = coverArtStyle,
+                hideThumbnail = hideThumbnail,
+                cropToSquare = cropToSquare,
+                cornerRadius = cornerRadius,
+                modifier = modifier,
+            )
+        }
     }
 }
 

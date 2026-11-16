@@ -171,8 +171,8 @@ marketing copy.
   Cyberpunk, Synthwave, Aurora, Rainbow, pastel and neon sets…), plus a custom color picker
 - **Random palette on every app start** option
 - **10 player designs** (V1–V10)
-- **8 player backgrounds** — default, gradient, custom image, blur, coloring, blur+gradient,
-  glow, animated glow
+- **9 player backgrounds** — default, gradient, custom image, blur, coloring, blur+gradient,
+  glow, animated glow, JusPlayer canvas
 - Custom background image with blur, contrast and brightness sliders
 - **Modular player layout editor** — add/remove/reorder components (cover art, seek bar, time,
   play/pause, like, previous, repeat, canvas artwork, title + artist, spacer), with Classic /

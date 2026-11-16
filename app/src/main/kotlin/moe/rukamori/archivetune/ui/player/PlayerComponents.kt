@@ -63,6 +63,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -130,6 +132,13 @@ import moe.rukamori.archivetune.ui.utils.highRes
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
+import moe.rukamori.archivetune.utils.rememberEnumPreference
+import moe.rukamori.archivetune.constants.CanvasSourceKey
+import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
+import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
+import moe.rukamori.archivetune.ui.player.CanvasSource
+import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
+import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 
 private const val PlayerBackgroundMaxBlurRadius = 64f
 private const val ExplicitBadgeInlineId = "explicitBadge"
@@ -4018,8 +4027,47 @@ fun PlayerBackground(
     playerCustomBlur: Float,
     playerCustomContrast: Float,
     playerCustomBrightness: Float,
+    isPlaying: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
+    val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
+    val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.YOUTUBE)
+    val lowDataModeActive = rememberLowDataModeActive()
+    val storefront = remember {
+        val country = java.util.Locale.getDefault().country
+        if (country.length == 2) country.lowercase(java.util.Locale.ROOT) else "us"
+    }
+    var canvasArtwork by remember(mediaMetadata?.id) { mutableStateOf<CanvasArtwork?>(null) }
+    var canvasFetchInFlight by remember(mediaMetadata?.id) { mutableStateOf(false) }
+    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled) {
+        val meta = mediaMetadata
+        if (!archiveTuneCanvasEnabled || meta == null) {
+            canvasArtwork = null
+            canvasFetchInFlight = false
+            return@LaunchedEffect
+        }
+        if (canvasFetchInFlight) return@LaunchedEffect
+        canvasFetchInFlight = true
+        try {
+            canvasArtwork = runCatching {
+                resolveCanvasArtworkForPlayback(
+                    mediaId = meta.id,
+                    songTitleRaw = meta.title,
+                    artistNameRaw = meta.artists.firstOrNull()?.name.orEmpty(),
+                    albumId = meta.album?.id,
+                    albumTitleRaw = meta.album?.title,
+                    storefront = storefront,
+                    requireVertical = false,
+                    allowNetwork = !lowDataModeActive,
+                    currentIsMusicVideo = meta.isMusicVideo,
+                    canvasSource = canvasSource,
+                )
+            }.getOrNull()
+        } finally {
+            canvasFetchInFlight = false
+        }
+    }
+
     val effectiveBlurRadius = blurRadius.coerceIn(0f, PlayerBackgroundMaxBlurRadius)
     val shouldApplyBlur = !disableBlur && effectiveBlurRadius > 0f
 
@@ -4498,6 +4546,41 @@ fun PlayerBackground(
                                             drawRect(brush = brush6)
                                         }
                                     },
+                        )
+                    }
+                }
+            }
+
+PlayerBackgroundStyle.JUSPLAYER_CANVAS -> {
+                val artwork = canvasArtwork
+                val primaryUrl = artwork?.animated
+                val fallbackUrl = artwork?.videoUrl
+                if (artwork != null && (!primaryUrl.isNullOrBlank() || !fallbackUrl.isNullOrBlank())) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        CanvasArtworkPlayer(
+                            primaryUrl = primaryUrl,
+                            fallbackUrl = fallbackUrl ?: primaryUrl,
+                            isPlaying = isPlaying,
+                            clipStartMs = artwork.loopStartMs,
+                            clipEndMs = artwork.loopEndMs,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.15f)),
+                        )
+                    }
+                } else {
+                    // Fallback to blurred thumbnail when no canvas available
+                    if (backgroundThumbnailUrl != null) {
+                        AsyncImage(
+                            model = backgroundThumbnailUrl.highRes(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().let {
+                                if (styleAppliesBlur) it.blur(radius = effectiveBlurRadius.dp) else it
+                            },
                         )
                     }
                 }

@@ -35,7 +35,7 @@ object WearBridge {
         scope: CoroutineScope,
         localPlayer: () -> ExoPlayer?,
         onChanged: () -> Unit,
-    ): RemoteSpeaker = NoSpeaker
+    ): RemoteSpeaker = RemoteSpeaker()
 
     fun releaseSpeaker() = Unit
 

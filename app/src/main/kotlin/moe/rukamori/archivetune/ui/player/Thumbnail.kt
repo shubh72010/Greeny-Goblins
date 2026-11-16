@@ -196,6 +196,7 @@ fun Thumbnail(
             PlayerBackgroundStyle.GLOW -> Color.White
             PlayerBackgroundStyle.GLOW_ANIMATED -> Color.White
             PlayerBackgroundStyle.CUSTOM -> Color.White
+            PlayerBackgroundStyle.JUSPLAYER_CANVAS -> Color.White
         }
 
     LaunchedEffect(maxCanvasCacheSize) {
@@ -435,6 +436,7 @@ fun Thumbnail(
                                 }
                             val shouldUseCanvas =
                                 archiveTuneCanvasEnabled &&
+                                    playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                                     !performanceMode &&
                                     playerDesignStyle != PlayerDesignStyle.V7 &&
                                     playerDesignStyle != PlayerDesignStyle.V8 &&
@@ -551,7 +553,14 @@ fun Thumbnail(
                                         Modifier
                                             .size(containerMaxWidth - (PlayerHorizontalPadding * 2)),
                                 ) {
-                                    if (hidePlayerThumbnail || isSongInSet(hiddenCoverIds, item.mediaId)) {
+                                    if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
+                                            Box(
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxSize()
+                                                        .clip(thumbnailShape),
+                                            )
+                                        } else if (hidePlayerThumbnail || isSongInSet(hiddenCoverIds, item.mediaId)) {
                                         // Show app logo when thumbnail is hidden
                                         Box(
                                             modifier =

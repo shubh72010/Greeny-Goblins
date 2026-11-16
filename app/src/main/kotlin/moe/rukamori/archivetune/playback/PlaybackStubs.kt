@@ -1,5 +1,6 @@
 package moe.rukamori.archivetune.playback
 
+import androidx.media3.session.MediaController
 import moe.rukamori.archivetune.data.model.Song
 
 // shortcut: playback stubs for TV port
@@ -10,7 +11,6 @@ data class PlayerState(val isPlaying: Boolean = false, val currentSong: Song? = 
 data class MusicLink(val url: String = "") {
     companion object { fun consume(intent: Any?) {} }
 }
-object SleepTimer { fun cancel() {} }
 
 fun playSongs(songs: List<Song>, index: Int = 0) {}
 fun beginRadioQueue(song: Song) {}
@@ -21,9 +21,6 @@ fun toMediaItem(song: Song): Any? = null
 fun rememberMediaController(): Any? = null
 fun rememberPlayerState(): PlayerState = PlayerState()
 
-fun moe.rukamori.archivetune.data.model.Song.toMediaItem(): Any? = null
-
-import androidx.media3.session.MediaController
 
 fun MediaController.playSongs(songs: List<moe.rukamori.archivetune.data.model.Song>, index: Int = 0) {}
 

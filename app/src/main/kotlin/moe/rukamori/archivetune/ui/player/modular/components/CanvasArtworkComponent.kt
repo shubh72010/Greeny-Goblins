@@ -17,6 +17,8 @@ import moe.rukamori.archivetune.ui.player.CanvasSource
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
+import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
+import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.ui.player.modular.LocalThumbnailCornerRadius
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentRegistry
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentType
@@ -29,7 +31,8 @@ import java.util.Locale
 fun registerCanvasArtworkComponent() {
     PlayerComponentRegistry.register(PlayerComponentType.CANVAS_ARTWORK.id) { _, metadata, playerConnection, isPlaying, _, _, _, _, _, _, modifier, _ ->
         val (canvasEnabled) = rememberPreference(JusPlayerCanvasKey, defaultValue = true)
-        if (canvasEnabled) {
+        val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BLUR)
+        if (canvasEnabled && playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
             CanvasArtworkComponent(metadata, playerConnection, isPlaying, modifier)
         }
     }
