@@ -65,7 +65,8 @@ object YouTubeCanvasProvider {
         val currentVideoId = mediaId.takeIf { it.isUsableVideoId() }
 
         if (currentIsMusicVideo) {
-            val current = currentVideoId?.let { videoId -> resolveVideo(videoId) }
+            val current =
+                currentVideoId?.let { resolveVideoAndValidate(it, songTitleRaw, artistNameRaw) }
             if (current != null) {
                 Timber.tag(LogTag).d("Current track is already a music video (%s); using it", current.videoId)
                 return current.toCanvasArtwork()
@@ -75,7 +76,7 @@ object YouTubeCanvasProvider {
         // Authoritative link from YouTube Music: the official music video for this song.
         val linkedId = setVideoId?.takeIf { it.isUsableVideoId() }
         if (linkedId != null) {
-            val linked = resolveVideo(linkedId)
+            val linked = resolveVideoAndValidate(linkedId, songTitleRaw, artistNameRaw)
             if (linked != null) {
                 Timber.tag(LogTag).d("Using linked music video %s", linked.videoId)
                 return linked.toCanvasArtwork()
@@ -94,8 +95,11 @@ object YouTubeCanvasProvider {
 
         Timber.tag(LogTag).d("Hunting for the real music video via video search")
         val videoSearchHit =
-            searchForMusicVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId)
-                ?.let { item -> resolveVideo(item.id) }
+            resolveBestFromCandidates(
+                searchForMusicVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId),
+                songTitleRaw,
+                artistNameRaw,
+            )
         if (videoSearchHit != null) {
             Timber.tag(LogTag).d("Found candidate video %s; using it", videoSearchHit.videoId)
             return videoSearchHit.toCanvasArtwork()
@@ -107,15 +111,50 @@ object YouTubeCanvasProvider {
         }
 
         Timber.tag(LogTag).d("No music video found; falling back to the current track's own video")
-        val current = currentVideoId?.let { videoId -> resolveVideo(videoId) }
+        val current = currentVideoId?.let { resolveVideoAndValidate(it, songTitleRaw, artistNameRaw) }
         if (current != null) {
             return current.toCanvasArtwork()
         }
 
-        val songSearchHit =
-            searchForVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId)
-                ?.let { item -> resolveVideo(item.id) }
-        return songSearchHit?.toCanvasArtwork()
+        return resolveBestFromCandidates(
+            searchForVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId),
+            songTitleRaw,
+            artistNameRaw,
+        )?.toCanvasArtwork()
+    }
+
+    private suspend fun resolveVideoAndValidate(
+        videoId: String,
+        songTitle: String,
+        artistName: String,
+    ): ResolvedVideo? {
+        val resolved = resolveVideo(videoId) ?: return null
+        val artwork = resolved.toCanvasArtwork() ?: return null
+        if (!artwork.isPlausibleCanvasFor(songTitle, artistName)) {
+            Timber.tag(LogTag).w("Rejected resolved video %s: %s / %s", videoId, resolved.title, resolved.artist)
+            return null
+        }
+        return resolved
+    }
+
+    private suspend fun resolveBestFromCandidates(
+        candidates: List<SongItem>,
+        songTitle: String,
+        artistName: String,
+        limit: Int = 5,
+    ): ResolvedVideo? {
+        var fallback: ResolvedVideo? = null
+        for (candidate in rankYouTubeMusicVideoCandidates(candidates, songTitle, artistName).take(limit)) {
+            val resolved = resolveVideo(candidate.id) ?: continue
+            val artwork = resolved.toCanvasArtwork() ?: continue
+            if (!artwork.isPlausibleCanvasFor(songTitle, artistName)) {
+                Timber.tag(LogTag).w("Rejected search candidate %s: %s / %s", candidate.id, resolved.title, resolved.artist)
+                continue
+            }
+            if (resolved.isMusicVideo) return resolved
+            if (fallback == null) fallback = resolved
+        }
+        return fallback
     }
 
     private fun ResolvedVideo.toCanvasArtwork(): CanvasArtwork? {
@@ -273,8 +312,7 @@ object YouTubeCanvasProvider {
                 .next(moe.rukamori.archivetune.innertube.models.WatchEndpoint(videoId = mediaId))
                 .getOrNull()
                 ?: return null
-        val candidate = selectYouTubeMusicVideoCandidate(result.items, songTitle, artistName) ?: return null
-        return resolveVideo(candidate.id)
+        return resolveBestFromCandidates(result.items, songTitle, artistName, limit = 3)
     }
 
     private suspend fun resolveVideo(videoId: String): ResolvedVideo? {
@@ -453,10 +491,10 @@ object YouTubeCanvasProvider {
         songTitleRaw: String,
         artistNameRaw: String,
         excludeVideoId: String? = null,
-    ): SongItem? {
+    ): List<SongItem> {
         val song = songTitleRaw.trim()
         val artist = artistNameRaw.trim()
-        if (song.isBlank() && artist.isBlank()) return null
+        if (song.isBlank() && artist.isBlank()) return emptyList()
 
         val query = buildList {
             if (song.isNotBlank()) add(song)
@@ -470,7 +508,7 @@ object YouTubeCanvasProvider {
                         Timber.tag(LogTag).w("video search failed for query=%s", query)
                     }
                 }
-                ?: return null
+                ?: return emptyList()
 
         val normalizedSong = song.lowercase(Locale.ROOT)
         val normalizedArtist = artist.lowercase(Locale.ROOT)
@@ -496,27 +534,22 @@ object YouTubeCanvasProvider {
             )
         }
 
-        val best =
-            selectYouTubeMusicVideoCandidate(
-                candidates = allSongs,
-                songTitle = song,
-                artistName = artist,
-                excludeVideoId = excludeVideoId,
-            )
-        if (best == null) {
-            Timber.tag(LogTag).w("video search found %d raw items for query=%s but no confident match", result.items.size, query)
-        }
-        return best
+        return rankYouTubeMusicVideoCandidates(
+            candidates = allSongs,
+            songTitle = song,
+            artistName = artist,
+            excludeVideoId = excludeVideoId,
+        )
     }
 
     private suspend fun searchForVideo(
         songTitleRaw: String,
         artistNameRaw: String,
         excludeVideoId: String? = null,
-    ): SongItem? {
+    ): List<SongItem> {
         val song = songTitleRaw.trim()
         val artist = artistNameRaw.trim()
-        if (song.isBlank() && artist.isBlank()) return null
+        if (song.isBlank() && artist.isBlank()) return emptyList()
 
         val query = buildList {
             if (song.isNotBlank()) add(song)
@@ -530,7 +563,7 @@ object YouTubeCanvasProvider {
                         Timber.tag(LogTag).w("search failed for query=%s", query)
                     }
                 }
-                ?: return null
+                ?: return emptyList()
 
         val normalizedSong = song.lowercase(Locale.ROOT)
         val normalizedArtist = artist.lowercase(Locale.ROOT)
@@ -557,17 +590,12 @@ object YouTubeCanvasProvider {
             )
         }
 
-        val best =
-            selectYouTubeMusicVideoCandidate(
-                candidates = allSongs,
-                songTitle = song,
-                artistName = artist,
-                excludeVideoId = excludeVideoId,
-            )
-        if (best == null) {
-            Timber.tag(LogTag).w("search found %d raw items for query=%s but no confident match", result.items.size, query)
-        }
-        return best
+        return rankYouTubeMusicVideoCandidates(
+            candidates = allSongs,
+            songTitle = song,
+            artistName = artist,
+            excludeVideoId = excludeVideoId,
+        )
     }
 
     private fun SongItem.isMusicVideo(): Boolean =

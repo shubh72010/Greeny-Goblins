@@ -25,7 +25,19 @@ internal fun selectYouTubeMusicVideoCandidate(
     songTitle: String,
     artistName: String,
     excludeVideoId: String? = null,
-): SongItem? {
+): SongItem? = rankYouTubeMusicVideoCandidates(candidates, songTitle, artistName, excludeVideoId).firstOrNull()
+
+/**
+ * All usable candidates, best first. Search metadata can lie (a clean-titled result
+ * may resolve to a lyric video), so callers should resolve several and validate the
+ * actual player response rather than trusting the first ranked item.
+ */
+internal fun rankYouTubeMusicVideoCandidates(
+    candidates: List<SongItem>,
+    songTitle: String,
+    artistName: String,
+    excludeVideoId: String? = null,
+): List<SongItem> {
     val normalizedSong = songTitle.trim().lowercase(Locale.ROOT)
     val normalizedArtist = artistName.trim().lowercase(Locale.ROOT)
     val requestWantsRemix = normalizedSong.contains("remix")
@@ -110,22 +122,19 @@ internal fun selectYouTubeMusicVideoCandidate(
         .filter { itemArtistMatches(it) }
         .filter { !antiPattern(it.title) }
 
-    if (usable.isEmpty()) return null
-
-    val tier1 = usable.filter { isMusicVideo(it) }
-    val tier2 = usable.filter { !isMusicVideo(it) && hasOfficialIndicator(it.title) }
-    val tier3 = usable.filter { !isMusicVideo(it) && !hasOfficialIndicator(it.title) }
+    if (usable.isEmpty()) return emptyList()
 
     val comparator = compareByDescending<SongItem> { score(it) }
         .thenByDescending { it.viewCount ?: 0L }
 
-    return when {
-        tier1.isNotEmpty() -> tier1.maxWithOrNull(comparator)
-        tier2.isNotEmpty() -> tier2.maxWithOrNull(comparator)
-        else -> {
-            val best = tier3.maxWithOrNull(comparator) ?: return null
-            if (score(best) < 8) return null
-            best
-        }
-    }
+    val tier1 = usable.filter { isMusicVideo(it) }.sortedWith(comparator)
+    val tier2 = usable.filter { !isMusicVideo(it) && hasOfficialIndicator(it.title) }.sortedWith(comparator)
+    val tier3 =
+        usable
+            .filter { !isMusicVideo(it) && !hasOfficialIndicator(it.title) }
+            .sortedWith(comparator)
+            .takeIf { it.firstOrNull()?.let(::score)?.let { s -> s >= 8 } == true }
+            .orEmpty()
+
+    return tier1 + tier2 + tier3
 }
