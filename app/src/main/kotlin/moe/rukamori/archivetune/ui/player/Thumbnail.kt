@@ -91,6 +91,7 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.CanvasSourceKey
+import moe.rukamori.archivetune.constants.CanvasVideoKindKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -157,6 +158,10 @@ fun Thumbnail(
     val canvasSource by rememberEnumPreference(
         key = CanvasSourceKey,
         defaultValue = CanvasSource.YOUTUBE,
+    )
+    val canvasVideoKind by rememberEnumPreference(
+        key = CanvasVideoKindKey,
+        defaultValue = CanvasVideoKind.MUSIC,
     )
     val lowDataModeActive = rememberLowDataModeActive()
     val playerDesignStyle by rememberEnumPreference(
@@ -490,6 +495,7 @@ fun Thumbnail(
                                             currentIsMusicVideo = itemMetadata?.isMusicVideo ?: false,
                                             canvasSource = canvasSource,
                                             setVideoId = itemMetadata?.setVideoId,
+                                            videoKind = canvasVideoKind,
                                         )
                                 } finally {
                                     canvasFetchInFlight = false

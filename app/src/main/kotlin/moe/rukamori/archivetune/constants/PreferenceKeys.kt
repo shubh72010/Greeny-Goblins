@@ -37,6 +37,7 @@ val ShowPlayerVolumeBarKey = booleanPreferencesKey("showPlayerVolumeBar")
 val HidePlayerThumbnailKey = booleanPreferencesKey("hidePlayerThumbnail")
 val JusPlayerCanvasKey = booleanPreferencesKey("archiveTuneCanvas")
 val CanvasSourceKey = stringPreferencesKey("canvasSource")
+val CanvasVideoKindKey = stringPreferencesKey("canvasVideoKind")
 val ThumbnailCornerRadiusKey = floatPreferencesKey("thumbnailCornerRadius")
 val CropThumbnailToSquareKey = booleanPreferencesKey("cropThumbnailToSquare")
 

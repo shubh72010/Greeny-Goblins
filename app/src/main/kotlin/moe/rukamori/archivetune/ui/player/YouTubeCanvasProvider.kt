@@ -48,6 +48,7 @@ object YouTubeCanvasProvider {
         currentIsMusicVideo: Boolean = false,
         fallbackToAnyVideo: Boolean = true,
         setVideoId: String? = null,
+        preferLyric: Boolean = false,
     ): CanvasArtwork? {
         if (requireVertical) return null
         if (mediaId.isBlank() && songTitleRaw.isBlank() && artistNameRaw.isBlank() && setVideoId.isNullOrBlank()) return null
@@ -66,7 +67,7 @@ object YouTubeCanvasProvider {
 
         if (currentIsMusicVideo) {
             val current =
-                currentVideoId?.let { resolveVideoAndValidate(it, songTitleRaw, artistNameRaw) }
+                currentVideoId?.let { resolveVideoAndValidate(it, songTitleRaw, artistNameRaw, preferLyric) }
             if (current != null) {
                 Timber.tag(LogTag).d("Current track is already a music video (%s); using it", current.videoId)
                 return current.toCanvasArtwork()
@@ -76,7 +77,7 @@ object YouTubeCanvasProvider {
         // Authoritative link from YouTube Music: the official music video for this song.
         val linkedId = setVideoId?.takeIf { it.isUsableVideoId() }
         if (linkedId != null) {
-            val linked = resolveVideoAndValidate(linkedId, songTitleRaw, artistNameRaw)
+            val linked = resolveVideoAndValidate(linkedId, songTitleRaw, artistNameRaw, preferLyric)
             if (linked != null) {
                 Timber.tag(LogTag).d("Using linked music video %s", linked.videoId)
                 return linked.toCanvasArtwork()
@@ -86,7 +87,7 @@ object YouTubeCanvasProvider {
         // Library/local tracks lose setVideoId; recover the link from YouTube's watch-next queue.
         if (linkedId == null && currentVideoId != null) {
             val linkedFromNext =
-                resolveLinkedFromWatchNext(currentVideoId, songTitleRaw, artistNameRaw)
+                resolveLinkedFromWatchNext(currentVideoId, songTitleRaw, artistNameRaw, preferLyric)
             if (linkedFromNext != null) {
                 Timber.tag(LogTag).d("Using watch-next linked music video %s", linkedFromNext.videoId)
                 return linkedFromNext.toCanvasArtwork()
@@ -96,9 +97,10 @@ object YouTubeCanvasProvider {
         Timber.tag(LogTag).d("Hunting for the real music video via video search")
         val videoSearchHit =
             resolveBestFromCandidates(
-                searchForMusicVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId),
+                searchForMusicVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId, preferLyric),
                 songTitleRaw,
                 artistNameRaw,
+                preferLyric,
             )
         if (videoSearchHit != null) {
             Timber.tag(LogTag).d("Found candidate video %s; using it", videoSearchHit.videoId)
@@ -111,15 +113,16 @@ object YouTubeCanvasProvider {
         }
 
         Timber.tag(LogTag).d("No music video found; falling back to the current track's own video")
-        val current = currentVideoId?.let { resolveVideoAndValidate(it, songTitleRaw, artistNameRaw) }
+        val current = currentVideoId?.let { resolveVideoAndValidate(it, songTitleRaw, artistNameRaw, preferLyric) }
         if (current != null) {
             return current.toCanvasArtwork()
         }
 
         return resolveBestFromCandidates(
-            searchForVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId),
+            searchForVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId, preferLyric),
             songTitleRaw,
             artistNameRaw,
+            preferLyric,
         )?.toCanvasArtwork()
     }
 
@@ -127,10 +130,11 @@ object YouTubeCanvasProvider {
         videoId: String,
         songTitle: String,
         artistName: String,
+        preferLyric: Boolean,
     ): ResolvedVideo? {
         val resolved = resolveVideo(videoId) ?: return null
         val artwork = resolved.toCanvasArtwork() ?: return null
-        if (!artwork.isPlausibleCanvasFor(songTitle, artistName)) {
+        if (!artwork.isPlausibleCanvasFor(songTitle, artistName, preferLyric)) {
             Timber.tag(LogTag).w("Rejected resolved video %s: %s / %s", videoId, resolved.title, resolved.artist)
             return null
         }
@@ -141,13 +145,14 @@ object YouTubeCanvasProvider {
         candidates: List<SongItem>,
         songTitle: String,
         artistName: String,
+        preferLyric: Boolean,
         limit: Int = 5,
     ): ResolvedVideo? {
         var fallback: ResolvedVideo? = null
-        for (candidate in rankYouTubeMusicVideoCandidates(candidates, songTitle, artistName).take(limit)) {
+        for (candidate in rankYouTubeMusicVideoCandidates(candidates, songTitle, artistName, allowLyric = preferLyric).take(limit)) {
             val resolved = resolveVideo(candidate.id) ?: continue
             val artwork = resolved.toCanvasArtwork() ?: continue
-            if (!artwork.isPlausibleCanvasFor(songTitle, artistName)) {
+            if (!artwork.isPlausibleCanvasFor(songTitle, artistName, preferLyric)) {
                 Timber.tag(LogTag).w("Rejected search candidate %s: %s / %s", candidate.id, resolved.title, resolved.artist)
                 continue
             }
@@ -306,13 +311,14 @@ object YouTubeCanvasProvider {
         mediaId: String,
         songTitle: String,
         artistName: String,
+        preferLyric: Boolean,
     ): ResolvedVideo? {
         val result =
             YouTube
                 .next(moe.rukamori.archivetune.innertube.models.WatchEndpoint(videoId = mediaId))
                 .getOrNull()
                 ?: return null
-        return resolveBestFromCandidates(result.items, songTitle, artistName, limit = 3)
+        return resolveBestFromCandidates(result.items, songTitle, artistName, preferLyric, limit = 3)
     }
 
     private suspend fun resolveVideo(videoId: String): ResolvedVideo? {
@@ -491,6 +497,7 @@ object YouTubeCanvasProvider {
         songTitleRaw: String,
         artistNameRaw: String,
         excludeVideoId: String? = null,
+        preferLyric: Boolean = false,
     ): List<SongItem> {
         val song = songTitleRaw.trim()
         val artist = artistNameRaw.trim()
@@ -539,6 +546,7 @@ object YouTubeCanvasProvider {
             songTitle = song,
             artistName = artist,
             excludeVideoId = excludeVideoId,
+            allowLyric = preferLyric,
         )
     }
 
@@ -546,6 +554,7 @@ object YouTubeCanvasProvider {
         songTitleRaw: String,
         artistNameRaw: String,
         excludeVideoId: String? = null,
+        preferLyric: Boolean = false,
     ): List<SongItem> {
         val song = songTitleRaw.trim()
         val artist = artistNameRaw.trim()
@@ -595,6 +604,7 @@ object YouTubeCanvasProvider {
             songTitle = song,
             artistName = artist,
             excludeVideoId = excludeVideoId,
+            allowLyric = preferLyric,
         )
     }
 

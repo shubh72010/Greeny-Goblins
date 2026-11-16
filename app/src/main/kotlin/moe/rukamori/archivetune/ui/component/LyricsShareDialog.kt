@@ -102,9 +102,11 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
+import moe.rukamori.archivetune.constants.CanvasVideoKindKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.models.MediaMetadata
+import moe.rukamori.archivetune.ui.player.CanvasVideoKind
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.utils.ComposeToImage
 import moe.rukamori.archivetune.utils.LyricsKaraokeRenderer
@@ -178,6 +180,7 @@ fun LyricsShareImageDialog(
     var areAdvancedOptionsVisible by remember { mutableStateOf(false) }
     val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
     val preferredStreamClient by enumPreference(context, PlayerStreamClientKey, PlayerStreamClient.JUSPLAYER_ENGINE)
+    val canvasVideoKind by enumPreference(context, CanvasVideoKindKey, CanvasVideoKind.MUSIC)
     // Movable canvas video state – only for Video mode (player-like drag)
     var canvasPreviewUrl by remember { mutableStateOf<String?>(null) }
     var videoPan by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
@@ -202,6 +205,7 @@ fun LyricsShareImageDialog(
                     allowNetwork = true,
                     currentIsMusicVideo = mediaMetadata.isMusicVideo,
                     setVideoId = mediaMetadata.setVideoId,
+                    videoKind = canvasVideoKind,
                 )
                 artwork?.let {
                     val vertical = it.preferredVerticalAnimationUrl ?: it.videoUrlVertical
@@ -309,6 +313,7 @@ fun LyricsShareImageDialog(
                                 currentPositionMs = currentPositionMs,
                                 audioQuality = audioQuality,
                                 preferredStreamClient = preferredStreamClient,
+                                canvasVideoKind = canvasVideoKind,
                                 videoPanX = videoPan.x,
                                 videoPanY = videoPan.y,
                                 videoScale = videoScale,
@@ -373,6 +378,7 @@ private suspend fun shareLyricsAsVideo(
     currentPositionMs: Long,
     audioQuality: AudioQuality,
     preferredStreamClient: PlayerStreamClient,
+    canvasVideoKind: CanvasVideoKind,
     videoPanX: Float = 0f,
     videoPanY: Float = 0f,
     videoScale: Float = 1f,
@@ -410,6 +416,7 @@ private suspend fun shareLyricsAsVideo(
                     allowNetwork = true,
                     currentIsMusicVideo = mediaMetadata.isMusicVideo,
                     setVideoId = mediaMetadata.setVideoId,
+                    videoKind = canvasVideoKind,
                 )
                 artwork?.let {
                     val vertical = it.preferredVerticalAnimationUrl ?: it.videoUrlVertical

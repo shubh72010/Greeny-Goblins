@@ -25,7 +25,8 @@ internal fun selectYouTubeMusicVideoCandidate(
     songTitle: String,
     artistName: String,
     excludeVideoId: String? = null,
-): SongItem? = rankYouTubeMusicVideoCandidates(candidates, songTitle, artistName, excludeVideoId).firstOrNull()
+    allowLyric: Boolean = false,
+): SongItem? = rankYouTubeMusicVideoCandidates(candidates, songTitle, artistName, excludeVideoId, allowLyric).firstOrNull()
 
 /**
  * All usable candidates, best first. Search metadata can lie (a clean-titled result
@@ -37,6 +38,7 @@ internal fun rankYouTubeMusicVideoCandidates(
     songTitle: String,
     artistName: String,
     excludeVideoId: String? = null,
+    allowLyric: Boolean = false,
 ): List<SongItem> {
     val normalizedSong = songTitle.trim().lowercase(Locale.ROOT)
     val normalizedArtist = artistName.trim().lowercase(Locale.ROOT)
@@ -67,8 +69,8 @@ internal fun rankYouTubeMusicVideoCandidates(
 
     fun antiPattern(title: String): Boolean {
         val t = title.lowercase(Locale.ROOT)
-        // Always reject for canvas purposes.
-        if (t.contains("lyric")) return true
+        // Lyric videos are only eligible when the user explicitly asked for them.
+        if (!allowLyric && t.contains("lyric")) return true
         if (t.contains("audio")) return true
         if (t.contains("cover")) return true
         if (t.contains("shorts") || t.contains("#shorts")) return true
@@ -81,10 +83,14 @@ internal fun rankYouTubeMusicVideoCandidates(
         if (t.contains("fan edit") || t.contains("fan made") || t.contains("fanmade")) return true
         if (t.contains("tribute") || t.contains("remake")) return true
         if (t.contains("version of")) return true
-        // Context-aware.
+        // Context-aware (remix only; a live performance is a demoted tier, never discarded).
         if (!requestWantsRemix && t.contains("remix")) return true
-        if (!requestWantsLive && (t.contains("live") || t.contains("concert"))) return true
         return false
+    }
+
+    fun isLivePerformance(title: String): Boolean {
+        val t = title.lowercase(Locale.ROOT)
+        return t.contains(Regex("\\b(live|concert)\\b"))
     }
 
     fun isMusicVideo(item: SongItem): Boolean =
@@ -127,14 +133,24 @@ internal fun rankYouTubeMusicVideoCandidates(
     val comparator = compareByDescending<SongItem> { score(it) }
         .thenByDescending { it.viewCount ?: 0L }
 
-    val tier1 = usable.filter { isMusicVideo(it) }.sortedWith(comparator)
-    val tier2 = usable.filter { !isMusicVideo(it) && hasOfficialIndicator(it.title) }.sortedWith(comparator)
-    val tier3 =
-        usable
-            .filter { !isMusicVideo(it) && !hasOfficialIndicator(it.title) }
-            .sortedWith(comparator)
-            .takeIf { it.firstOrNull()?.let(::score)?.let { s -> s >= 8 } == true }
-            .orEmpty()
+    fun tierRank(item: SongItem): Int {
+        val mv = isMusicVideo(item)
+        val live = isLivePerformance(item.title)
+        val official = hasOfficialIndicator(item.title)
+        val lyric = item.title.lowercase(Locale.ROOT).contains("lyric")
+        return when {
+            allowLyric && lyric -> 0
+            requestWantsLive && live -> 0
+            mv && !live -> 0
+            (mv && live) || (official && !live) -> 1
+            !mv && !official && !live -> 2
+            else -> 3
+        }
+    }
 
-    return tier1 + tier2 + tier3
+    val ranked =
+        usable.sortedWith(
+            compareBy<SongItem> { tierRank(it) }.then(comparator),
+        )
+    return ranked.filter { tierRank(it) <= 1 || score(it) >= 5 }
 }

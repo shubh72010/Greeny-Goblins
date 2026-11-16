@@ -112,6 +112,7 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.CanvasSourceKey
+import moe.rukamori.archivetune.constants.CanvasVideoKindKey
 import moe.rukamori.archivetune.constants.EnableDeckMixKey
 import moe.rukamori.archivetune.constants.EqualizerBandLevelsMbKey
 import moe.rukamori.archivetune.constants.EqualizerBassBoostEnabledKey
@@ -140,6 +141,8 @@ import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.NewMenuSectionHeader
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.player.CanvasSource
+import moe.rukamori.archivetune.ui.player.CanvasVideoKind
+import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.label
 import moe.rukamori.archivetune.ui.player.rememberDeviceMusicVolumeController
 import moe.rukamori.archivetune.utils.SpeedDialPin
@@ -230,6 +233,8 @@ fun PlayerMenu(
     // Artist separators for splitting artist names
     val (artistSeparators) = rememberPreference(ArtistSeparatorsKey, defaultValue = ",;/&")
     val (canvasSource, onCanvasSourceChange) = rememberEnumPreference(CanvasSourceKey, CanvasSource.YOUTUBE)
+    val (canvasVideoKind, onCanvasVideoKindChange) =
+        rememberEnumPreference(CanvasVideoKindKey, CanvasVideoKind.MUSIC)
     val (externalDownloaderEnabled) = rememberPreference(ExternalDownloaderEnabledKey, defaultValue = false)
     val (externalDownloaderPackage) = rememberPreference(ExternalDownloaderPackageKey, defaultValue = "")
     val (speedDialSongIds, onSpeedDialSongIdsChange) = rememberPreference(SpeedDialSongIdsKey, "")
@@ -694,6 +699,30 @@ fun PlayerMenu(
                         label = stringResource(R.string.canvas_source),
                         supporting = canvasSource.label(),
                         onClick = { showCanvasSourceDialog = true },
+                    ),
+                )
+
+                add(
+                    PlayerMenuRow(
+                        leading = {
+                            Icon(
+                                painter = painterResource(
+                                    if (canvasVideoKind == CanvasVideoKind.LYRIC) R.drawable.lyrics else R.drawable.music_note,
+                                ),
+                                contentDescription = null,
+                            )
+                        },
+                        label = stringResource(R.string.canvas_video_kind),
+                        supporting = canvasVideoKind.label(),
+                        onClick = {
+                            val next =
+                                if (canvasVideoKind == CanvasVideoKind.MUSIC) CanvasVideoKind.LYRIC else CanvasVideoKind.MUSIC
+                            onCanvasVideoKindChange(next)
+                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                CanvasArtworkPlaybackCache.clearAndPersist()
+                            }
+                            onDismiss()
+                        },
                     ),
                 )
             }

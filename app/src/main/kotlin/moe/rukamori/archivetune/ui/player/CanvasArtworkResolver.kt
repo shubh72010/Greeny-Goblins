@@ -25,7 +25,9 @@ internal suspend fun resolveCanvasArtworkForPlayback(
     currentIsMusicVideo: Boolean = false,
     canvasSource: CanvasSource = CanvasSource.AUTO,
     setVideoId: String? = null,
+    videoKind: CanvasVideoKind = CanvasVideoKind.MUSIC,
 ): CanvasArtwork? {
+    val preferLyric = videoKind == CanvasVideoKind.LYRIC
     if (canvasSource == CanvasSource.AUTO) {
         withContext(Dispatchers.IO) {
             CanvasArtworkPlaybackCache.get(
@@ -33,7 +35,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                 preferCachedOnly = true,
             )
         }?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
-            ?.takeIf { artwork -> artwork.isPlausibleCanvasFor(songTitleRaw, artistNameRaw) }
+            ?.takeIf { artwork -> artwork.isPlausibleCanvasFor(songTitleRaw, artistNameRaw, preferLyric) }
             ?.let { return it }
     }
 
@@ -54,6 +56,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
                         setVideoId = setVideoId,
+                        preferLyric = preferLyric,
                     )
 
                 CanvasSource.APPLE ->
@@ -76,6 +79,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
                         setVideoId = setVideoId,
+                        preferLyric = preferLyric,
                     )
 
                 CanvasSource.AUTO ->
@@ -87,6 +91,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = false,
                         setVideoId = setVideoId,
+                        preferLyric = preferLyric,
                     ) ?: fetchCanvasArtworkForPlayback(
                         songTitleRaw = songTitleRaw,
                         artistNameRaw = artistNameRaw,
@@ -106,6 +111,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
                         setVideoId = setVideoId,
+                        preferLyric = preferLyric,
                     )
             }
 
@@ -113,7 +119,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
             Timber.tag(CanvasArtworkLogTag).d("No playable canvas resolved for %s", mediaId)
             return@withContext null
         }
-        if (!fetched.isPlausibleCanvasFor(songTitleRaw, artistNameRaw)) {
+        if (!fetched.isPlausibleCanvasFor(songTitleRaw, artistNameRaw, preferLyric)) {
             Timber.tag(CanvasArtworkLogTag).w(
                 "Discarding implausible canvas for %s: name=%s artist=%s",
                 mediaId,
@@ -198,6 +204,7 @@ private suspend fun fetchYouTubeCanvasFallback(
     currentIsMusicVideo: Boolean = false,
     fallbackToAnyVideo: Boolean = true,
     setVideoId: String? = null,
+    preferLyric: Boolean = false,
 ): CanvasArtwork? {
     if (requireVertical) return null
     return runCatching {
@@ -209,6 +216,7 @@ private suspend fun fetchYouTubeCanvasFallback(
             currentIsMusicVideo = currentIsMusicVideo,
             fallbackToAnyVideo = fallbackToAnyVideo,
             setVideoId = setVideoId,
+            preferLyric = preferLyric,
         )
     }.onFailure { error ->
         Timber.tag(CanvasArtworkLogTag).w(error, "YouTube canvas fallback failed for %s", mediaId)

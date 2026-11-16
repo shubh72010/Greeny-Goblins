@@ -14,8 +14,10 @@ import moe.rukamori.archivetune.playback.PlayerConnection
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.player.CanvasSource
+import moe.rukamori.archivetune.ui.player.CanvasVideoKind
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.constants.CanvasSourceKey
+import moe.rukamori.archivetune.constants.CanvasVideoKindKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
@@ -52,6 +54,7 @@ fun CanvasArtworkComponent(
         mutableStateOf(false)
     }
     val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.YOUTUBE)
+    val canvasVideoKind by rememberEnumPreference(CanvasVideoKindKey, CanvasVideoKind.MUSIC)
 
     val storefront = remember {
         val country = java.util.Locale.getDefault().country
@@ -83,6 +86,7 @@ fun CanvasArtworkComponent(
                     currentIsMusicVideo = meta.isMusicVideo,
                     canvasSource = canvasSource,
                     setVideoId = meta.setVideoId,
+                    videoKind = canvasVideoKind,
                 )
                 }.getOrNull()
         } finally {

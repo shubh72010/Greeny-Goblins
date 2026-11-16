@@ -20,9 +20,10 @@ import java.util.Locale
 internal fun CanvasArtwork.isPlausibleCanvasFor(
     songTitle: String,
     artistName: String,
+    allowLyric: Boolean = false,
 ): Boolean {
     val name = normalizedCanvasText(name.orEmpty())
-    if (name.hasCanvasAntiPattern()) return false
+    if (name.hasCanvasAntiPattern(allowLyric)) return false
 
     val requestedArtist = normalizedCanvasText(artistName)
     val resolvedArtist = normalizedCanvasText(artist.orEmpty())
@@ -48,26 +49,30 @@ private fun normalizedCanvasText(raw: String): String =
         .trim()
         .replace(Regex("\\s+"), " ")
 
-private fun String.hasCanvasAntiPattern(): Boolean {
+private fun String.hasCanvasAntiPattern(allowLyric: Boolean): Boolean {
     if (isEmpty()) return false
-    return listOf(
-        "lyric",
-        "audio",
-        "cover",
-        "shorts",
-        "reaction",
-        "react to",
-        "mashup",
-        "compilation",
-        "best of",
-        "loop",
-        "extended",
-        "1 hour",
-        "10 hour",
-        "24 7",
-        "fan edit",
-        "fan made",
-        "tribute",
-        "remake",
-    ).any { contains(it) }
+    return buildList {
+        if (!allowLyric) add("lyric")
+        addAll(
+            listOf(
+                "audio",
+                "cover",
+                "shorts",
+                "reaction",
+                "react to",
+                "mashup",
+                "compilation",
+                "best of",
+                "loop",
+                "extended",
+                "1 hour",
+                "10 hour",
+                "24 7",
+                "fan edit",
+                "fan made",
+                "tribute",
+                "remake",
+            ),
+        )
+    }.any { contains(it) }
 }

@@ -49,7 +49,7 @@ class YouTubeCanvasSelectionTest {
     fun rejectsExactTitleWrongArtistLyric() {
         val candidates =
             listOf(
-                song("lyric1111111", "Hello", "Adele", isOmv = false),
+                song("lyric1111111", "Hello", "Wrong Artist", isOmv = false),
             )
         // lyric title marker
         val lyricCandidate = song("lyric2222222", "Hello (Lyrics)", "Adele")
@@ -93,6 +93,21 @@ class YouTubeCanvasSelectionTest {
         val audioTitled = song("a2222222222", "Hello (Audio)", "Adele")
         val result = selectYouTubeMusicVideoCandidate(listOf(audioTitled), "Hello", "Adele")
         assertNull(result)
+    }
+
+    @Test
+    fun livePerformanceIsAllowedButRankedBelowOfficialVideo() {
+        val official = song("o1111111111", "Señorita", "Adele", isOmv = true)
+        val live = song("l2222222222", "Señorita (Live)", "Adele")
+        val result = selectYouTubeMusicVideoCandidate(listOf(live, official), "Señorita", "Adele")
+        assertEquals("o1111111111", result?.id)
+    }
+
+    @Test
+    fun livePerformanceIsKeptWhenItIsTheOnlyOption() {
+        val live = song("l2222222222", "Señorita (Live)", "Adele")
+        val result = selectYouTubeMusicVideoCandidate(listOf(live), "Señorita", "Adele")
+        assertEquals("l2222222222", result?.id)
     }
 
     @Test

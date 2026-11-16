@@ -16,6 +16,18 @@ enum class CanvasSource {
     YOUTUBE,
 }
 
+enum class CanvasVideoKind {
+    MUSIC,
+    LYRIC,
+}
+
+@Composable
+fun CanvasVideoKind.label(): String =
+    when (this) {
+        CanvasVideoKind.MUSIC -> androidx.compose.ui.res.stringResource(R.string.canvas_video_music)
+        CanvasVideoKind.LYRIC -> androidx.compose.ui.res.stringResource(R.string.canvas_video_lyric)
+    }
+
 @Composable
 fun CanvasSource.label(): String =
     when (this) {
