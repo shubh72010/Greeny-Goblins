@@ -4590,5 +4590,16 @@ PlayerBackgroundStyle.JUSPLAYER_CANVAS -> {
                 // DEFAULT or other modes - no background
             }
         }
+        // Subtle bottom scrim so titles/controls stay legible over any background.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.45f to Color.Transparent,
+                        1f to Color.Black.copy(alpha = 0.55f),
+                    ),
+                ),
+        )
     }
 }
