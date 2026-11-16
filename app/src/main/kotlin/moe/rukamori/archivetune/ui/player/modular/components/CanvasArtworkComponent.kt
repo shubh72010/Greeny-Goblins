@@ -61,7 +61,7 @@ fun CanvasArtworkComponent(
         if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
     }
 
-    LaunchedEffect(metadata?.id) {
+    LaunchedEffect(metadata?.id, canvasVideoKind) {
         val meta = metadata ?: return@LaunchedEffect
         if (meta.title.isBlank() || meta.artists.firstOrNull()?.name.orEmpty().isBlank()) {
             canvasArtwork = null

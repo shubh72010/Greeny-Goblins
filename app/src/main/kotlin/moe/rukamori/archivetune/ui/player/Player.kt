@@ -1119,7 +1119,7 @@ fun BottomSheetPlayer(
             mutableStateOf(false)
         }
 
-        LaunchedEffect(shouldUseV7Canvas, shouldFetchV7Canvas, mediaMetadata?.id) {
+        LaunchedEffect(shouldUseV7Canvas, shouldFetchV7Canvas, mediaMetadata?.id, canvasVideoKind) {
             val metadata = mediaMetadata
             if (!shouldUseV7Canvas || metadata == null) {
                 v7CanvasArtwork = null
@@ -1158,7 +1158,7 @@ fun BottomSheetPlayer(
             }
         }
 
-        LaunchedEffect(shouldUseArtworkCanvas, shouldFetchArtworkCanvas, mediaMetadata?.id) {
+        LaunchedEffect(shouldUseArtworkCanvas, shouldFetchArtworkCanvas, mediaMetadata?.id, canvasVideoKind) {
             val metadata = mediaMetadata
             if (!shouldUseArtworkCanvas || metadata == null) {
                 artworkCanvas = null

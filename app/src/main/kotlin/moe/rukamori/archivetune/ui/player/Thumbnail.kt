@@ -458,7 +458,7 @@ fun Thumbnail(
                                 }
                             }
 
-                            LaunchedEffect(shouldUseCanvas, shouldFetchCanvas, item.mediaId) {
+                            LaunchedEffect(shouldUseCanvas, shouldFetchCanvas, item.mediaId, canvasVideoKind) {
                                 if (!shouldUseCanvas) return@LaunchedEffect
 
                                 val songTitleRaw =

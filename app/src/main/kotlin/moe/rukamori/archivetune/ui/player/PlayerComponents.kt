@@ -4041,7 +4041,7 @@ fun PlayerBackground(
     }
     var canvasArtwork by remember(mediaMetadata?.id) { mutableStateOf<CanvasArtwork?>(null) }
     var canvasFetchInFlight by remember(mediaMetadata?.id) { mutableStateOf(false) }
-    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled, playerBackground) {
+    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled, playerBackground, canvasVideoKind) {
         val meta = mediaMetadata
         if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS || !archiveTuneCanvasEnabled || meta == null) {
             canvasArtwork = null

@@ -717,10 +717,8 @@ fun PlayerMenu(
                         onClick = {
                             val next =
                                 if (canvasVideoKind == CanvasVideoKind.MUSIC) CanvasVideoKind.LYRIC else CanvasVideoKind.MUSIC
+                            CanvasArtworkPlaybackCache.clearAndPersist()
                             onCanvasVideoKindChange(next)
-                            coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                CanvasArtworkPlaybackCache.clearAndPersist()
-                            }
                             onDismiss()
                         },
                     ),
