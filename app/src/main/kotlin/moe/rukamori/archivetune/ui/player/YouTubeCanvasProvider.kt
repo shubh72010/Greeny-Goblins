@@ -82,6 +82,16 @@ object YouTubeCanvasProvider {
             }
         }
 
+        // Library/local tracks lose setVideoId; recover the link from YouTube's watch-next queue.
+        if (linkedId == null && currentVideoId != null) {
+            val linkedFromNext =
+                resolveLinkedFromWatchNext(currentVideoId, songTitleRaw, artistNameRaw)
+            if (linkedFromNext != null) {
+                Timber.tag(LogTag).d("Using watch-next linked music video %s", linkedFromNext.videoId)
+                return linkedFromNext.toCanvasArtwork()
+            }
+        }
+
         Timber.tag(LogTag).d("Hunting for the real music video via video search")
         val videoSearchHit =
             searchForMusicVideo(songTitleRaw, artistNameRaw, excludeVideoId = currentVideoId)
@@ -251,6 +261,20 @@ object YouTubeCanvasProvider {
             best?.viewCountText,
         )
         return best
+    }
+
+    private suspend fun resolveLinkedFromWatchNext(
+        mediaId: String,
+        songTitle: String,
+        artistName: String,
+    ): ResolvedVideo? {
+        val result =
+            YouTube
+                .next(moe.rukamori.archivetune.innertube.models.WatchEndpoint(videoId = mediaId))
+                .getOrNull()
+                ?: return null
+        val candidate = selectYouTubeMusicVideoCandidate(result.items, songTitle, artistName) ?: return null
+        return resolveVideo(candidate.id)
     }
 
     private suspend fun resolveVideo(videoId: String): ResolvedVideo? {

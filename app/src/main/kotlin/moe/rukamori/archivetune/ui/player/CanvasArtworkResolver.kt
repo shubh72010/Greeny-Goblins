@@ -33,6 +33,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                 preferCachedOnly = true,
             )
         }?.takeIf { artwork -> artwork.hasRequiredCanvasVariant(requireVertical) }
+            ?.takeIf { artwork -> artwork.isPlausibleCanvasFor(songTitleRaw, artistNameRaw) }
             ?.let { return it }
     }
 
@@ -74,6 +75,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
+                        setVideoId = setVideoId,
                     )
 
                 CanvasSource.AUTO ->
@@ -109,6 +111,15 @@ internal suspend fun resolveCanvasArtworkForPlayback(
 
         if (fetched == null) {
             Timber.tag(CanvasArtworkLogTag).d("No playable canvas resolved for %s", mediaId)
+            return@withContext null
+        }
+        if (!fetched.isPlausibleCanvasFor(songTitleRaw, artistNameRaw)) {
+            Timber.tag(CanvasArtworkLogTag).w(
+                "Discarding implausible canvas for %s: name=%s artist=%s",
+                mediaId,
+                fetched.name,
+                fetched.artist,
+            )
             return@withContext null
         }
 

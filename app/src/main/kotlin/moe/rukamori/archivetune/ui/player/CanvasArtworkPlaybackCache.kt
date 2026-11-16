@@ -43,7 +43,8 @@ import java.util.concurrent.TimeUnit
 
 object CanvasArtworkPlaybackCache {
     private const val DEFAULT_MAX_SIZE_MEGABYTES = 256
-    private const val PERSIST_FILE = "canvas_artwork_cache.json"
+    private const val PERSIST_FILE = "canvas_artwork_cache_v2.json"
+    private const val LEGACY_PERSIST_FILE = "canvas_artwork_cache.json"
     private const val PERSIST_DEBOUNCE_MS = 2_000L
     private const val DOWNLOAD_BUFFER_SIZE_BYTES = 64 * 1024
     private const val DOWNLOAD_MAX_ATTEMPTS = 4
@@ -110,6 +111,8 @@ object CanvasArtworkPlaybackCache {
         val directory = StorageLocationRepository.cacheDirectory(context, StorageFolderKind.CANVAS_CACHE)
         cacheDirectory = directory
         cacheFile = directory.resolve(PERSIST_FILE)
+        // Drop caches written by the old, search-first selector (may hold wrong videos).
+        runCatching { directory.resolve(LEGACY_PERSIST_FILE).delete() }
         loadFromDisk()
     }
 
