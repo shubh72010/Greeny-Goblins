@@ -45,9 +45,15 @@ accompanist-core = "0.4.7"
 androidsvg = "1.4"
 aboutLibraries = "15.0.3"
 profileinstaller = "1.4.1"
+tv-foundation = "1.0.0-alpha12"
+tv-material = "1.0.1"
+leanback = "1.0.0"
 
 [libraries]
 annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
+androidx-tv-foundation = { module = "androidx.tv:tv-foundation", version.ref = "tv-foundation" }
+androidx-tv-material = { module = "androidx.tv:tv-material", version.ref = "tv-material" }
+androidx-leanback = { module = "androidx.leanback:leanback", version.ref = "leanback" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 coroutines-guava = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-guava", version.ref = "coroutinesGuava" }
 concurrent-futures = { module = "androidx.concurrent:concurrent-futures-ktx", version.ref = "concurrentFutures" }
@@ -161,3 +167,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 aboutlibraries-android = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }
+
