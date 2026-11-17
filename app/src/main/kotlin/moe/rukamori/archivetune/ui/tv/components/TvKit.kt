@@ -4,6 +4,7 @@ import moe.rukamori.archivetune.data.*
 import moe.rukamori.archivetune.data.*
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
@@ -39,10 +40,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +56,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.tv.foundation.ExperimentalTvFoundationApi
+import androidx.tv.foundation.PivotOffsets
+import androidx.tv.foundation.lazy.list.TvLazyRow
+import androidx.tv.foundation.lazy.list.TvLazyListState
+import androidx.tv.foundation.lazy.list.rememberTvLazyListState
+import androidx.tv.foundation.lazy.list.itemsIndexed
+import moe.rukamori.archivetune.ui.tv.theme.AppleSpringPreset
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -253,36 +258,29 @@ fun TvChromePinned() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Rows scroll themselves ([TvRow]); this keeps Compose's focus-driven scrolling
- * out of their horizontal axis. Requests still travel on to the feed above.
- */
-@OptIn(ExperimentalFoundationApi::class)
-private object TvRowNoScrollSpec : BringIntoViewSpec {
-    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = 0f
-}
-
-/**
  * A feed's vertical scroll: the focused shelf is brought to one fixed line —
  * where the first shelf's cards rest — so the shelf in focus, captions and all,
  * is always wholly on screen, and every shelf stops in the same place.
+ * Uses Apple/tvOS motion tokens for critically damped fluid shelf transitions.
  */
 @OptIn(ExperimentalFoundationApi::class)
 private class TvFeedScrollSpec(private val anchor: Float) : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
         offset - anchor
+
+    override val scrollAnimationSpec: AnimationSpec<Float>
+        get() = spring(
+            stiffness = AppleSpringPreset.Smooth.stiffness,
+            dampingRatio = AppleSpringPreset.Smooth.dampingRatio,
+        )
 }
 
 /**
- * A horizontal row of cards that scrolls by whole cards. It keeps its own index
- * of the first card in view and moves it only when focus passes an edge, then
- * scrolls that card to the leading padding with [LazyListState.animateScrollToItem]
- * — so the first card in view always rests exactly on the margin, and a quick
- * run of presses retargets one animation instead of stranding several.
- *
- * Compose's own bring-into-view isn't used for this axis: driven by focus, it
- * was abandoned part-way when presses came quickly, leaving rows off the grid.
+ * A horizontal row of cards powered by Compose for TV's [TvLazyRow] with [PivotOffsets].
+ * As the user navigates across cards with the D-pad, the focused card is continuously and
+ * smoothly pivoted into the view anchor using native TV scrolling physics.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalTvFoundationApi::class)
 @Composable
 fun <T> TvRow(
     items: List<T>,
@@ -296,50 +294,22 @@ fun <T> TvRow(
     contentType: (T) -> Any? = { null },
     itemContent: @Composable (index: Int, item: T) -> Unit,
 ) {
-    val state = rememberLazyListState()
-    var first by remember { mutableIntStateOf(state.firstVisibleItemIndex) }
-    var focused by remember { mutableIntStateOf(-1) }
-    // Entering the row from above or below lands on its first card in view —
-    // the one on the margin — never on whichever card happened to be nearest.
-    val entry = remember { FocusRequester() }
-    val density = LocalDensity.current
-
-    LaunchedEffect(focused) {
-        if (focused < 0) return@LaunchedEffect
-        val info = state.layoutInfo
-        val itemSize = info.visibleItemsInfo.firstOrNull()?.size ?: return@LaunchedEffect
-        val (lead, trail, gap) = with(density) { Triple(leading.toPx(), trailing.toPx(), spacing.toPx()) }
-        val slots = ((info.viewportSize.width - lead - trail + gap) / (itemSize + gap)).toInt().coerceAtLeast(1)
-        val next = when {
-            focused < first -> focused
-            focused > first + slots - 1 -> focused - slots + 1
-            else -> first
-        }
-        if (next != first || state.firstVisibleItemIndex != next || state.firstVisibleItemScrollOffset != 0) {
-            first = next
-            state.animateScrollToItem(next)
-        }
-    }
-
-    CompositionLocalProvider(LocalBringIntoViewSpec provides TvRowNoScrollSpec) {
-        LazyRow(
-            state = state,
-            contentPadding = PaddingValues(start = leading, end = trailing, top = top, bottom = bottom),
-            horizontalArrangement = Arrangement.spacedBy(spacing),
-            modifier = modifier
-                .fillMaxWidth()
-                .focusProperties { onEnter = { runCatching { entry.requestFocus() } } }
-                .focusGroup(),
-        ) {
-            itemsIndexed(items = items, key = { _, item -> key(item) }, contentType = { _, item -> contentType(item) }) { index, item ->
-                Box(
-                    modifier = Modifier
-                        .then(if (index == first) Modifier.focusRequester(entry) else Modifier)
-                        .onFocusChanged { if (it.hasFocus) focused = index },
-                ) {
-                    itemContent(index, item)
-                }
-            }
+    val state = rememberTvLazyListState()
+    TvLazyRow(
+        state = state,
+        contentPadding = PaddingValues(start = leading, end = trailing, top = top, bottom = bottom),
+        horizontalArrangement = Arrangement.spacedBy(spacing),
+        pivotOffsets = PivotOffsets(parentFraction = 0.08f, childFraction = 0.0f),
+        modifier = modifier
+            .fillMaxWidth()
+            .focusGroup(),
+    ) {
+        itemsIndexed(
+            items = items,
+            key = { _, item -> key(item) },
+            contentType = { _, item -> contentType(item) },
+        ) { index, item ->
+            itemContent(index, item)
         }
     }
 }
@@ -347,8 +317,8 @@ fun <T> TvRow(
 /**
  * A page that isn't all shelves (an artist page: a hero, then sections): a
  * focused element is scrolled only far enough to sit inside [top] and [bottom]
- * margins — enough below it for a lockup's caption. Always the remaining
- * distance to that edge, so it gives the same answer every frame of the scroll.
+ * margins — enough below it for a lockup's caption.
+ * Uses Apple/tvOS motion tokens for smooth viewport comfort scrolling.
  */
 @OptIn(ExperimentalFoundationApi::class)
 private class TvComfortScrollSpec(private val top: Float, private val bottom: Float) : BringIntoViewSpec {
@@ -360,6 +330,12 @@ private class TvComfortScrollSpec(private val top: Float, private val bottom: Fl
             else -> 0f
         }
     }
+
+    override val scrollAnimationSpec: AnimationSpec<Float>
+        get() = spring(
+            stiffness = AppleSpringPreset.Smooth.stiffness,
+            dampingRatio = AppleSpringPreset.Smooth.dampingRatio,
+        )
 }
 
 /** Scrolls a focused element in [content] just inside [top] / [bottom]; see [TvComfortScrollSpec]. */

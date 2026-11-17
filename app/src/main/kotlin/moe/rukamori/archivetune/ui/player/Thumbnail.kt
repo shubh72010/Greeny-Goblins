@@ -785,33 +785,47 @@ fun SnapLayoutInfoProvider(
     positionInLayout: (layoutSize: Float, itemSize: Float) -> Float = { layoutSize, itemSize ->
         (layoutSize / 2f - itemSize / 2f)
     },
-    velocityThreshold: Float = 1000f,
+    velocityThreshold: Float = 400f,
 ): SnapLayoutInfoProvider =
     object : SnapLayoutInfoProvider {
         private val layoutInfo: LazyGridLayoutInfo
             get() = lazyGridState.layoutInfo
 
+        private fun averageItemDimension(): Float {
+            val items = layoutInfo.visibleItemsInfo
+            if (items.isEmpty()) return 0f
+            val isVertical = layoutInfo.orientation == Orientation.Vertical
+            return if (isVertical) {
+                items.first().size.height.toFloat()
+            } else {
+                items.first().size.width.toFloat()
+            }
+        }
+
         override fun calculateApproachOffset(
             velocity: Float,
             decayOffset: Float,
-        ): Float = 0f
+        ): Float {
+            val itemDim = averageItemDimension()
+            if (itemDim <= 0f) return 0f
+            val decayDistance = abs(decayOffset)
+            if (decayDistance < itemDim) return 0f
+            val approachDistance = (decayDistance - itemDim).coerceAtLeast(0f)
+            return if (decayOffset < 0f) -approachDistance else approachDistance
+        }
 
         override fun calculateSnapOffset(velocity: Float): Float {
             val bounds = calculateSnappingOffsetBounds()
-
-            // Only snap when velocity exceeds threshold
-            if (abs(velocity) < velocityThreshold) {
-                if (abs(bounds.start) < abs(bounds.endInclusive)) {
-                    return bounds.start
-                }
-
-                return bounds.endInclusive
-            }
+            val lower = if (bounds.start.isFinite()) bounds.start else 0f
+            val upper = if (bounds.endInclusive.isFinite()) bounds.endInclusive else 0f
 
             return when {
-                velocity < 0 -> bounds.start
-                velocity > 0 -> bounds.endInclusive
-                else -> 0f
+                velocity < -velocityThreshold -> lower
+                velocity > velocityThreshold -> upper
+                else -> {
+                    // Settle to the closer boundary on release
+                    if (abs(lower) < abs(upper)) lower else upper
+                }
             }
         }
 
@@ -845,10 +859,12 @@ fun calculateDistanceToDesiredSnapPosition(
     val containerSize =
         layoutInfo.singleAxisViewportSize - layoutInfo.beforeContentPadding - layoutInfo.afterContentPadding
 
-    val desiredDistance = positionInLayout(containerSize.toFloat(), item.size.width.toFloat())
-    val itemCurrentPosition = item.offset.x.toFloat()
+    val isVertical = layoutInfo.orientation == Orientation.Vertical
+    val itemDim = if (isVertical) item.size.height.toFloat() else item.size.width.toFloat()
+    val itemPos = if (isVertical) item.offset.y.toFloat() else item.offset.x.toFloat()
 
-    return itemCurrentPosition - desiredDistance
+    val desiredDistance = positionInLayout(containerSize.toFloat(), itemDim)
+    return itemPos - desiredDistance
 }
 
 private val LazyGridLayoutInfo.singleAxisViewportSize: Int
