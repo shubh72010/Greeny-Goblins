@@ -53,7 +53,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         artistNameRaw = artistNameRaw,
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
-                        fallbackToAnyVideo = true,
+                        fallbackToAnyVideo = currentIsMusicVideo,
                         preferLyric = preferLyric,
                     )
 
@@ -75,7 +75,7 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         artistNameRaw = artistNameRaw,
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
-                        fallbackToAnyVideo = true,
+                        fallbackToAnyVideo = currentIsMusicVideo,
                         preferLyric = preferLyric,
                     )
 
@@ -99,14 +99,6 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         artistNameRaw = artistNameRaw,
                         storefront = storefront,
                         requireVertical = requireVertical,
-                    ) ?: fetchYouTubeCanvasFallback(
-                        mediaId = mediaId,
-                        songTitleRaw = songTitleRaw,
-                        artistNameRaw = artistNameRaw,
-                        requireVertical = requireVertical,
-                        currentIsMusicVideo = currentIsMusicVideo,
-                        fallbackToAnyVideo = true,
-                        preferLyric = preferLyric,
                     )
             }
 
@@ -225,7 +217,7 @@ private fun CanvasArtwork.hasRequiredCanvasVariant(requireVertical: Boolean): Bo
 
 private const val CanvasArtworkLogTag = "CanvasArtwork"
 
-private fun normalizeCanvasSongTitle(raw: String): String {
+internal fun normalizeCanvasSongTitle(raw: String): String {
     val stripped =
         raw
             .replace(Regex("\\s*\\[[^]]*]"), "")
@@ -256,7 +248,7 @@ private fun normalizeCanvasSongTitle(raw: String): String {
         .trim()
 }
 
-private fun normalizeCanvasArtistName(raw: String): String {
+internal fun normalizeCanvasArtistName(raw: String): String {
     val first =
         raw
             .split(

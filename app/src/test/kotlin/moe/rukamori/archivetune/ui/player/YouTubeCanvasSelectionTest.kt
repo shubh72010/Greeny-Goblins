@@ -127,4 +127,25 @@ class YouTubeCanvasSelectionTest {
         val result = selectYouTubeMusicVideoCandidate(listOf(wrong, right), "Hello", "Adele")
         assertEquals("right1111111", result?.id)
     }
+
+    @Test
+    fun matchesSongTitleWithWordMusicVideoInTitle() {
+        val mv = song("mv111111111", "Hello (Official Music Video)", "Adele", isOmv = false)
+        val result = selectYouTubeMusicVideoCandidate(listOf(mv), "Hello", "Adele")
+        assertEquals("mv111111111", result?.id)
+    }
+
+    @Test
+    fun matchesFeaturedSongTitleToMusicVideoTitle() {
+        val mv = song("mv222222222", "The Weeknd - Starboy ft. Daft Punk (Official Music Video)", "The Weeknd", isOmv = false)
+        val result = selectYouTubeMusicVideoCandidate(listOf(mv), "Starboy (feat. Daft Punk)", "The Weeknd")
+        assertEquals("mv222222222", result?.id)
+    }
+
+    @Test
+    fun rejectsTopicChannelAudioUpload() {
+        val topicSong = song("t1111111111", "Hello", "Adele - Topic")
+        val result = selectYouTubeMusicVideoCandidate(listOf(topicSong), "Hello", "Adele")
+        assertNull(result)
+    }
 }
