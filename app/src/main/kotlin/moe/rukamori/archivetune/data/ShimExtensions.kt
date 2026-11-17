@@ -1,6 +1,5 @@
 package moe.rukamori.archivetune.data
 val Any?.ACOUSTIC: Any? get() = null
-val Any?.add: Any? get() = null
 val Any?.addToPlaylists: Any? get() = null
 val Any?.advancing: Any? get() = null
 val Any?.ALBUMS: Any? get() = null
@@ -19,10 +18,8 @@ val Any?.canvasFor: Any? get() = null
 val Any?.CLASSICAL: Any? get() = null
 val Any?.clearSearchHistory: Any? get() = null
 val Any?.closeMoodGenre: Any? get() = null
-val Any?.compose: Any? get() = null
 val Any?.createPlaylist: Any? get() = null
 val Any?.crossfadeSeconds: Any? get() = null
-val Any?.current: Any? get() = null
 val Any?.detail: Any? get() = null
 val Any?.discordRpcEnabled: Any? get() = null
 val Any?.discordToken: Any? get() = null
@@ -34,7 +31,6 @@ val Any?.equalizerPreset: Any? get() = null
 val Any?.explore: Any? get() = null
 val Any?.Feed: Any? get() = null
 val Any?.file: Any? get() = null
-val Any?.filter: Any? get() = null
 val Any?.fraction: Any? get() = null
 val Any?.heroUrl: Any? get() = null
 val Any?.HIP_HOP: Any? get() = null
@@ -134,7 +130,6 @@ val Any?.SPOKEN_WORD: Any? get() = null
 val Any?.start: Any? get() = null
 val Any?.startAfterTrack: Any? get() = null
 val Any?.subscription: Any? get() = null
-val Any?.substringAfter: Any? get() = null
 val Any?.suggestedSongs: Any? get() = null
 val Any?.suggestions: Any? get() = null
 val Any?.toggleAutoplay: Any? get() = null
@@ -146,14 +141,3 @@ val Any?.WatchOutputState: Any? get() = null
 val Any?.WatchPairingState: Any? get() = null
 val Any?.WatchUpdateState: Any? get() = null
 
-fun Any?.isNotBlank(): Boolean = false
-fun Any?.isNotEmpty(): Boolean = false
-fun Any?.isNullOrEmpty(): Boolean = true
-fun Any?.trim(): String = ""
-fun Any?.uppercase(): String = ""
-fun Any?.lowercase(): String = ""
-fun Any?.substringAfter(d: String = ""): String = ""
-fun Any?.forEach(action: (Any?) -> Unit) {}
-fun Any?.forEachIndexed(action: (Int, Any?) -> Unit) {}
-operator fun Any?.unaryMinus(): Int = 0
-operator fun Any?.compareTo(other: Any?): Int = 0

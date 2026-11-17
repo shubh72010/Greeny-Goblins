@@ -1,7 +1,4 @@
 package moe.rukamori.archivetune
-import moe.rukamori.archivetune.data.model.*
-import moe.rukamori.archivetune.data.*
-import moe.rukamori.archivetune.data.*
 
 import android.content.Intent
 import android.os.Bundle
@@ -10,7 +7,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
+import dagger.hilt.android.AndroidEntryPoint
 import moe.rukamori.archivetune.data.listentogether.JamInviteLink
+import moe.rukamori.archivetune.data.model.*
 import moe.rukamori.archivetune.playback.MusicLink
 import moe.rukamori.archivetune.playback.PlayerDeepLink
 import moe.rukamori.archivetune.playback.rememberMediaController
@@ -25,6 +24,7 @@ import moe.rukamori.archivetune.ui.tv.theme.BitChordTvTheme
  * Dedicated TV Activity for Android TV, Google TV, and Fire TV devices.
  * Launched via `android.intent.category.LEANBACK_LAUNCHER`.
  */
+@AndroidEntryPoint
 class TvActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()

@@ -58,7 +58,6 @@ fun includeIfPresent(path: String) {
 }
 
 include(":app")
-include(":tv")
 includeIfPresent(":core")
 includeIfPresent(":lyrics:kugou")
 includeIfPresent(":lyrics:lrclib")
@@ -89,4 +88,5 @@ includeIfPresent(":morideobfuscator")
 //        substitute(module("com.github.TeamNewPipe:NewPipeExtractor")).using(project(":extractor"))
 //    }
 // }
+
 

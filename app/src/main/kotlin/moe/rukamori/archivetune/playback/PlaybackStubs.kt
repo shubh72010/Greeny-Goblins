@@ -19,7 +19,7 @@ fun toggleAutoplay() {}
 fun toggleShuffle() {}
 fun toMediaItem(song: Song): Any? = null
 fun rememberMediaController(): Any? = null
-fun rememberPlayerState(): PlayerState = PlayerState()
+fun rememberPlayerState(controller: Any? = null): PlayerState = PlayerState()
 
 
 fun MediaController.playSongs(songs: List<moe.rukamori.archivetune.data.model.Song>, index: Int = 0) {}

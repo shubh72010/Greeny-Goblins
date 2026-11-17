@@ -11,8 +11,10 @@
     <application
         android:banner="@drawable/tv_banner">
         <activity
-            android:name=".MainActivity"
-            android:banner="@drawable/tv_banner">
+            android:name=".TvActivity"
+            android:banner="@drawable/tv_banner"
+            android:exported="true"
+            android:theme="@style/Theme.ArchiveTune">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
