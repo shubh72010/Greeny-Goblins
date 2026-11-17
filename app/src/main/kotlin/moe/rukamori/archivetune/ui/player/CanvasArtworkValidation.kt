@@ -30,16 +30,22 @@ internal fun CanvasArtwork.isPlausibleCanvasFor(
     if (requestedArtist.isNotBlank() && resolvedArtist.isNotBlank()) {
         val compactRequested = requestedArtist.replace(" ", "")
         val compactResolved = resolvedArtist.replace(" ", "")
-        if (!resolvedArtist.contains(requestedArtist) &&
-            !requestedArtist.contains(resolvedArtist) &&
-            !compactResolved.contains(compactRequested) &&
-            !compactRequested.contains(compactResolved)
-        ) {
-            return false
-        }
+        val artistMatches =
+            resolvedArtist.contains(requestedArtist) ||
+                requestedArtist.contains(resolvedArtist) ||
+                compactResolved.contains(compactRequested) ||
+                compactRequested.contains(compactResolved)
+        // Official uploads often live on a label/VEVO/Topic channel, not the artist's
+        // own name — don't throw away a correctly titled video just for that.
+        if (!artistMatches && !resolvedArtist.isChannelLike()) return false
     }
     return true
 }
+
+private val CanvasChannelWords =
+    listOf("vevo", "topic", "records", "music", "official", "entertainment", "label", "studio", "media")
+
+private fun String.isChannelLike(): Boolean = CanvasChannelWords.any { contains(it) }
 
 private fun normalizedCanvasText(raw: String): String =
     Normalizer.normalize(raw, Normalizer.Form.NFD)

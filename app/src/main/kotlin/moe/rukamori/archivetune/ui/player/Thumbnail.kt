@@ -91,7 +91,6 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.CanvasSourceKey
-import moe.rukamori.archivetune.constants.CanvasVideoKindKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -157,11 +156,7 @@ fun Thumbnail(
     val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
     val canvasSource by rememberEnumPreference(
         key = CanvasSourceKey,
-        defaultValue = CanvasSource.YOUTUBE,
-    )
-    val canvasVideoKind by rememberEnumPreference(
-        key = CanvasVideoKindKey,
-        defaultValue = CanvasVideoKind.MUSIC,
+        defaultValue = CanvasSource.AUTO,
     )
     val lowDataModeActive = rememberLowDataModeActive()
     val playerDesignStyle by rememberEnumPreference(
@@ -458,7 +453,7 @@ fun Thumbnail(
                                 }
                             }
 
-                            LaunchedEffect(shouldUseCanvas, shouldFetchCanvas, item.mediaId, canvasVideoKind) {
+                            LaunchedEffect(shouldUseCanvas, shouldFetchCanvas, item.mediaId) {
                                 if (!shouldUseCanvas) return@LaunchedEffect
 
                                 val songTitleRaw =
@@ -494,8 +489,7 @@ fun Thumbnail(
                                             allowNetwork = shouldFetchCanvas,
                                             currentIsMusicVideo = itemMetadata?.isMusicVideo ?: false,
                                             canvasSource = canvasSource,
-                                            setVideoId = itemMetadata?.setVideoId,
-                                            videoKind = canvasVideoKind,
+                                            videoKind = CanvasVideoKind.MUSIC,
                                         )
                                 } finally {
                                     canvasFetchInFlight = false

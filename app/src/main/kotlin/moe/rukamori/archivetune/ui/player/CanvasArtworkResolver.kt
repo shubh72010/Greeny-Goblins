@@ -24,7 +24,6 @@ internal suspend fun resolveCanvasArtworkForPlayback(
     allowNetwork: Boolean,
     currentIsMusicVideo: Boolean = false,
     canvasSource: CanvasSource = CanvasSource.AUTO,
-    setVideoId: String? = null,
     videoKind: CanvasVideoKind = CanvasVideoKind.MUSIC,
 ): CanvasArtwork? {
     val preferLyric = videoKind == CanvasVideoKind.LYRIC
@@ -55,7 +54,6 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
-                        setVideoId = setVideoId,
                         preferLyric = preferLyric,
                     )
 
@@ -78,7 +76,6 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
-                        setVideoId = setVideoId,
                         preferLyric = preferLyric,
                     )
 
@@ -90,7 +87,6 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = false,
-                        setVideoId = setVideoId,
                         preferLyric = preferLyric,
                     ) ?: fetchCanvasArtworkForPlayback(
                         songTitleRaw = songTitleRaw,
@@ -110,7 +106,6 @@ internal suspend fun resolveCanvasArtworkForPlayback(
                         requireVertical = requireVertical,
                         currentIsMusicVideo = currentIsMusicVideo,
                         fallbackToAnyVideo = true,
-                        setVideoId = setVideoId,
                         preferLyric = preferLyric,
                     )
             }
@@ -203,7 +198,6 @@ private suspend fun fetchYouTubeCanvasFallback(
     requireVertical: Boolean,
     currentIsMusicVideo: Boolean = false,
     fallbackToAnyVideo: Boolean = true,
-    setVideoId: String? = null,
     preferLyric: Boolean = false,
 ): CanvasArtwork? {
     if (requireVertical) return null
@@ -215,7 +209,6 @@ private suspend fun fetchYouTubeCanvasFallback(
             requireVertical = false,
             currentIsMusicVideo = currentIsMusicVideo,
             fallbackToAnyVideo = fallbackToAnyVideo,
-            setVideoId = setVideoId,
             preferLyric = preferLyric,
         )
     }.onFailure { error ->

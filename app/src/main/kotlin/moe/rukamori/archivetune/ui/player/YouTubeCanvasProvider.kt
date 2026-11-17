@@ -47,20 +47,18 @@ object YouTubeCanvasProvider {
         requireVertical: Boolean,
         currentIsMusicVideo: Boolean = false,
         fallbackToAnyVideo: Boolean = true,
-        setVideoId: String? = null,
         preferLyric: Boolean = false,
     ): CanvasArtwork? {
         if (requireVertical) return null
-        if (mediaId.isBlank() && songTitleRaw.isBlank() && artistNameRaw.isBlank() && setVideoId.isNullOrBlank()) return null
+        if (mediaId.isBlank() && songTitleRaw.isBlank() && artistNameRaw.isBlank()) return null
 
         Timber.tag(LogTag).d(
-            "resolveForPlayback mediaId=%s song=%s artist=%s currentIsMusicVideo=%b fallbackToAnyVideo=%b setVideoId=%s",
+            "resolveForPlayback mediaId=%s song=%s artist=%s currentIsMusicVideo=%b fallbackToAnyVideo=%b",
             mediaId,
             songTitleRaw,
             artistNameRaw,
             currentIsMusicVideo,
             fallbackToAnyVideo,
-            setVideoId,
         )
 
         val currentVideoId = mediaId.takeIf { it.isUsableVideoId() }
@@ -74,18 +72,8 @@ object YouTubeCanvasProvider {
             }
         }
 
-        // Authoritative link from YouTube Music: the official music video for this song.
-        val linkedId = setVideoId?.takeIf { it.isUsableVideoId() }
-        if (linkedId != null) {
-            val linked = resolveVideoAndValidate(linkedId, songTitleRaw, artistNameRaw, preferLyric)
-            if (linked != null) {
-                Timber.tag(LogTag).d("Using linked music video %s", linked.videoId)
-                return linked.toCanvasArtwork()
-            }
-        }
-
-        // Library/local tracks lose setVideoId; recover the link from YouTube's watch-next queue.
-        if (linkedId == null && currentVideoId != null) {
+        // The official music video is linked from YouTube's watch-next queue.
+        if (currentVideoId != null) {
             val linkedFromNext =
                 resolveLinkedFromWatchNext(currentVideoId, songTitleRaw, artistNameRaw, preferLyric)
             if (linkedFromNext != null) {

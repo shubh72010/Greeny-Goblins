@@ -134,7 +134,6 @@ import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.constants.CanvasSourceKey
-import moe.rukamori.archivetune.constants.CanvasVideoKindKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.player.CanvasSource
@@ -4032,8 +4031,7 @@ fun PlayerBackground(
     modifier: Modifier = Modifier,
 ) {
     val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
-    val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.YOUTUBE)
-    val canvasVideoKind by rememberEnumPreference(CanvasVideoKindKey, CanvasVideoKind.MUSIC)
+    val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.AUTO)
     val lowDataModeActive = rememberLowDataModeActive()
     val storefront = remember {
         val country = java.util.Locale.getDefault().country
@@ -4041,7 +4039,7 @@ fun PlayerBackground(
     }
     var canvasArtwork by remember(mediaMetadata?.id) { mutableStateOf<CanvasArtwork?>(null) }
     var canvasFetchInFlight by remember(mediaMetadata?.id) { mutableStateOf(false) }
-    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled, playerBackground, canvasVideoKind) {
+    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled, playerBackground) {
         val meta = mediaMetadata
         if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS || !archiveTuneCanvasEnabled || meta == null) {
             canvasArtwork = null
@@ -4063,8 +4061,7 @@ fun PlayerBackground(
                     allowNetwork = !lowDataModeActive,
                     currentIsMusicVideo = meta.isMusicVideo,
                     canvasSource = canvasSource,
-                    setVideoId = meta.setVideoId,
-                    videoKind = canvasVideoKind,
+                    videoKind = CanvasVideoKind.MUSIC,
                 )
             }.getOrNull()
         } finally {

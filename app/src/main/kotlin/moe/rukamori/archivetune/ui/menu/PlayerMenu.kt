@@ -112,7 +112,6 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.ArtistSeparatorsKey
 import moe.rukamori.archivetune.constants.CanvasSourceKey
-import moe.rukamori.archivetune.constants.CanvasVideoKindKey
 import moe.rukamori.archivetune.constants.EnableDeckMixKey
 import moe.rukamori.archivetune.constants.EqualizerBandLevelsMbKey
 import moe.rukamori.archivetune.constants.EqualizerBassBoostEnabledKey
@@ -126,6 +125,7 @@ import moe.rukamori.archivetune.constants.EqualizerVirtualizerEnabledKey
 import moe.rukamori.archivetune.constants.EqualizerVirtualizerStrengthKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
+import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.EqProfile
@@ -141,7 +141,6 @@ import moe.rukamori.archivetune.ui.component.NewActionGrid
 import moe.rukamori.archivetune.ui.component.NewMenuSectionHeader
 import moe.rukamori.archivetune.ui.component.TextFieldDialog
 import moe.rukamori.archivetune.ui.player.CanvasSource
-import moe.rukamori.archivetune.ui.player.CanvasVideoKind
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.player.label
 import moe.rukamori.archivetune.ui.player.rememberDeviceMusicVolumeController
@@ -232,9 +231,8 @@ fun PlayerMenu(
 
     // Artist separators for splitting artist names
     val (artistSeparators) = rememberPreference(ArtistSeparatorsKey, defaultValue = ",;/&")
-    val (canvasSource, onCanvasSourceChange) = rememberEnumPreference(CanvasSourceKey, CanvasSource.YOUTUBE)
-    val (canvasVideoKind, onCanvasVideoKindChange) =
-        rememberEnumPreference(CanvasVideoKindKey, CanvasVideoKind.MUSIC)
+    val (canvasSource, onCanvasSourceChange) = rememberEnumPreference(CanvasSourceKey, CanvasSource.AUTO)
+    val (canvasEnabled, onCanvasEnabledChange) = rememberPreference(JusPlayerCanvasKey, defaultValue = true)
     val (externalDownloaderEnabled) = rememberPreference(ExternalDownloaderEnabledKey, defaultValue = false)
     val (externalDownloaderPackage) = rememberPreference(ExternalDownloaderPackageKey, defaultValue = "")
     val (speedDialSongIds, onSpeedDialSongIdsChange) = rememberPreference(SpeedDialSongIdsKey, "")
@@ -706,19 +704,15 @@ fun PlayerMenu(
                     PlayerMenuRow(
                         leading = {
                             Icon(
-                                painter = painterResource(
-                                    if (canvasVideoKind == CanvasVideoKind.LYRIC) R.drawable.lyrics else R.drawable.music_note,
-                                ),
+                                painter = painterResource(R.drawable.auto_awesome),
                                 contentDescription = null,
                             )
                         },
-                        label = stringResource(R.string.canvas_video_kind),
-                        supporting = canvasVideoKind.label(),
+                        label = stringResource(R.string.archivetune_canvas),
+                        supporting = stringResource(if (canvasEnabled) R.string.enabled else R.string.disabled),
                         onClick = {
-                            val next =
-                                if (canvasVideoKind == CanvasVideoKind.MUSIC) CanvasVideoKind.LYRIC else CanvasVideoKind.MUSIC
+                            onCanvasEnabledChange(!canvasEnabled)
                             CanvasArtworkPlaybackCache.clearAndPersist()
-                            onCanvasVideoKindChange(next)
                             onDismiss()
                         },
                     ),

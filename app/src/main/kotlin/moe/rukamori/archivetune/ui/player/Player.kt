@@ -156,7 +156,6 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.CanvasSourceKey
-import moe.rukamori.archivetune.constants.CanvasVideoKindKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
@@ -336,11 +335,7 @@ fun BottomSheetPlayer(
         }
     val canvasSource by rememberEnumPreference(
         key = CanvasSourceKey,
-        defaultValue = CanvasSource.YOUTUBE,
-    )
-    val canvasVideoKind by rememberEnumPreference(
-        key = CanvasVideoKindKey,
-        defaultValue = CanvasVideoKind.MUSIC,
+        defaultValue = CanvasSource.AUTO,
     )
     val showPlayerVolumeBar by rememberPreference(
         key = ShowPlayerVolumeBarKey,
@@ -1119,7 +1114,7 @@ fun BottomSheetPlayer(
             mutableStateOf(false)
         }
 
-        LaunchedEffect(shouldUseV7Canvas, shouldFetchV7Canvas, mediaMetadata?.id, canvasVideoKind) {
+        LaunchedEffect(shouldUseV7Canvas, shouldFetchV7Canvas, mediaMetadata?.id) {
             val metadata = mediaMetadata
             if (!shouldUseV7Canvas || metadata == null) {
                 v7CanvasArtwork = null
@@ -1150,15 +1145,14 @@ fun BottomSheetPlayer(
                         allowNetwork = shouldFetchV7Canvas,
                         currentIsMusicVideo = metadata.isMusicVideo,
                         canvasSource = canvasSource,
-                        setVideoId = metadata.setVideoId,
-                        videoKind = canvasVideoKind,
+                        videoKind = CanvasVideoKind.MUSIC,
                     )
             } finally {
                 v7CanvasFetchInFlight = false
             }
         }
 
-        LaunchedEffect(shouldUseArtworkCanvas, shouldFetchArtworkCanvas, mediaMetadata?.id, canvasVideoKind) {
+        LaunchedEffect(shouldUseArtworkCanvas, shouldFetchArtworkCanvas, mediaMetadata?.id) {
             val metadata = mediaMetadata
             if (!shouldUseArtworkCanvas || metadata == null) {
                 artworkCanvas = null
@@ -1189,8 +1183,7 @@ fun BottomSheetPlayer(
                         allowNetwork = shouldFetchArtworkCanvas,
                         currentIsMusicVideo = metadata.isMusicVideo,
                         canvasSource = canvasSource,
-                        setVideoId = metadata.setVideoId,
-                        videoKind = canvasVideoKind,
+                        videoKind = CanvasVideoKind.MUSIC,
                     )
             } finally {
                 artworkCanvasFetchInFlight = false

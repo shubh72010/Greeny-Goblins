@@ -30,4 +30,10 @@ class CanvasArtworkValidationTest {
         val artwork = CanvasArtwork(name = "Senorita (Official Music Video)", artist = "Shawn Mendes")
         assertTrue(artwork.isPlausibleCanvasFor("Señorita", "Shawn Mendes"))
     }
+
+    @Test
+    fun acceptsLabelChannelForCorrectTitle() {
+        val artwork = CanvasArtwork(name = "Senorita (Official Music Video)", artist = "Atlantic Records")
+        assertTrue(artwork.isPlausibleCanvasFor("Señorita", "Shawn Mendes"))
+    }
 }
