@@ -87,10 +87,10 @@ fun SongItem.toMediaItem() =
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
                 .setArtworkUri(
-                    if (isMusicVideo()) {
-                        buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
-                    } else if (BlockedArtwork.isBlocked(id)) {
+                    if (BlockedArtwork.isBlocked(id)) {
                         null
+                    } else if (isMusicVideo()) {
+                        buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
                     } else {
                         thumbnail.toNotificationArtworkUri()
                     },
@@ -115,10 +115,10 @@ fun MediaMetadata.toMediaItem() =
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
                 .setArtworkUri(
-                    if (isMusicVideo) {
-                        buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
-                    } else if (BlockedArtwork.isBlocked(id)) {
+                    if (BlockedArtwork.isBlocked(id)) {
                         null
+                    } else if (isMusicVideo) {
+                        buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
                     } else {
                         thumbnailUrl.toNotificationArtworkUri()
                     },

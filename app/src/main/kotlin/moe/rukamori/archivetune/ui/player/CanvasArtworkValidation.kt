@@ -28,7 +28,7 @@ internal fun CanvasArtwork.isPlausibleCanvasFor(
     val requestedArtist = normalizedCanvasText(artistName)
     val resolvedArtist = normalizedCanvasText(artist.orEmpty())
     // Auto-generated Topic channels are audio-only uploads, never music videos.
-    if (resolvedArtist.endsWith("topic") || resolvedArtist.contains(" topic")) return false
+    if (resolvedArtist.endsWith(" - topic") || resolvedArtist.equals("topic", ignoreCase = true)) return false
 
     if (requestedArtist.isNotBlank() && resolvedArtist.isNotBlank()) {
         val compactRequested = requestedArtist.replace(" ", "")

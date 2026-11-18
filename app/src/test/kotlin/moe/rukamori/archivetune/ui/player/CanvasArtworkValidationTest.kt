@@ -36,4 +36,10 @@ class CanvasArtworkValidationTest {
         val artwork = CanvasArtwork(name = "Senorita (Official Music Video)", artist = "Atlantic Records")
         assertTrue(artwork.isPlausibleCanvasFor("Señorita", "Shawn Mendes"))
     }
+
+    @Test
+    fun acceptsArtistContainingTopic() {
+        val artwork = CanvasArtwork(name = "Song (Official Music Video)", artist = "Hot Topic")
+        assertTrue(artwork.isPlausibleCanvasFor("Song", "Hot Topic"))
+    }
 }

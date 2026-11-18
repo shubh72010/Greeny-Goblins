@@ -345,7 +345,7 @@ object AmazonMusicPlaylistParser {
                             albumName = albumRaw,
                             thumbnailUrl = thumbnail,
                         ),
-                        artists = if (artists.isEmpty()) listOf(ArtistEntity(id = "", name = "")) else artists,
+                        artists = artists,
                     ),
                 )
             }

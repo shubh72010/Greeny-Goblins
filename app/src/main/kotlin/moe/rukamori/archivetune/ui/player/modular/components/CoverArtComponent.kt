@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
 import moe.rukamori.archivetune.constants.ModularCoverArtStyle
 import moe.rukamori.archivetune.constants.ModularCoverArtStyleKey
@@ -53,6 +54,8 @@ import moe.rukamori.archivetune.ui.player.modular.PlayerComponentRegistry
 import moe.rukamori.archivetune.ui.player.modular.PlayerComponentType
 import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
 import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
+import moe.rukamori.archivetune.utils.BlockedArtwork
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 
@@ -60,16 +63,20 @@ fun registerCoverArtComponent() {
     PlayerComponentRegistry.register(PlayerComponentType.COVER_ART.id) { _, metadata, playerConnection, isPlaying, _, _, _, _, _, _, modifier, _ ->
         val (coverArtStyle) = rememberEnumPreference(ModularCoverArtStyleKey, defaultValue = ModularCoverArtStyle.NORMAL)
         val (hideThumbnail) = rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
+        val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, defaultValue = "")
         val (cropToSquare) = rememberPreference(CropThumbnailToSquareKey, defaultValue = true)
         val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS)
         if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
             val cornerRadius = LocalThumbnailCornerRadius.current
+            val isCoverHidden = hideThumbnail ||
+                isSongInSet(hiddenCoverIds, metadata?.id.orEmpty()) ||
+                BlockedArtwork.isBlocked(metadata?.id.orEmpty())
             CoverArtComponent(
                 metadata = metadata,
                 playerConnection = playerConnection,
                 isPlaying = isPlaying,
                 coverArtStyle = coverArtStyle,
-                hideThumbnail = hideThumbnail,
+                hideThumbnail = isCoverHidden,
                 cropToSquare = cropToSquare,
                 cornerRadius = cornerRadius,
                 modifier = modifier,
@@ -100,6 +107,7 @@ fun CoverArtComponent(
         ModularCoverArtStyle.LYRIC -> LyricVariant(
             metadata = metadata,
             playerConnection = playerConnection,
+            hideThumbnail = hideThumbnail,
             shape = shape,
             modifier = modifier,
         )
@@ -204,6 +212,7 @@ private fun StyleCardVariant(
 private fun LyricVariant(
     metadata: MediaMetadata?,
     playerConnection: PlayerConnection,
+    hideThumbnail: Boolean = false,
     shape: Shape = RoundedCornerShape(16.dp),
     modifier: Modifier = Modifier,
 ) {
@@ -253,7 +262,7 @@ private fun LyricVariant(
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
-        if (metadata?.thumbnailUrl != null) {
+        if (!hideThumbnail && metadata?.thumbnailUrl != null) {
             AsyncImage(
                 model = metadata.thumbnailUrl,
                 contentDescription = null,

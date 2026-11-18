@@ -440,7 +440,7 @@ fun PlayerMenu(
         ) {
             item {
                 Text(
-                    text = stringResource(R.string.hide_song_duration_title),
+                    text = stringResource(R.string.hide_song_duration_title, mediaMetadata.title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp),
                 )
