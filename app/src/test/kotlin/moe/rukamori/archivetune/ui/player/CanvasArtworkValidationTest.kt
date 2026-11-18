@@ -38,6 +38,24 @@ class CanvasArtworkValidationTest {
     }
 
     @Test
+    fun rejectsTopicChannelUploads() {
+        val artwork = CanvasArtwork(name = "Senorita", artist = "Shawn Mendes - Topic")
+        assertFalse(artwork.isPlausibleCanvasFor("Senorita", "Shawn Mendes"))
+    }
+
+    @Test
+    fun rejectsTopicChannelForArtistTopic() {
+        val artwork = CanvasArtwork(name = "Breaking Me", artist = "Topic - Topic")
+        assertFalse(artwork.isPlausibleCanvasFor("Breaking Me", "Topic"))
+    }
+
+    @Test
+    fun acceptsArtistNamedTopic() {
+        val artwork = CanvasArtwork(name = "Breaking Me (Official Video)", artist = "Topic")
+        assertTrue(artwork.isPlausibleCanvasFor("Breaking Me", "Topic"))
+    }
+
+    @Test
     fun acceptsArtistContainingTopic() {
         val artwork = CanvasArtwork(name = "Song (Official Music Video)", artist = "Hot Topic")
         assertTrue(artwork.isPlausibleCanvasFor("Song", "Hot Topic"))
