@@ -33,6 +33,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.amazon.AmazonMusicPlaylistParser
+import moe.rukamori.archivetune.amazon.AmazonPlaylistResult
 import moe.rukamori.archivetune.db.InternalDatabase
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.ArtistEntity
@@ -736,6 +738,12 @@ class BackupRestoreViewModel
             }
 
             return songs
+        }
+
+        suspend fun importAmazonMusicPlaylist(
+            rawInput: String,
+        ): Result<AmazonPlaylistResult> {
+            return AmazonMusicPlaylistParser.parsePlaylist(rawInput)
         }
 
         suspend fun validateBackup(

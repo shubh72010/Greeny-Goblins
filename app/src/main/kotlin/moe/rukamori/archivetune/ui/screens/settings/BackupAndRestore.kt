@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -53,6 +54,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -79,8 +81,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -142,8 +146,10 @@ fun BackupAndRestore(
     viewModel: BackupRestoreViewModel = hiltViewModel(),
     spotifyAccountViewModel: SpotifyAccountViewModel = hiltViewModel(),
     highlight: String? = null,
+    amazonUrl: String? = null,
 ) {
     val importedSongs = remember { mutableStateListOf<Song>() }
+    var importedPlaylistTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var showChoosePlaylistDialogOnline by rememberSaveable { mutableStateOf(false) }
     var isProgressStarted by rememberSaveable { mutableStateOf(false) }
     var progressStatus by remember { mutableStateOf("") }
@@ -154,9 +160,19 @@ fun BackupAndRestore(
     var restoreValidationErrorMessage by remember { mutableStateOf("") }
     var showSpotifyLogin by rememberSaveable { mutableStateOf(false) }
     var showAmazonMusicImportDialog by rememberSaveable { mutableStateOf(false) }
+    var amazonUrlInput by rememberSaveable { mutableStateOf(amazonUrl ?: "") }
+    var isAmazonLoading by rememberSaveable { mutableStateOf(false) }
+    var amazonError by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingBackupCategories by remember { mutableStateOf(BackupCategory.entries.toSet()) }
     var pendingRestoreCategories by remember { mutableStateOf(BackupCategory.entries.toSet()) }
     var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
+
+    LaunchedEffect(amazonUrl) {
+        if (!amazonUrl.isNullOrBlank()) {
+            amazonUrlInput = amazonUrl
+            showAmazonMusicImportDialog = true
+        }
+    }
 
     val backupRestoreProgress by viewModel.backupRestoreProgress.collectAsStateWithLifecycle()
     val spotifyState by spotifyAccountViewModel.uiState.collectAsStateWithLifecycle()
@@ -375,12 +391,24 @@ fun BackupAndRestore(
     }
 
     if (showAmazonMusicImportDialog) {
+        val clipboardManager = LocalClipboardManager.current
+        val keyboardController = LocalSoftwareKeyboardController.current
+
         DefaultDialog(
-            onDismiss = { showAmazonMusicImportDialog = false },
+            onDismiss = {
+                if (!isAmazonLoading) {
+                    showAmazonMusicImportDialog = false
+                    amazonError = null
+                }
+            },
             title = { Text(stringResource(R.string.import_amazon_music_help_title)) },
             buttons = {
                 TextButton(
-                    onClick = { showAmazonMusicImportDialog = false },
+                    onClick = {
+                        showAmazonMusicImportDialog = false
+                        amazonError = null
+                    },
+                    enabled = !isAmazonLoading,
                     shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(stringResource(android.R.string.cancel))
@@ -388,19 +416,138 @@ fun BackupAndRestore(
                 TextButton(
                     onClick = {
                         showAmazonMusicImportDialog = false
+                        amazonError = null
                         importPlaylistFromCsv.launch(CSV_MIME_TYPES)
                     },
+                    enabled = !isAmazonLoading,
                     shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(stringResource(R.string.import_amazon_music_choose_csv))
                 }
+                TextButton(
+                    onClick = {
+                        val input = amazonUrlInput.trim()
+                        if (input.isBlank()) {
+                            amazonError = context.getString(R.string.import_amazon_music_error_invalid_url)
+                            return@TextButton
+                        }
+                        isAmazonLoading = true
+                        amazonError = null
+                        keyboardController?.hide()
+                        coroutineScope.launch {
+                            val result = viewModel.importAmazonMusicPlaylist(input)
+                            isAmazonLoading = false
+                            result.onSuccess { data ->
+                                if (data.songs.isEmpty()) {
+                                    amazonError = context.getString(R.string.import_amazon_music_empty)
+                                } else {
+                                    importedSongs.clear()
+                                    importedSongs.addAll(data.songs)
+                                    importedPlaylistTitle = data.title
+                                    showAmazonMusicImportDialog = false
+                                    showChoosePlaylistDialogOnline = true
+                                }
+                            }.onFailure { err ->
+                                amazonError = err.message
+                                    ?: context.getString(R.string.import_amazon_music_error_failed)
+                            }
+                        }
+                    },
+                    enabled = !isAmazonLoading && amazonUrlInput.isNotBlank(),
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Text(stringResource(R.string.import_amazon_music_btn_import))
+                }
             },
         ) {
-            Text(
-                text = stringResource(R.string.import_amazon_music_help_body),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.import_amazon_music_help_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                OutlinedTextField(
+                    value = amazonUrlInput,
+                    onValueChange = {
+                        amazonUrlInput = it
+                        amazonError = null
+                    },
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.import_amazon_music_url_hint),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    singleLine = true,
+                    enabled = !isAmazonLoading,
+                    trailingIcon = {
+                        if (amazonUrlInput.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    amazonUrlInput = ""
+                                    amazonError = null
+                                },
+                                enabled = !isAmazonLoading,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.close),
+                                    contentDescription = stringResource(R.string.clear),
+                                )
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    val clip = clipboardManager.getText()?.text
+                                    if (!clip.isNullOrBlank()) {
+                                        amazonUrlInput = clip.trim()
+                                        amazonError = null
+                                    }
+                                },
+                                enabled = !isAmazonLoading,
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.link),
+                                    contentDescription = stringResource(R.string.paste),
+                                )
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                if (isAmazonLoading) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularWavyProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(R.string.import_amazon_music_fetching),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+
+                if (amazonError != null) {
+                    Text(
+                        text = amazonError!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
         }
     }
 
@@ -424,8 +571,12 @@ fun BackupAndRestore(
     AddToPlaylistDialogOnline(
         isVisible = showChoosePlaylistDialogOnline,
         allowSyncing = false,
+        initialTextFieldValue = importedPlaylistTitle,
         songs = importedSongs,
-        onDismiss = { showChoosePlaylistDialogOnline = false },
+        onDismiss = {
+            showChoosePlaylistDialogOnline = false
+            importedPlaylistTitle = null
+        },
         onProgressStart = { isProgressStarted = it },
         onPercentageChange = { progressPercentage = it },
         onStatusChange = { progressStatus = it },

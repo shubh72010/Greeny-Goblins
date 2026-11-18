@@ -466,10 +466,17 @@ fun NavGraphBuilder.navigationBuilder(
         arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
     ) { backStackEntry -> PrivacySettings(navController, highlight = backStackEntry.arguments?.getString("highlight")) }
     composable(
-        route = "settings/backup_restore?highlight={highlight}",
-        arguments = listOf(navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null }),
+        route = "settings/backup_restore?highlight={highlight}&amazon_url={amazon_url}",
+        arguments = listOf(
+            navArgument("highlight") { type = NavType.StringType; nullable = true; defaultValue = null },
+            navArgument("amazon_url") { type = NavType.StringType; nullable = true; defaultValue = null },
+        ),
     ) { backStackEntry ->
-        BackupAndRestore(navController, highlight = backStackEntry.arguments?.getString("highlight"))
+        BackupAndRestore(
+            navController = navController,
+            highlight = backStackEntry.arguments?.getString("highlight"),
+            amazonUrl = backStackEntry.arguments?.getString("amazon_url"),
+        )
     }
     composable(
         route = "settings/discord?highlight={highlight}",

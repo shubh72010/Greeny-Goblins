@@ -2616,6 +2616,14 @@ class MainActivity : ComponentActivity() {
         intent: Intent,
         navController: NavHostController,
     ) {
+        val rawText = intent.getStringExtra(Intent.EXTRA_TEXT) ?: intent.dataString
+        val amazonUrl = moe.rukamori.archivetune.amazon.AmazonMusicPlaylistParser.extractAmazonUrl(rawText)
+        if (amazonUrl != null) {
+            val encoded = Uri.encode(amazonUrl)
+            navController.navigate("settings/backup_restore?highlight=import_amazon_music&amazon_url=$encoded")
+            return
+        }
+
         val uri = intent.data ?: intent.extras?.getString(Intent.EXTRA_TEXT)?.toUri() ?: return
         val coroutineScope = lifecycleScope
 
