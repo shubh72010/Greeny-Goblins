@@ -20,6 +20,7 @@ import moe.rukamori.archivetune.models.toMediaMetadata
 import moe.rukamori.archivetune.ui.utils.YTThumbQuality
 import moe.rukamori.archivetune.ui.utils.buildYTThumbnailUrl
 import moe.rukamori.archivetune.ui.utils.resize
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.isLocalMediaId
 
 const val ExtraIsMusicVideo = "com.jusdots.jusplayer.extra.IS_MUSIC_VIDEO"
@@ -64,7 +65,7 @@ fun Song.toMediaItem() =
                 .setTitle(song.title)
                 .setSubtitle(artists.joinToString { it.name })
                 .setArtist(artists.joinToString { it.name })
-                .setArtworkUri(song.thumbnailUrl.toNotificationArtworkUri())
+                .setArtworkUri(if (BlockedArtwork.isBlocked(song.id)) null else song.thumbnailUrl.toNotificationArtworkUri())
                 .setAlbumTitle(song.albumName)
                 .setIsPlayable(true)
                 .setMediaType(MEDIA_TYPE_MUSIC)
@@ -88,6 +89,8 @@ fun SongItem.toMediaItem() =
                 .setArtworkUri(
                     if (isMusicVideo()) {
                         buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
+                    } else if (BlockedArtwork.isBlocked(id)) {
+                        null
                     } else {
                         thumbnail.toNotificationArtworkUri()
                     },
@@ -114,6 +117,8 @@ fun MediaMetadata.toMediaItem() =
                 .setArtworkUri(
                     if (isMusicVideo) {
                         buildYTThumbnailUrl(id, YTThumbQuality.HQ).toUri()
+                    } else if (BlockedArtwork.isBlocked(id)) {
+                        null
                     } else {
                         thumbnailUrl.toNotificationArtworkUri()
                     },

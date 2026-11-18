@@ -466,11 +466,11 @@ private fun List<SearchResult>.deduplicated(): List<SearchResult> {
     val names = HashSet<String>()
     return filter { result ->
         when (result) {
-            is SearchResult.Browse -> result.item.browseId.isBlank() || ids.add("b:" + result.item.browseId)
+            is SearchResult.Browse -> result.item.browseId.isNullOrBlank() || ids.add("b:" + result.item.browseId)
             else -> {
                 val song = result.song() ?: return@filter true
                 val name = song.title.trim().lowercase() + "|" + song.artist.trim().lowercase()
-                (song.videoId.isBlank() || ids.add("t:" + song.videoId)) && names.add(name)
+                (song.videoId.isNullOrBlank() || ids.add("t:" + song.videoId)) && names.add(name)
             }
         }
     }

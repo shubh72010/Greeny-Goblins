@@ -169,7 +169,7 @@ import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.Duration.Companion.weeks
+
 
 @Composable
 fun PlayerMenu(
@@ -432,7 +432,7 @@ fun PlayerMenu(
             listOf(
                 6.hours to stringResource(R.string.hide_song_duration_6_hours),
                 1.days to stringResource(R.string.hide_song_duration_1_day),
-                1.weeks to stringResource(R.string.hide_song_duration_1_week),
+                7.days to stringResource(R.string.hide_song_duration_1_week),
                 30.days to stringResource(R.string.hide_song_duration_1_month),
             )
         ListDialog(
@@ -440,7 +440,7 @@ fun PlayerMenu(
         ) {
             item {
                 Text(
-                    text = stringResource(R.string.hide_song_title),
+                    text = stringResource(R.string.hide_song_duration_title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp),
                 )

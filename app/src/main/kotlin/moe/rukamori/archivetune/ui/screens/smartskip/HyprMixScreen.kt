@@ -13,12 +13,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,12 +58,10 @@ import moe.rukamori.archivetune.constants.HyprMixRecordingEnabledKey
 import moe.rukamori.archivetune.playback.queues.hyprMixQueue
 import moe.rukamori.archivetune.ui.component.DefaultDialog
 import moe.rukamori.archivetune.ui.component.SongListItem
-import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.viewmodels.HyprMixEntry
 import moe.rukamori.archivetune.viewmodels.HyprMixViewModel
-import java.util.Locale
 
 @Composable
 fun HyprMixScreen(
@@ -91,52 +95,78 @@ fun HyprMixScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = padding,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item(key = "switches") {
-                Column {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(start = 16.dp, end = 8.dp, top = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+            item(key = "intro") {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(
+                        text = stringResource(R.string.hyprmix_settings_subtitle),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.size(4.dp))
+                    Text(
+                        text = stringResource(R.string.hyprmix_explainer),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            item(key = "play") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.hyprmix_summary, state.entries.size, state.playCount),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Button(
+                        onClick = { playerConnection?.playQueue(hyprMixQueue(songs, 0)) },
+                        enabled = songs.isNotEmpty(),
                     ) {
-                        Text(
-                            text = stringResource(R.string.hyprmix_summary, state.entries.size, state.playCount),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f),
+                        Text(stringResource(R.string.hyprmix_play))
+                    }
+                }
+            }
+
+            item(key = "settings") {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                ) {
+                    Column {
+                        SwitchRow(
+                            title = stringResource(R.string.hyprmix_record_title),
+                            subtitle = stringResource(R.string.hyprmix_record_subtitle),
+                            checked = recordingPref.value,
+                            onCheckedChange = { recordingPref.value = it },
+                        )
+                        SwitchRow(
+                            title = stringResource(R.string.hyprmix_learn_title),
+                            subtitle = stringResource(R.string.hyprmix_learn_subtitle),
+                            checked = learningPref.value,
+                            onCheckedChange = { learningPref.value = it },
+                        )
+                        SwitchRow(
+                            title = stringResource(R.string.hyprmix_autoskip_title),
+                            subtitle = stringResource(R.string.hyprmix_autoskip_subtitle),
+                            checked = autoSkipPref.value,
+                            onCheckedChange = { autoSkipPref.value = it },
                         )
                         TextButton(
-                            onClick = { playerConnection?.playQueue(hyprMixQueue(songs, 0)) },
-                            enabled = songs.isNotEmpty(),
+                            onClick = viewModel::forgetEverything,
+                            modifier = Modifier.padding(horizontal = 8.dp),
                         ) {
-                            Text(stringResource(R.string.hyprmix_play))
+                            Text(stringResource(R.string.hyprmix_delete_all))
                         }
-                    }
-                    SwitchRow(
-                        title = stringResource(R.string.hyprmix_record_title),
-                        subtitle = stringResource(R.string.hyprmix_record_subtitle),
-                        checked = recordingPref.value,
-                        onCheckedChange = { recordingPref.value = it },
-                    )
-                    SwitchRow(
-                        title = stringResource(R.string.hyprmix_learn_title),
-                        subtitle = stringResource(R.string.hyprmix_learn_subtitle),
-                        checked = learningPref.value,
-                        onCheckedChange = { learningPref.value = it },
-                    )
-                    SwitchRow(
-                        title = stringResource(R.string.hyprmix_autoskip_title),
-                        subtitle = stringResource(R.string.hyprmix_autoskip_subtitle),
-                        checked = autoSkipPref.value,
-                        onCheckedChange = { autoSkipPref.value = it },
-                    )
-                    TextButton(
-                        onClick = viewModel::forgetEverything,
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                    ) {
-                        Text(stringResource(R.string.hyprmix_delete_all))
                     }
                 }
             }
@@ -147,7 +177,7 @@ fun HyprMixScreen(
                         text = stringResource(R.string.hyprmix_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(24.dp),
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
             }
@@ -196,10 +226,9 @@ private fun HyprMixSongRow(
     Column {
         SongListItem(
             song = entry.song,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onClick),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick),
             showInLibraryIcon = true,
             trailingContent = {
                 Surface(
@@ -210,10 +239,9 @@ private fun HyprMixSongRow(
                             entry.introUntilMs > 0L -> MaterialTheme.colorScheme.secondaryContainer
                             else -> MaterialTheme.colorScheme.surfaceVariant
                         },
-                    modifier =
-                        Modifier
-                            .clickable(onClick = onEditIntro)
-                            .padding(start = 4.dp),
+                    modifier = Modifier
+                        .clickable(onClick = onEditIntro)
+                        .padding(start = 4.dp),
                 ) {
                     Text(
                         text =
@@ -229,41 +257,13 @@ private fun HyprMixSongRow(
             },
         )
         Text(
-            text =
-                joinByBullet(
-                    stringResource(R.string.hyprmix_rank, rank),
-                    stringResource(R.string.hyprmix_plays, candidate.plays),
-                    stringResource(R.string.hyprmix_finished, candidate.completed),
-                    stringResource(R.string.hyprmix_skipped, candidate.quickSkips),
-                    stringResource(R.string.hyprmix_after_skip, candidate.arrivals),
-                    stringResource(R.string.hyprmix_score, String.format(Locale.US, "%.2f", candidate.score)),
-                ),
+            text = stringResource(R.string.hyprmix_played, candidate.plays) +
+                if (entry.introUntilMs > 0L) " · " + stringResource(R.string.hyprmix_learned_from, entry.samples) else "",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp),
-        )
-        Text(
-            text =
-                joinByBullet(
-                    if (entry.introUntilMs > 0L) {
-                        stringResource(R.string.hyprmix_learned_from, entry.samples)
-                    } else {
-                        null
-                    },
-                    stringResource(
-                        R.string.hyprmix_last_played,
-                        (System.currentTimeMillis() - candidate.lastPlayedAt).coerceAtLeast(0L) / 86_400_000L,
-                    ),
-                ),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
         )
     }
 }
@@ -276,11 +276,10 @@ private fun SwitchRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable { onCheckedChange(!checked) }
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

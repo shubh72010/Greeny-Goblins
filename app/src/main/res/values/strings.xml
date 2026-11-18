@@ -175,6 +175,8 @@
     <string name="show_song_in_recommendations">Recommend this song again</string>
     <string name="hide_cover_art">Hide cover art</string>
     <string name="show_cover_art">Show cover art</string>
+    <string name="hide_canvas">Hide canvas</string>
+    <string name="show_canvas">Show canvas</string>
     <string name="only_show_in_queues">Only show in queues</string>
     <string name="show_everywhere">Show everywhere</string>
     <string name="hide_song_duration_title">Don\'t recommend “%1$s” for…</string>
@@ -182,6 +184,7 @@
     <string name="hide_song_duration_1_day">1 day</string>
     <string name="hide_song_duration_1_week">1 week</string>
     <string name="hide_song_duration_1_month">1 month</string>
+    <string name="hide_song_permanently">Permanently</string>
     <string name="view_artist">View artist</string>
     <string name="view_album">View album</string>
     <string name="player_menu_section_browse">Browse</string>
@@ -1141,23 +1144,25 @@
 
     <!-- HyprMix -->
     <string name="hyprmix">HyprMix</string>
-    <string name="hyprmix_settings_subtitle">Skip-aware queue built from your own sessions</string>
-    <string name="hyprmix_record_title">Record sessions</string>
-    <string name="hyprmix_record_subtitle">Saves when each song started and how long it played. Nothing leaves the device.</string>
+    <string name="hyprmix_settings_subtitle">A playlist made from songs you actually finish</string>
+    <string name="hyprmix_record_title">Track my listening</string>
+    <string name="hyprmix_record_subtitle">Saves when songs start and how long they play. Stays on this device.</string>
     <string name="hyprmix_learn_title">Learn from skips</string>
-    <string name="hyprmix_learn_subtitle">Turns repeated, consistent seeks into a start point. Turning this off keeps what was already learned.</string>
-    <string name="hyprmix_autoskip_title">Auto-skip learned parts</string>
-    <string name="hyprmix_autoskip_subtitle">Only applies to songs started from HyprMix. Normal playback is never touched.</string>
-    <string name="hyprmix_intro_chip">starts %1$s</string>
-    <string name="hyprmix_no_intro">no start point</string>
+    <string name="hyprmix_learn_subtitle">Remembers where you usually skip to, so intros can be skipped later.</string>
+    <string name="hyprmix_autoskip_title">Skip learned intros</string>
+    <string name="hyprmix_autoskip_subtitle">Only when playing from HyprMix. Normal playback is never touched.</string>
+    <string name="hyprmix_intro_chip">Skips first %1$s</string>
+    <string name="hyprmix_no_intro">No skip learned</string>
     <string name="hyprmix_edit_intro_title">Start point</string>
     <string name="hyprmix_edit_intro_hint">Learned from %1$d consistent skips. Adjust it, or reset to let HyprMix relearn.</string>
     <string name="hyprmix_edit_intro_manual">Set by you</string>
     <string name="hyprmix_reset">Reset to learned</string>
     <string name="hyprmix_save">Save</string>
     <string name="hyprmix_delete_all">Delete all learning data</string>
-    <string name="hyprmix_empty">Nothing to build a queue from yet. Record a few sessions, then come back.</string>
-    <string name="hyprmix_play">Play HyprMix</string>
+    <string name="hyprmix_empty">Nothing here yet. Turn on “Track my listening”, play a few songs, then come back.</string>
+    <string name="hyprmix_play">Play mix</string>
+    <string name="hyprmix_explainer">HyprMix watches what you play and learns where you skip, so it can start songs past the boring parts. Everything stays on this device.</string>
+    <string name="hyprmix_played">%1$d plays</string>
     <string name="hyprmix_summary">%1$d songs · %2$d plays recorded</string>
     <string name="hyprmix_rank">#%1$d</string>
     <string name="hyprmix_plays">%1$d plays</string>

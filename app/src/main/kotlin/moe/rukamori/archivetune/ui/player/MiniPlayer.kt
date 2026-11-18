@@ -52,6 +52,8 @@ import moe.rukamori.archivetune.ui.component.isGlassAllowed
 import moe.rukamori.archivetune.ui.component.liquidGlass
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.rememberEnumPreference
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
 
@@ -90,6 +92,7 @@ private fun NewMiniPlayer(
         defaultValue = MiniPlayerBackgroundStyle.THEME,
     )
     val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
     var gradientColors by remember {
         mutableStateOf<List<Color>>(emptyList())
     }
@@ -108,6 +111,7 @@ private fun NewMiniPlayer(
         mediaMetadata?.thumbnailUrl,
         shouldUseArtworkBackground,
         fallbackColor,
+        hiddenCoverIds,
     ) {
         if (!shouldUseArtworkBackground) {
             gradientColors = emptyList()
@@ -116,7 +120,7 @@ private fun NewMiniPlayer(
 
         val currentMetadata = mediaMetadata
         val thumbnailUrl = currentMetadata?.thumbnailUrl
-        if (currentMetadata == null || thumbnailUrl.isNullOrBlank()) {
+        if (currentMetadata == null || thumbnailUrl.isNullOrBlank() || isSongInSet(hiddenCoverIds, currentMetadata.id)) {
             gradientColors = emptyList()
             return@LaunchedEffect
         }

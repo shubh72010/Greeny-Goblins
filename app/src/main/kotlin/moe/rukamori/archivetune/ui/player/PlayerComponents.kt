@@ -131,10 +131,12 @@ import moe.rukamori.archivetune.ui.utils.ShowMediaInfo
 import moe.rukamori.archivetune.ui.utils.highRes
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
 import moe.rukamori.archivetune.ui.player.CanvasSource
 import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
@@ -4031,6 +4033,7 @@ fun PlayerBackground(
     modifier: Modifier = Modifier,
 ) {
     val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
     val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.AUTO)
     val lowDataModeActive = rememberLowDataModeActive()
     val storefront = remember {
@@ -4039,9 +4042,9 @@ fun PlayerBackground(
     }
     var canvasArtwork by remember(mediaMetadata?.id) { mutableStateOf<CanvasArtwork?>(null) }
     var canvasFetchInFlight by remember(mediaMetadata?.id) { mutableStateOf(false) }
-    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled, playerBackground) {
+    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled, playerBackground, hiddenCoverIds) {
         val meta = mediaMetadata
-        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS || !archiveTuneCanvasEnabled || meta == null) {
+        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS || !archiveTuneCanvasEnabled || meta == null || isSongInSet(hiddenCoverIds, meta.id)) {
             canvasArtwork = null
             canvasFetchInFlight = false
             return@LaunchedEffect

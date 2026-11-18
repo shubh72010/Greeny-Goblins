@@ -51,6 +51,7 @@ import moe.rukamori.archivetune.ui.player.CanvasArtworkPlaybackCache
 import moe.rukamori.archivetune.ui.screens.settings.ThemePalettes
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPalette
 import moe.rukamori.archivetune.ui.theme.ThemeSeedPaletteCodec
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.ProxyUtils
 import moe.rukamori.archivetune.utils.YTPlayerUtils
@@ -317,6 +318,13 @@ class App :
         } catch (e: Exception) {
             reportException(e)
         }
+        applicationScope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map { it[HiddenCoverArtSongIdsKey].orEmpty() }
+                .distinctUntilChanged()
+                .collect { BlockedArtwork.update(it) }
+        }
+
         applicationScope.launch(Dispatchers.IO) {
             dataStore.data
                 .map { prefs ->

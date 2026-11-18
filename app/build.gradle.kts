@@ -64,6 +64,7 @@ android {
     namespace = "moe.rukamori.archivetune"
     compileSdk = 37
 
+
     defaultConfig {
     applicationId = "com.jusdots.jusplayer"
         minSdk = 26

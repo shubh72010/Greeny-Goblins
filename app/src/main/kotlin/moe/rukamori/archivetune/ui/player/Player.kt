@@ -157,6 +157,7 @@ import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
 import moe.rukamori.archivetune.constants.BackdropEnabledKey
 import moe.rukamori.archivetune.constants.BlurRadiusKey
@@ -202,6 +203,7 @@ import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import java.util.Locale
 import kotlin.math.abs
@@ -475,6 +477,7 @@ fun BottomSheetPlayer(
     val aodModeEnabled by playerConnection.aodModeEnabled.collectAsStateWithLifecycle()
     val (thumbnailCornerRadius) = rememberPreference(ThumbnailCornerRadiusKey, defaultValue = 45f)
     val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
     val lowDataModeActive = rememberLowDataModeActive()
     val (maxCanvasCacheSize, _) =
         rememberPreference(
@@ -1091,11 +1094,13 @@ fun BottomSheetPlayer(
             }
         val shouldUseV7Canvas =
             archiveTuneCanvasEnabled &&
+                !isSongInSet(hiddenCoverIds, mediaMetadata?.id.orEmpty()) &&
                 playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                 playerDesignStyle == PlayerDesignStyle.V7 &&
                 !aodModeEnabled
         val shouldUseArtworkCanvas =
             archiveTuneCanvasEnabled &&
+                !isSongInSet(hiddenCoverIds, mediaMetadata?.id.orEmpty()) &&
                 playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                 (playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9) &&
                 !aodModeEnabled

@@ -12,6 +12,7 @@ object AppUpdateChecker {
     }
     val downloadState = kotlinx.coroutines.flow.MutableStateFlow(DownloadState.IDLE)
     val download = kotlinx.coroutines.flow.MutableStateFlow(DownloadState.IDLE)
+    val available = kotlinx.coroutines.flow.MutableStateFlow<UpdateInfo?>(null)
     fun isNewer(): Boolean = false
     fun apkAssetUrl(): String = ""
     fun downloadApk(context: Any? = null) {}

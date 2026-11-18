@@ -99,6 +99,7 @@ import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
 import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
+
 import moe.rukamori.archivetune.constants.PerformanceModeKey
 import moe.rukamori.archivetune.constants.MaxCanvasCacheSizeKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
@@ -436,6 +437,7 @@ fun Thumbnail(
                                 }
                             val shouldUseCanvas =
                                 archiveTuneCanvasEnabled &&
+                                    !isSongInSet(hiddenCoverIds, item.mediaId) &&
                                     playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                                     !performanceMode &&
                                     playerDesignStyle != PlayerDesignStyle.V7 &&

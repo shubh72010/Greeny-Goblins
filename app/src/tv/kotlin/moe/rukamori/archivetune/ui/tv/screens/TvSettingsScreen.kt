@@ -139,7 +139,7 @@ fun TvSettingsScreen(
             item {
                 TvListRow(
                     title = "YouTube Music",
-                    value = if (signedIn) account?.name ?: "Signed In" else "Sign In",
+                    value = if (signedIn) (account as? moe.rukamori.archivetune.auth.GoogleAccountSession)?.name ?: "Signed In" else "Sign In",
                     onFocused = { blurb = "Your library, playlists and recommendations come from this account." },
                     onClick = onOpenAccount,
                 )

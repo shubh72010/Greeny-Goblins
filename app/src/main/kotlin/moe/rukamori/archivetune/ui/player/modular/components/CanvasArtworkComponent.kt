@@ -19,6 +19,7 @@ import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
 import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyle
 import moe.rukamori.archivetune.constants.PlayerBackgroundStyleKey
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -33,6 +34,7 @@ import moe.rukamori.archivetune.ui.player.resolveCanvasArtworkForPlayback
 import moe.rukamori.archivetune.ui.utils.ThumbnailShapeKind
 import moe.rukamori.archivetune.ui.utils.rememberThumbnailShape
 import moe.rukamori.archivetune.utils.rememberEnumPreference
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import timber.log.Timber
 import java.util.Locale
@@ -40,9 +42,10 @@ import java.util.Locale
 fun registerCanvasArtworkComponent() {
     PlayerComponentRegistry.register(PlayerComponentType.CANVAS_ARTWORK.id) { _, metadata, playerConnection, isPlaying, _, _, _, _, _, _, modifier, _ ->
         val (canvasEnabled) = rememberPreference(JusPlayerCanvasKey, defaultValue = true)
+        val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
         val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS)
         // The full-screen background already plays the canvas in that style; don't play it twice.
-        val canvasActive = canvasEnabled && playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS
+        val canvasActive = canvasEnabled && !isSongInSet(hiddenCoverIds, metadata?.id.orEmpty()) && playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS
         CanvasArtworkComponent(metadata, playerConnection, isPlaying, canvasActive, modifier)
     }
 }
