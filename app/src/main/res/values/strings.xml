@@ -187,6 +187,7 @@
     <string name="player_menu_section_browse">Browse</string>
     <string name="player_menu_section_download">Download</string>
     <string name="player_menu_section_playback">Playback</string>
+    <string name="player_menu_section_visibility">Visibility</string>
     <string name="view_all">View all</string>
     <string name="more">more</string>
     <string name="refetch">Refetch</string>

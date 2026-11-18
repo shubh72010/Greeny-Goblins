@@ -183,7 +183,7 @@ fun Thumbnail(
     // Player background style for consistent theming
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.BLUR,
+        defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS,
     )
 
     val textBackgroundColor =

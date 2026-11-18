@@ -455,38 +455,6 @@ fun YouTubeSongMenu(
 
         item {
             MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
-                val (hiddenCoverIds, onHiddenCoverIdsChange) = rememberPreference(HiddenCoverArtSongIdsKey, "")
-                val coverHidden = isSongInSet(hiddenCoverIds, song.id)
-                ListItem(
-                    headlineContent = { Text(text = stringResource(if (coverHidden) R.string.show_cover_art else R.string.hide_cover_art)) },
-                    leadingContent = { Icon(painter = painterResource(R.drawable.visibility_off), contentDescription = null) },
-                    modifier = Modifier.clickable {
-                        onHiddenCoverIdsChange(toggleSongIdInSet(hiddenCoverIds, song.id))
-                        onDismiss()
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                )
-            }
-        }
-
-        item {
-            MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
-                val (queueOnlyIds, onQueueOnlyIdsChange) = rememberPreference(QueueOnlySongIdsKey, "")
-                val queueOnly = isSongInSet(queueOnlyIds, song.id)
-                ListItem(
-                    headlineContent = { Text(text = stringResource(if (queueOnly) R.string.show_everywhere else R.string.only_show_in_queues)) },
-                    leadingContent = { Icon(painter = painterResource(R.drawable.visibility_off), contentDescription = null) },
-                    modifier = Modifier.clickable {
-                        onQueueOnlyIdsChange(toggleSongIdInSet(queueOnlyIds, song.id))
-                        onDismiss()
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                )
-            }
-        }
-
-        item {
-            MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
                 ListItem(
                     headlineContent = {
                         Text(
@@ -554,53 +522,51 @@ fun YouTubeSongMenu(
 
         item {
             MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            text =
-                                stringResource(
-                                    if (isInSpeedDial) {
-                                        R.string.remove_from_speed_dial
-                                    } else {
-                                        R.string.pin_to_speed_dial
-                                    },
-                                ),
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            painter = painterResource(if (isInSpeedDial) R.drawable.bookmark_filled else R.drawable.bookmark),
-                            contentDescription = null,
-                        )
-                    },
-                    modifier =
-                        Modifier.clickable {
-                            coroutineScope.launch {
-                                if (!isInSpeedDial) {
-                                    withContext(Dispatchers.IO) {
-                                        database.transaction {
-                                            insert(song.toMediaMetadata())
+                val dividerModifier = Modifier.padding(start = 56.dp)
+                Column {
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text =
+                                    stringResource(
+                                        if (isInSpeedDial) {
+                                            R.string.remove_from_speed_dial
+                                        } else {
+                                            R.string.pin_to_speed_dial
+                                        },
+                                    ),
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                painter = painterResource(if (isInSpeedDial) R.drawable.bookmark_filled else R.drawable.bookmark),
+                                contentDescription = null,
+                            )
+                        },
+                        modifier =
+                            Modifier.clickable {
+                                coroutineScope.launch {
+                                    if (!isInSpeedDial) {
+                                        withContext(Dispatchers.IO) {
+                                            database.transaction {
+                                                insert(song.toMediaMetadata())
+                                            }
                                         }
                                     }
+
+                                    val updatedPins = toggleSpeedDialPin(speedDialPins, songPin)
+                                    onSpeedDialSongIdsChange(serializeSpeedDialPins(updatedPins))
+                                    onDismiss()
                                 }
+                            },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
 
-                                val updatedPins = toggleSpeedDialPin(speedDialPins, songPin)
-                                onSpeedDialSongIdsChange(serializeSpeedDialPins(updatedPins))
-                                onDismiss()
-                            }
-                        },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                )
-            }
-        }
+                    HorizontalDivider(
+                        modifier = dividerModifier,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
 
-        item {
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        item {
-            MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
-                Column {
                     when (download?.state) {
                         Download.STATE_COMPLETED -> {
                             ListItem(
@@ -730,6 +696,47 @@ fun YouTubeSongMenu(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         )
                     }
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+
+        item {
+            MenuSurfaceSection(modifier = Modifier.padding(vertical = 6.dp)) {
+                val dividerModifier = Modifier.padding(start = 56.dp)
+                val (hiddenCoverIds, onHiddenCoverIdsChange) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+                val coverHidden = isSongInSet(hiddenCoverIds, song.id)
+                val (queueOnlyIds, onQueueOnlyIdsChange) = rememberPreference(QueueOnlySongIdsKey, "")
+                val queueOnly = isSongInSet(queueOnlyIds, song.id)
+
+                Column {
+                    ListItem(
+                        headlineContent = { Text(text = stringResource(if (coverHidden) R.string.show_cover_art else R.string.hide_cover_art)) },
+                        leadingContent = { Icon(painter = painterResource(R.drawable.visibility_off), contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            onHiddenCoverIdsChange(toggleSongIdInSet(hiddenCoverIds, song.id))
+                            onDismiss()
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
+
+                    HorizontalDivider(
+                        modifier = dividerModifier,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+
+                    ListItem(
+                        headlineContent = { Text(text = stringResource(if (queueOnly) R.string.show_everywhere else R.string.only_show_in_queues)) },
+                        leadingContent = { Icon(painter = painterResource(R.drawable.visibility_off), contentDescription = null) },
+                        modifier = Modifier.clickable {
+                            onQueueOnlyIdsChange(toggleSongIdInSet(queueOnlyIds, song.id))
+                            onDismiss()
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    )
                 }
             }
         }

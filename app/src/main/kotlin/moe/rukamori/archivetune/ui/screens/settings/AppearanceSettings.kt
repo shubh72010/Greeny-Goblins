@@ -194,7 +194,7 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
     val (playerBackground, onPlayerBackgroundChange) =
         rememberEnumPreference(
             PlayerBackgroundStyleKey,
-            defaultValue = PlayerBackgroundStyle.BLUR,
+            defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS,
         )
     val (miniPlayerBackground, onMiniPlayerBackgroundChange) =
         rememberEnumPreference(
@@ -781,6 +781,7 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
                         isEnabled = isPlayerStyleCustomizationEnabled,
                         valueText = {
                             when (it) {
+                                PlayerBackgroundStyle.JUSPLAYER_CANVAS -> stringResource(R.string.archivetune_canvas)
                                 PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
                                 PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                                 PlayerBackgroundStyle.CUSTOM -> stringResource(R.string.custom)
@@ -789,7 +790,6 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
                                 PlayerBackgroundStyle.BLUR_GRADIENT -> stringResource(R.string.blur_gradient)
                                 PlayerBackgroundStyle.GLOW -> stringResource(R.string.glow)
                                 PlayerBackgroundStyle.GLOW_ANIMATED -> "Glow Animated"
-                                PlayerBackgroundStyle.JUSPLAYER_CANVAS -> stringResource(R.string.archivetune_canvas)
                             }
                         },
                     )

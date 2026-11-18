@@ -206,7 +206,7 @@ fun LyricsEnhanced(
 
     val lyricsFontFamily = rememberArchiveTuneLyricsFontFamily()
 
-    val playerBackground by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.BLUR)
+    val playerBackground by rememberEnumPreference(PlayerBackgroundStyleKey, PlayerBackgroundStyle.JUSPLAYER_CANVAS)
     val textColor =
         textColorOverride ?: if (playerBackground == PlayerBackgroundStyle.DEFAULT) {
             MaterialTheme.colorScheme.onBackground

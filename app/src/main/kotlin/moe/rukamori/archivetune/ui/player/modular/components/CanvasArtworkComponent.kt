@@ -40,7 +40,7 @@ import java.util.Locale
 fun registerCanvasArtworkComponent() {
     PlayerComponentRegistry.register(PlayerComponentType.CANVAS_ARTWORK.id) { _, metadata, playerConnection, isPlaying, _, _, _, _, _, _, modifier, _ ->
         val (canvasEnabled) = rememberPreference(JusPlayerCanvasKey, defaultValue = true)
-        val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BLUR)
+        val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS)
         // The full-screen background already plays the canvas in that style; don't play it twice.
         val canvasActive = canvasEnabled && playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS
         CanvasArtworkComponent(metadata, playerConnection, isPlaying, canvasActive, modifier)

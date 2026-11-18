@@ -125,7 +125,10 @@ import moe.rukamori.archivetune.constants.EqualizerVirtualizerEnabledKey
 import moe.rukamori.archivetune.constants.EqualizerVirtualizerStrengthKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderEnabledKey
 import moe.rukamori.archivetune.constants.ExternalDownloaderPackageKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
+import moe.rukamori.archivetune.constants.QueueOnlySongIdsKey
+import moe.rukamori.archivetune.constants.SongRecommendationHidesKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.EqProfile
@@ -147,11 +150,15 @@ import moe.rukamori.archivetune.ui.player.rememberDeviceMusicVolumeController
 import moe.rukamori.archivetune.utils.SpeedDialPin
 import moe.rukamori.archivetune.utils.SpeedDialPinType
 import moe.rukamori.archivetune.utils.isLocalMediaId
+import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.parseSongHides
 import moe.rukamori.archivetune.utils.parseSpeedDialPins
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.serializeSpeedDialPins
+import moe.rukamori.archivetune.utils.setSongHide
 import moe.rukamori.archivetune.utils.shareLocalAudio
+import moe.rukamori.archivetune.utils.toggleSongIdInSet
 import moe.rukamori.archivetune.utils.toggleSpeedDialPin
 import java.util.UUID
 import kotlin.math.abs
@@ -159,6 +166,10 @@ import kotlin.math.log2
 import kotlin.math.pow
 import kotlin.math.round
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration.Companion.weeks
 
 @Composable
 fun PlayerMenu(
@@ -248,6 +259,17 @@ fun PlayerMenu(
         }
     val castPlayerMenuAction = rememberCastPlayerMenuAction()
     val (enableDeckMix, onEnableDeckMixChange) = rememberPreference(EnableDeckMixKey, false)
+
+    val (songHides, onSongHidesChange) = rememberPreference(SongRecommendationHidesKey, "")
+    val isHiddenFromRecommendations =
+        remember(songHides, mediaMetadata.id) { mediaMetadata.id in parseSongHides(songHides) }
+    var showSongHideDialog by rememberSaveable { mutableStateOf(false) }
+
+    val (hiddenCoverIds, onHiddenCoverIdsChange) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val coverHidden = isSongInSet(hiddenCoverIds, mediaMetadata.id)
+
+    val (queueOnlyIds, onQueueOnlyIdsChange) = rememberPreference(QueueOnlySongIdsKey, "")
+    val queueOnly = isSongInSet(queueOnlyIds, mediaMetadata.id)
 
     // Split artists by configured separators
     data class SplitArtist(
@@ -403,6 +425,55 @@ fun PlayerMenu(
                 }
             },
         )
+    }
+
+    if (showSongHideDialog) {
+        val presets =
+            listOf(
+                6.hours to stringResource(R.string.hide_song_duration_6_hours),
+                1.days to stringResource(R.string.hide_song_duration_1_day),
+                1.weeks to stringResource(R.string.hide_song_duration_1_week),
+                30.days to stringResource(R.string.hide_song_duration_1_month),
+            )
+        ListDialog(
+            onDismiss = { showSongHideDialog = false },
+        ) {
+            item {
+                Text(
+                    text = stringResource(R.string.hide_song_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(16.dp),
+                )
+            }
+            items(presets) { (duration, label) ->
+                ListItem(
+                    headlineContent = { Text(label) },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onSongHidesChange(setSongHide(songHides, mediaMetadata.id, duration))
+                                showSongHideDialog = false
+                                onDismiss()
+                            },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.hide_song_permanently)) },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onSongHidesChange(setSongHide(songHides, mediaMetadata.id, -1.seconds))
+                                showSongHideDialog = false
+                                onDismiss()
+                            },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+        }
     }
 
     val nowPlayingTitle =
@@ -718,6 +789,81 @@ fun PlayerMenu(
                     ),
                 )
             }
+
+            add(PlayerMenuHeader(stringResource(R.string.player_menu_section_visibility)))
+
+            add(
+                PlayerMenuRow(
+                    leading = {
+                        Icon(
+                            painter = painterResource(R.drawable.visibility_off),
+                            contentDescription = null,
+                        )
+                    },
+                    label =
+                        stringResource(
+                            if (isHiddenFromRecommendations) {
+                                R.string.show_song_in_recommendations
+                            } else {
+                                R.string.hide_song_from_recommendations
+                            },
+                        ),
+                    onClick = {
+                        if (isHiddenFromRecommendations) {
+                            onSongHidesChange(setSongHide(songHides, mediaMetadata.id, null))
+                            onDismiss()
+                        } else {
+                            showSongHideDialog = true
+                        }
+                    },
+                ),
+            )
+
+            add(
+                PlayerMenuRow(
+                    leading = {
+                        Icon(
+                            painter = painterResource(R.drawable.visibility_off),
+                            contentDescription = null,
+                        )
+                    },
+                    label =
+                        stringResource(
+                            if (coverHidden) {
+                                R.string.show_cover_art
+                            } else {
+                                R.string.hide_cover_art
+                            },
+                        ),
+                    onClick = {
+                        onHiddenCoverIdsChange(toggleSongIdInSet(hiddenCoverIds, mediaMetadata.id))
+                        onDismiss()
+                    },
+                ),
+            )
+
+            add(
+                PlayerMenuRow(
+                    leading = {
+                        Icon(
+                            painter = painterResource(R.drawable.visibility_off),
+                            contentDescription = null,
+                        )
+                    },
+                    label =
+                        stringResource(
+                            if (queueOnly) {
+                                R.string.show_everywhere
+                            } else {
+                                R.string.only_show_in_queues
+                            },
+                        ),
+                    onClick = {
+                        onQueueOnlyIdsChange(toggleSongIdInSet(queueOnlyIds, mediaMetadata.id))
+                        onDismiss()
+                    },
+                ),
+            )
         }
 
     if (showCanvasSourceDialog) {

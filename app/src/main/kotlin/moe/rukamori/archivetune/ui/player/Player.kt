@@ -344,7 +344,7 @@ fun BottomSheetPlayer(
 
     val storedPlayerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
-        defaultValue = PlayerBackgroundStyle.BLUR,
+        defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS,
     )
     val playerUsesFixedBackground =
         playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9

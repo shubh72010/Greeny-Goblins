@@ -1059,7 +1059,7 @@ class MainActivity : ComponentActivity() {
 
                     val playerBackground by rememberEnumPreference(
                         key = PlayerBackgroundStyleKey,
-                        defaultValue = PlayerBackgroundStyle.BLUR,
+                        defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS,
                     )
                     val playerDesignStyle by rememberEnumPreference(
                         key = PlayerDesignStyleKey,

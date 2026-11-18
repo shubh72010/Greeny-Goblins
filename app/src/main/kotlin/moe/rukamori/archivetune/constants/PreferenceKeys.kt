@@ -685,6 +685,7 @@ enum class PlayerDesignStyle {
 }
 
 enum class PlayerBackgroundStyle {
+    JUSPLAYER_CANVAS,
     DEFAULT,
     GRADIENT,
     CUSTOM,
@@ -693,7 +694,6 @@ enum class PlayerBackgroundStyle {
     BLUR_GRADIENT,
     GLOW,
     GLOW_ANIMATED,
-    JUSPLAYER_CANVAS,
 }
 
 enum class MiniPlayerBackgroundStyle {

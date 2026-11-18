@@ -61,7 +61,7 @@ fun registerCoverArtComponent() {
         val (coverArtStyle) = rememberEnumPreference(ModularCoverArtStyleKey, defaultValue = ModularCoverArtStyle.NORMAL)
         val (hideThumbnail) = rememberPreference(HidePlayerThumbnailKey, defaultValue = false)
         val (cropToSquare) = rememberPreference(CropThumbnailToSquareKey, defaultValue = true)
-        val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.BLUR)
+        val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS)
         if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
             val cornerRadius = LocalThumbnailCornerRadius.current
             CoverArtComponent(

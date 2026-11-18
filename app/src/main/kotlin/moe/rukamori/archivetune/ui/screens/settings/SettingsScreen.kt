@@ -266,95 +266,90 @@ fun SettingsScreen(
             }
 
             item(key = "search") {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = if (isSearchFocused || query.isNotBlank()) 2.dp else 0.dp,
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
+                        .padding(top = 2.dp, bottom = 10.dp),
                 ) {
-                    Column(
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = SettingsDimensions.ScreenHorizontalPadding)
-                            .padding(top = 2.dp, bottom = 10.dp),
-                    ) {
-                        OutlinedTextField(
-                            value = query,
-                            onValueChange = { query = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(searchFocusRequester)
-                                .onFocusChanged { isSearchFocused = it.isFocused },
-                            placeholder = { Text(stringResource(R.string.settings_search_hint)) },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.search),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            },
-                            trailingIcon = {
-                                if (query.isNotEmpty()) {
-                                    androidx.compose.material3.IconButton(onClick = {
-                                        query = ""
-                                        searchFocusRequester.requestFocus()
-                                    }) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.close),
-                                            contentDescription = stringResource(R.string.settings_search_clear_desc),
-                                        )
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(28.dp),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    if (trimmedQuery.isNotBlank()) pushRecent(trimmedQuery)
-                                    keyboardController?.hide()
-                                    focusManager.clearFocus()
-                                },
-                            ),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                            ),
-                        )
-                        // result count removed: the result list is self-evident and the
-                        // old inline string was hardcoded English (no translation).
-                        @OptIn(ExperimentalLayoutApi::class)
-                        AnimatedVisibility(visible = tokens.isEmpty() && recentQueries.isNotEmpty() && isSearchFocused) {
-                            FlowRow(
-                                modifier = Modifier.padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                recentQueries.forEach { recent ->
-                                    AssistChip(
-                                        onClick = { query = recent },
-                                        label = { Text(recent, maxLines = 1) },
-                                        leadingIcon = {
-                                            Icon(
-                                                painter = painterResource(R.drawable.history),
-                                                contentDescription = null,
-                                                modifier = Modifier.padding(end = 2.dp),
-                                            )
-                                        },
-                                        colors = AssistChipDefaults.assistChipColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-                                        ),
+                            .focusRequester(searchFocusRequester)
+                            .onFocusChanged { isSearchFocused = it.isFocused },
+                        placeholder = { Text(stringResource(R.string.settings_search_hint)) },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.search),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        trailingIcon = {
+                            if (query.isNotEmpty()) {
+                                androidx.compose.material3.IconButton(onClick = {
+                                    query = ""
+                                    searchFocusRequester.requestFocus()
+                                }) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.close),
+                                        contentDescription = stringResource(R.string.settings_search_clear_desc),
                                     )
                                 }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(28.dp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                if (trimmedQuery.isNotBlank()) pushRecent(trimmedQuery)
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                            },
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        ),
+                    )
+                    // result count removed: the result list is self-evident and the
+                    // old inline string was hardcoded English (no translation).
+                    @OptIn(ExperimentalLayoutApi::class)
+                    AnimatedVisibility(visible = tokens.isEmpty() && recentQueries.isNotEmpty() && isSearchFocused) {
+                        FlowRow(
+                            modifier = Modifier.padding(top = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            recentQueries.forEach { recent ->
                                 AssistChip(
-                                    onClick = { recentQueries.clear() },
-                                    label = { Text(stringResource(R.string.settings_search_clear_recent)) },
+                                    onClick = { query = recent },
+                                    label = { Text(recent, maxLines = 1) },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.history),
+                                            contentDescription = null,
+                                            modifier = Modifier.padding(end = 2.dp),
+                                        )
+                                    },
                                     colors = AssistChipDefaults.assistChipColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                                     ),
                                 )
                             }
+                            AssistChip(
+                                onClick = { recentQueries.clear() },
+                                label = { Text(stringResource(R.string.settings_search_clear_recent)) },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                ),
+                            )
                         }
                     }
                 }
