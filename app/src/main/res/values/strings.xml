@@ -185,7 +185,7 @@
     <string name="hide_song_duration_1_week">1 week</string>
     <string name="hide_song_duration_1_month">1 month</string>
     <string name="hide_song_permanently">Permanently</string>
-    <string name="view_artist">View artist</string>
+    <string name="view_artist">View artists</string>
     <string name="view_album">View album</string>
     <string name="player_menu_section_browse">Browse</string>
     <string name="player_menu_section_download">Download</string>

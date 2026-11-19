@@ -15,7 +15,12 @@ import android.content.res.Configuration
 import android.widget.Toast
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -44,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,6 +65,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -67,6 +74,7 @@ import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import moe.rukamori.archivetune.ui.utils.resize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -205,35 +213,90 @@ fun YouTubeSongMenu(
         ListDialog(
             onDismiss = { showSelectArtistDialog = false },
         ) {
-            items(splitArtists.distinctBy { it.originalArtist?.id ?: it.name }, key = { it.originalArtist?.id ?: it.name }) { splitArtist ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .height(ListItemHeight)
-                            .clickable {
-                                splitArtist.originalArtist?.let { artist ->
-                                    navController.navigate("artist/${artist.id}")
-                                    showSelectArtistDialog = false
-                                    onDismiss()
-                                }
-                            }.padding(horizontal = 12.dp),
+            item {
+                Text(
+                    text = stringResource(R.string.view_artist),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+            }
+            item {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 ) {
-                    Box(
-                        contentAlignment = Alignment.CenterStart,
-                        modifier =
-                            Modifier
-                                .fillParentMaxWidth()
-                                .height(ListItemHeight)
-                                .padding(horizontal = 24.dp),
-                    ) {
-                        Text(
-                            text = splitArtist.name,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                    splitArtists.distinctBy { it.originalArtist?.id ?: it.name }.chunked(2).forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            row.forEach { splitArtist ->
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.weight(1f).clickable {
+                                        splitArtist.originalArtist?.let { artist ->
+                                            navController.navigate("artist/${artist.id}")
+                                            showSelectArtistDialog = false
+                                            onDismiss()
+                                        }
+                                    },
+                                ) {
+                                    val artist = splitArtist.originalArtist
+                                    val thumb by produceState(initialValue = artist?.thumbnailUrl, artist) {
+                                        val a = artist
+                                        if (value.isNullOrBlank() && a?.id?.startsWith("UC") == true) {
+                                            withContext(Dispatchers.IO) {
+                                                YouTube.artist(a.id!!).onSuccess { page ->
+                                                    val url = page.artist.thumbnail
+                                                    if (!url.isNullOrBlank()) {
+                                                        value = url
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    val displayThumb = thumb?.takeIf { it.isNotBlank() } ?: song.thumbnail
+                                    if (displayThumb.isNullOrBlank()) {
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .size(88.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.music_note),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(36.dp),
+                                            )
+                                        }
+                                    } else {
+                                        AsyncImage(
+                                            model = displayThumb,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier =
+                                                Modifier
+                                                    .size(88.dp)
+                                                    .clip(CircleShape),
+                                        )
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = splitArtist.name,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
+                            }
+                            if (row.size == 1) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
                     }
                 }
             }

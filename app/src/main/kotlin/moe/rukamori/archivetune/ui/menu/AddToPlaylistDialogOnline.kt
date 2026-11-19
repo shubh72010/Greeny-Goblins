@@ -160,7 +160,15 @@ fun AddToPlaylistDialogOnline(
                                     val result = YouTube.search(query, YouTube.SearchFilter.FILTER_SONG)
                                     result
                                         .onSuccess { search ->
-                                            val firstSong = search.items.distinctBy { it.id }.firstOrNull() as? SongItem
+                                            val candidates = search.items.distinctBy { it.id }.filterIsInstance<SongItem>()
+                                            // Prefer a result whose artist matches the requested one to avoid importing a same-titled track by a different artist.
+                                            val requestedArtists = song.artists.map { it.name.trim().lowercase() }.filter { it.isNotBlank() }
+                                            val firstSong = candidates.firstOrNull { candidate ->
+                                                candidate.artists.any { a ->
+                                                    val cn = a.name.trim().lowercase()
+                                                    requestedArtists.any { r -> cn == r || cn.contains(r) || r.contains(cn) }
+                                                }
+                                            } ?: candidates.firstOrNull()
                                             if (firstSong != null) {
                                                 val media = firstSong.toMediaMetadata()
                                                 val ids = listOf(firstSong.id)

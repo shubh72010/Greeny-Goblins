@@ -19,6 +19,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import moe.rukamori.archivetune.ui.utils.resize
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -74,6 +75,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -130,6 +132,7 @@ import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.QueueOnlySongIdsKey
 import moe.rukamori.archivetune.constants.SongRecommendationHidesKey
 import moe.rukamori.archivetune.constants.SpeedDialSongIdsKey
+import moe.rukamori.archivetune.innertube.YouTube
 import moe.rukamori.archivetune.models.MediaMetadata
 import moe.rukamori.archivetune.playback.EqProfile
 import moe.rukamori.archivetune.playback.EqProfilesPayload
@@ -333,58 +336,93 @@ fun PlayerMenu(
         ListDialog(
             onDismiss = { showSelectArtistDialog = false },
         ) {
-            items(splitArtists.distinctBy { it.originalArtist?.id ?: it.name }, key = { it.originalArtist?.id ?: it.name }) { splitArtist ->
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            text = splitArtist.name,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    leadingContent = {
-                        val thumbUrl = splitArtist.originalArtist?.thumbnailUrl
-                        if (thumbUrl.isNullOrBlank()) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.music_note),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                        } else {
-                            AsyncImage(
-                                model = thumbUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier =
-                                    Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape),
-                            )
-                        }
-                    },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                splitArtist.originalArtist?.let { artist ->
-                                    navController.navigate("artist/${artist.id}")
-                                    showSelectArtistDialog = false
-                                    playerBottomSheetState.collapseSoft()
-                                    onDismiss()
-                                }
-                            },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            item {
+                Text(
+                    text = stringResource(R.string.view_artist),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                 )
+            }
+            item {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                ) {
+                    splitArtists.distinctBy { it.originalArtist?.id ?: it.name }.chunked(2).forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            row.forEach { splitArtist ->
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.weight(1f).clickable {
+                                        splitArtist.originalArtist?.let { artist ->
+                                            navController.navigate("artist/${artist.id}")
+                                            showSelectArtistDialog = false
+                                            playerBottomSheetState.collapseSoft()
+                                            onDismiss()
+                                        }
+                                    },
+                                ) {
+                                    val artist = splitArtist.originalArtist
+                                    val thumb by produceState(initialValue = artist?.thumbnailUrl, artist) {
+                                        val a = artist
+                                        if (value.isNullOrBlank() && a?.id?.startsWith("UC") == true) {
+                                            withContext(Dispatchers.IO) {
+                                                YouTube.artist(a.id!!).onSuccess { page ->
+                                                    val url = page.artist.thumbnail
+                                                    if (!url.isNullOrBlank()) {
+                                                        value = url
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    val displayThumb = thumb?.takeIf { it.isNotBlank() } ?: mediaMetadata?.thumbnailUrl
+                                    if (displayThumb.isNullOrBlank()) {
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .size(88.dp)
+                                                    .clip(CircleShape)
+                                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.music_note),
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(36.dp),
+                                            )
+                                        }
+                                    } else {
+                                        AsyncImage(
+                                            model = displayThumb,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier =
+                                                Modifier
+                                                    .size(88.dp)
+                                                    .clip(CircleShape),
+                                        )
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = splitArtist.name,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
+                            }
+                            if (row.size == 1) {
+                                Spacer(Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
             }
         }
     }

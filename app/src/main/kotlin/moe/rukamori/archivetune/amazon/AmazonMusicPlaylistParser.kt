@@ -323,8 +323,17 @@ object AmazonMusicPlaylistParser {
                 val songTitle = extractText(item.opt("primaryText"))
                 if (songTitle.isBlank()) continue
 
-                val artistRaw = extractText(item.opt("secondaryText1"))
-                val albumRaw = extractText(item.opt("secondaryText2")).ifBlank { null }
+                var artistRaw = extractText(item.opt("secondaryText1"))
+                var albumRaw = extractText(item.opt("secondaryText2")).ifBlank { null }
+
+                // Some Amazon responses collapse artist/album into one secondary line separated by bullets.
+                if (artistRaw.contains("•") || artistRaw.contains("·") || artistRaw.contains("|")) {
+                    val parts = artistRaw.split(Regex("[•·|]")).map { it.trim() }.filter { it.isNotEmpty() }
+                    if (parts.size >= 2) {
+                        artistRaw = parts.first()
+                        if (albumRaw == null) albumRaw = parts.getOrNull(1)
+                    }
+                }
                 val thumbnail = item.optString("image").ifBlank { null }
 
                 val artists = if (artistRaw.isNotBlank()) {
