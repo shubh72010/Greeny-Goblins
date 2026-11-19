@@ -1,0 +1,120 @@
+name: Debug APK (v15.1)
+
+# Testers need a public, permanent download link. Every run overwrites the same
+# asset on the moving `debug-latest` release, so the URL never changes:
+#   https://github.com/shubh72010/Greeny-Goblins/releases/download/debug-latest/jusplayer-debug.apk
+# `debug-latest` is not a semver tag, so utils/Updater.kt ignores it (no update prompts).
+#
+# The debug keystore comes from the DEBUG_KEYSTORE_BASE64 secret (base64 of
+# ~/.android/debug.keystore), never from git — a stable key means testers can
+# update-install over earlier builds instead of uninstalling first.
+
+on:
+  push:
+    branches: [v15.1]
+    paths-ignore:
+      - '**.md'
+      - 'assets/**'
+      - 'fastlane/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: debug-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # SHA-256 of the debug signer. apksigner prints lowercase hex, no colons.
+  EXPECTED_CERT_SHA256: dbf36ccef684b6fa9897d7ed5f9b834ff86723e6f7928192df6d35e2f585c176
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Fix gradle.properties for Linux
+        shell: bash
+        run: sed -i '/org.gradle.java.home/d' gradle.properties
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # AGP signs debug builds with ~/.android/debug.keystore — writing the secret
+      # there keeps app/build.gradle.kts untouched.
+      - name: Restore debug keystore from secrets
+        shell: bash
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+          DEBUG_STORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD || 'android' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEBUG_KEYSTORE_BASE64:-}" ]; then
+            echo "::error::DEBUG_KEYSTORE_BASE64 secret is not set on this repository."
+            exit 1
+          fi
+          mkdir -p "$HOME/.android"
+          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$HOME/.android/debug.keystore"
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass "$DEBUG_STORE_PASSWORD" > /dev/null
+          echo "Debug keystore restored."
+
+      - name: Build debug APK
+        run: ./gradlew --console=plain assembleGmsMobileUniversalDebug
+
+      - name: Verify APK signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          APK=$(ls app/build/outputs/apk/gmsMobileUniversal/debug/*.apk | head -1)
+          ACTUAL=$("$BT/apksigner" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          echo "APK: $APK"
+          echo "Signer SHA-256: $ACTUAL"
+          if [ "$ACTUAL" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::APK is not signed with the expected debug key (got $ACTUAL). Did the secret get replaced?"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$APK" dist/jusplayer-debug.apk
+
+      - name: Upload run artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: jusplayer-debug-${{ github.sha }}
+          path: dist/jusplayer-debug.apk
+
+      - name: Publish to debug-latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: debug-latest
+          name: Debug build (v15.1)
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          body: |
+            Debug APK, auto-built from `v15.1` on every push.
+
+            - Commit: `${{ github.sha }}`
+            - Version: v15.1.0
+            - Installable alongside the release build (package `com.jusdots.jusplayer.debug`).
+            - Signed with the project debug key (stable across builds, so you can update-install).
+
+            Download: `jusplayer-debug.apk`, or grab the run artifact from the Actions tab.
+          files: dist/jusplayer-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
