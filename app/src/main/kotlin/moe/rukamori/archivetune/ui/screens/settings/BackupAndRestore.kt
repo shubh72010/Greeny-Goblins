@@ -492,6 +492,7 @@ fun BackupAndRestore(
                                     amazonUrlInput = ""
                                     amazonError = null
                                 },
+                                onLongClick = {},
                                 enabled = !isAmazonLoading,
                             ) {
                                 Icon(
@@ -508,6 +509,7 @@ fun BackupAndRestore(
                                         amazonError = null
                                     }
                                 },
+                                onLongClick = {},
                                 enabled = !isAmazonLoading,
                             ) {
                                 Icon(

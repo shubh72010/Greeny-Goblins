@@ -9,7 +9,6 @@ package moe.rukamori.archivetune.widget
 
 import android.content.ComponentName
 import android.content.Context
-import androidx.datastore.preferences.core.toMutablePreferences
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
