@@ -12,6 +12,7 @@ package moe.rukamori.archivetune.ui.player
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
@@ -77,6 +78,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -135,6 +137,8 @@ import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.rememberEnumPreference
+import moe.rukamori.archivetune.constants.BackdropBlurAmountKey
+import moe.rukamori.archivetune.constants.BackdropEnabledKey
 import moe.rukamori.archivetune.constants.CanvasSourceKey
 import moe.rukamori.archivetune.constants.JusPlayerCanvasKey
 import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
@@ -4087,11 +4091,17 @@ fun PlayerBackground(
     playerCustomContrast: Float,
     playerCustomBrightness: Float,
     isPlaying: Boolean = true,
+    backdropEnabled: Boolean? = null,
+    backdropBlurAmount: Int? = null,
     modifier: Modifier = Modifier,
 ) {
     val archiveTuneCanvasEnabled by rememberPreference(JusPlayerCanvasKey, true)
     val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
     val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.AUTO)
+    val (backdropEnabledPref) = rememberPreference(BackdropEnabledKey, defaultValue = true)
+    val (backdropBlurAmountPref) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
+    val effectiveBackdropEnabled = backdropEnabled ?: backdropEnabledPref
+    val effectiveBackdropBlurAmount = backdropBlurAmount ?: backdropBlurAmountPref
     val lowDataModeActive = rememberLowDataModeActive()
     val storefront = remember {
         val country = java.util.Locale.getDefault().country
@@ -4145,6 +4155,17 @@ fun PlayerBackground(
     val backgroundThumbnailUrl = if (isArtworkBlocked) null else backgroundSwapState.displayUrl
     val styleAppliesBlur =
         effectiveBlurRadius > 0f && effectiveBlurRadius >= 0.5f
+    val isCanvasBlurAllowed = !disableBlur && effectiveBackdropEnabled && effectiveBackdropBlurAmount > 0
+    val canvasBlurRadius = if (isCanvasBlurAllowed) {
+        (PlayerBackgroundMaxBlurRadius.dp * (effectiveBackdropBlurAmount.toFloat() / 100f))
+    } else {
+        0.dp
+    }
+    val canvasScale = if (canvasBlurRadius > 0.dp) {
+        1f + (0.08f * (effectiveBackdropBlurAmount.toFloat() / 100f))
+    } else {
+        1f
+    }
     Box(modifier = modifier.fillMaxSize()) {
         when (playerBackground) {
             PlayerBackgroundStyle.BLUR -> {
@@ -4620,7 +4641,22 @@ PlayerBackgroundStyle.JUSPLAYER_CANVAS -> {
                 val primaryUrl = artwork?.animated
                 val fallbackUrl = artwork?.videoUrl
                 if (!isArtworkBlocked && artwork != null && (!primaryUrl.isNullOrBlank() || !fallbackUrl.isNullOrBlank())) {
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (canvasBlurRadius > 0.dp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    Modifier
+                                        .graphicsLayer {
+                                            scaleX = canvasScale
+                                            scaleY = canvasScale
+                                        }
+                                        .blur(radius = canvasBlurRadius)
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                    ) {
                         CanvasArtworkPlayer(
                             primaryUrl = primaryUrl,
                             fallbackUrl = fallbackUrl ?: primaryUrl,
@@ -4637,14 +4673,27 @@ PlayerBackgroundStyle.JUSPLAYER_CANVAS -> {
                         )
                     }
                 } else if (!isArtworkBlocked && backgroundThumbnailUrl != null) {
-                    // Fallback to blurred thumbnail when no canvas available and artwork is not blocked
+                    // Fallback to thumbnail when no canvas available and artwork is not blocked
                     AsyncImage(
                         model = backgroundThumbnailUrl.highRes(),
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize().let {
-                            if (styleAppliesBlur) it.blur(radius = effectiveBlurRadius.dp) else it
-                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .then(
+                                if (canvasBlurRadius > 0.dp && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    Modifier
+                                        .graphicsLayer {
+                                            scaleX = canvasScale
+                                            scaleY = canvasScale
+                                        }
+                                        .blur(radius = canvasBlurRadius)
+                                } else if (canvasBlurRadius > 0.dp) {
+                                    Modifier.blur(radius = canvasBlurRadius)
+                                } else {
+                                    Modifier
+                                }
+                            ),
                     )
                 }
             }

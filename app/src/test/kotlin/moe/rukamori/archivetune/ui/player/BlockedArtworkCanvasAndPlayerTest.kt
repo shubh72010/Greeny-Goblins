@@ -232,4 +232,34 @@ class BlockedArtworkCanvasAndPlayerTest {
         val shouldFetchCanvas = !isArtworkBlocked
         assertFalse("LyricsShare canvas preview must not fetch canvas when blocked", shouldFetchCanvas)
     }
+
+    @Test
+    fun jusPlayerCanvas_backdropBlur_respectsBackdropSettings() {
+        val maxBlur = 64f
+
+        fun computeCanvasBlur(disableBlur: Boolean, backdropEnabled: Boolean, backdropBlurAmount: Int): Float {
+            val isCanvasBlurAllowed = !disableBlur && backdropEnabled && backdropBlurAmount > 0
+            return if (isCanvasBlurAllowed) {
+                maxBlur * (backdropBlurAmount.toFloat() / 100f)
+            } else {
+                0f
+            }
+        }
+
+        // 1. When Backdrop blur amount is 0%, blur must be 0
+        assertEquals(0f, computeCanvasBlur(disableBlur = false, backdropEnabled = true, backdropBlurAmount = 0), 0.001f)
+
+        // 2. When Backdrop blur toggle is off, blur must be 0
+        assertEquals(0f, computeCanvasBlur(disableBlur = false, backdropEnabled = false, backdropBlurAmount = 60), 0.001f)
+
+        // 3. When global disableBlur is true, blur must be 0
+        assertEquals(0f, computeCanvasBlur(disableBlur = true, backdropEnabled = true, backdropBlurAmount = 60), 0.001f)
+
+        // 4. When Backdrop blur is on and amount > 0, blur scales with amount
+        val blur60 = computeCanvasBlur(disableBlur = false, backdropEnabled = true, backdropBlurAmount = 60)
+        assertEquals(38.4f, blur60, 0.001f)
+
+        val blur100 = computeCanvasBlur(disableBlur = false, backdropEnabled = true, backdropBlurAmount = 100)
+        assertEquals(64f, blur100, 0.001f)
+    }
 }

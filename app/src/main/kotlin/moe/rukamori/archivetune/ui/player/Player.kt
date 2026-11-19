@@ -1237,11 +1237,13 @@ fun BottomSheetPlayer(
 
         if (!state.isCollapsed &&
             !aodModeEnabled &&
-            playerDesignStyle != PlayerDesignStyle.V5 &&
-            playerDesignStyle != PlayerDesignStyle.V7 &&
-            playerDesignStyle != PlayerDesignStyle.V8 &&
-            playerDesignStyle != PlayerDesignStyle.V9 &&
-            playerDesignStyle != PlayerDesignStyle.V10
+            (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || (
+                playerDesignStyle != PlayerDesignStyle.V5 &&
+                playerDesignStyle != PlayerDesignStyle.V7 &&
+                playerDesignStyle != PlayerDesignStyle.V8 &&
+                playerDesignStyle != PlayerDesignStyle.V9 &&
+                playerDesignStyle != PlayerDesignStyle.V10
+            ))
         ) {
             PlayerBackground(
                 playerBackground = playerBackground,
@@ -1254,6 +1256,8 @@ fun BottomSheetPlayer(
                 playerCustomContrast = playerCustomContrast,
                 playerCustomBrightness = playerCustomBrightness,
                 isPlaying = isPlaying,
+                backdropEnabled = backdropEnabled,
+                backdropBlurAmount = backdropBlurAmount,
                 modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
             )
         }
@@ -1353,17 +1357,19 @@ fun BottomSheetPlayer(
                                 lowDataMode = lowDataModeActive,
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
-                        V7PlayerBackdrop(
-                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || isMetadataArtworkBlocked) null else v7SwapState.displayUrl,
-                            canvasStaticUrl = v7CanvasArtwork?.static,
-                            canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
-                            canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
-                            isPlaying = isPlaying,
-                            disableBlur = disableBlur,
-                            backdropBlurAmount = backdropBlurAmount,
-                            label = "v7BackdropLandscape",
-                            songId = mediaMetadata?.id,
-                        )
+                        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
+                            V7PlayerBackdrop(
+                                thumbnailUrl = if (isMetadataArtworkBlocked) null else v7SwapState.displayUrl,
+                                canvasStaticUrl = v7CanvasArtwork?.static,
+                                canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
+                                canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
+                                isPlaying = isPlaying,
+                                disableBlur = disableBlur,
+                                backdropBlurAmount = backdropBlurAmount,
+                                label = "v7BackdropLandscape",
+                                songId = mediaMetadata?.id,
+                            )
+                        }
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1419,12 +1425,14 @@ fun BottomSheetPlayer(
                                 lowDataMode = lowDataModeActive,
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
-                        V8PlayerBackdrop(
-                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || isMetadataArtworkBlocked) null else v8SwapState.displayUrl,
-                            backdropBlurAmount = backdropBlurAmount,
-                            modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
-                            songId = mediaMetadata?.id,
-                        )
+                        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
+                            V8PlayerBackdrop(
+                                thumbnailUrl = if (isMetadataArtworkBlocked) null else v8SwapState.displayUrl,
+                                backdropBlurAmount = backdropBlurAmount,
+                                modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
+                                songId = mediaMetadata?.id,
+                            )
+                        }
 
                         enrichedMetadata?.let { metadata ->
                             CompositionLocalProvider(LocalAppBackdrop provides playerGlassBackdrop) {
@@ -1693,17 +1701,19 @@ fun BottomSheetPlayer(
                                 lowDataMode = lowDataModeActive,
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
-                        V7PlayerBackdrop(
-                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || isMetadataArtworkBlocked) null else v7SwapState.displayUrl,
-                            canvasStaticUrl = v7CanvasArtwork?.static,
-                            canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
-                            canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
-                            isPlaying = isPlaying,
-                            disableBlur = disableBlur,
-                            backdropBlurAmount = backdropBlurAmount,
-                            label = "v7BackdropPortrait",
-                            songId = mediaMetadata?.id,
-                        )
+                        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
+                            V7PlayerBackdrop(
+                                thumbnailUrl = if (isMetadataArtworkBlocked) null else v7SwapState.displayUrl,
+                                canvasStaticUrl = v7CanvasArtwork?.static,
+                                canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
+                                canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
+                                isPlaying = isPlaying,
+                                disableBlur = disableBlur,
+                                backdropBlurAmount = backdropBlurAmount,
+                                label = "v7BackdropPortrait",
+                                songId = mediaMetadata?.id,
+                            )
+                        }
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1757,12 +1767,14 @@ fun BottomSheetPlayer(
                                 lowDataMode = lowDataModeActive,
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
-                        V8PlayerBackdrop(
-                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || isMetadataArtworkBlocked) null else v8SwapState.displayUrl,
-                            backdropBlurAmount = backdropBlurAmount,
-                            modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
-                            songId = mediaMetadata?.id,
-                        )
+                        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
+                            V8PlayerBackdrop(
+                                thumbnailUrl = if (isMetadataArtworkBlocked) null else v8SwapState.displayUrl,
+                                backdropBlurAmount = backdropBlurAmount,
+                                modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
+                                songId = mediaMetadata?.id,
+                            )
+                        }
 
                         enrichedMetadata?.let { metadata ->
                             CompositionLocalProvider(LocalAppBackdrop provides playerGlassBackdrop) {
