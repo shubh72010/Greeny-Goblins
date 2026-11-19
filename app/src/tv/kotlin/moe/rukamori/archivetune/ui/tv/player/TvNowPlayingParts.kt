@@ -100,6 +100,7 @@ import moe.rukamori.archivetune.ui.icons.BitChordIcons
 import moe.rukamori.archivetune.data.settings.TvPlayerStyle
 import moe.rukamori.archivetune.ui.player.ArtworkMeshBackdrop
 import moe.rukamori.archivetune.ui.player.CanvasArtworkPlayer
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.ui.player.SyncedLyricsPanel
 import moe.rukamori.archivetune.ui.player.rememberArtworkMesh
 import moe.rukamori.archivetune.ui.tv.components.TvActivityIndicator
@@ -174,8 +175,9 @@ internal fun TvNowPlayingStage(
     val underControls by animateFloatAsState(if (controlsVisible) 1f else 0f, tween(320), label = "lyricsFade")
     val canvasEnabled by AppSettings.animatedCanvas.collectAsState()
     var canvas by remember(song.videoId) { mutableStateOf<CanvasArtwork?>(null) }
-    LaunchedEffect(song.videoId, canvasEnabled) {
-        canvas = if (canvasEnabled) CanvasRepository.canvasFor(song) else null
+    val isArtworkBlocked = BlockedArtwork.isBlocked(song.videoId)
+    LaunchedEffect(song.videoId, canvasEnabled, isArtworkBlocked) {
+        canvas = if (canvasEnabled && !isArtworkBlocked) CanvasRepository.canvasFor(song) else null
     }
     val side by animateFloatAsState(if (showLyrics) 1f else 0f, tween(520), label = "artToSide")
 
@@ -205,8 +207,10 @@ internal fun TvNowPlayingStage(
                     clip = true
                 },
         ) {
-            TvArtwork(url = song.thumbnailUrl, px = 720, shape = RectangleShape, modifier = Modifier.fillMaxSize())
-            canvas?.let { CanvasArtworkPlayer(canvas = it, isPlaying = isPlaying, modifier = Modifier.fillMaxSize()) }
+            if (!isArtworkBlocked) {
+                TvArtwork(url = song.thumbnailUrl, px = 720, shape = RectangleShape, modifier = Modifier.fillMaxSize())
+                canvas?.let { CanvasArtworkPlayer(canvas = it, isPlaying = isPlaying, modifier = Modifier.fillMaxSize(), songId = song.videoId) }
+            }
         }
 
         // With the transport away, the song is named under the cover: the title and

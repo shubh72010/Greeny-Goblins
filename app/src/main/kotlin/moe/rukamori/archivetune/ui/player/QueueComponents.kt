@@ -75,6 +75,7 @@ import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.db.entities.FormatEntity
 import moe.rukamori.archivetune.db.entities.containerLabel
 import moe.rukamori.archivetune.db.entities.formattedBitrate
@@ -88,6 +89,8 @@ import moe.rukamori.archivetune.ui.component.bottomSheetDraggable
 import moe.rukamori.archivetune.ui.component.isPlayerGlassEnabled
 import moe.rukamori.archivetune.ui.component.playerLiquidGlass
 import moe.rukamori.archivetune.utils.makeTimeString
+import moe.rukamori.archivetune.utils.BlockedArtwork
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
 
@@ -121,6 +124,11 @@ fun CurrentSongHeader(
 ) {
     val view = LocalView.current
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked =
+        mediaMetadata?.id?.let {
+            isSongInSet(hiddenCoverIds, it) || BlockedArtwork.isBlocked(it)
+        } ?: false
 
     Column(
         modifier =
@@ -154,16 +162,34 @@ fun CurrentSongHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            AsyncImage(
-                model = mediaMetadata?.thumbnailUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier =
-                    Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(onBackgroundColor.copy(alpha = 0.06f)),
-            )
+            if (isArtworkBlocked || mediaMetadata?.thumbnailUrl == null) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(onBackgroundColor.copy(alpha = 0.06f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.music_note),
+                        contentDescription = null,
+                        tint = onBackgroundColor.copy(alpha = 0.6f),
+                        modifier = Modifier.size(32.dp),
+                    )
+                }
+            } else {
+                AsyncImage(
+                    model = mediaMetadata.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier =
+                        Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(onBackgroundColor.copy(alpha = 0.06f)),
+                )
+            }
 
             Column(
                 modifier = Modifier.weight(1f),

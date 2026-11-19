@@ -145,6 +145,7 @@ import moe.rukamori.archivetune.utils.deviceTier
 import moe.rukamori.archivetune.utils.joinByBullet
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.reportException
 import kotlin.math.roundToInt
@@ -1382,6 +1383,7 @@ fun MediaMetadataListItem(
                 shouldLoadImage = shouldLoadImage,
                 shape = rememberThumbnailShape(ThumbnailShapeKind.SONG, ThumbnailCornerRadius.value, mediaMetadata.id),
                 modifier = Modifier.size(ListThumbnailSize),
+                mediaId = mediaMetadata.id,
             )
         },
         trailingContent = trailingContent,
@@ -1701,7 +1703,7 @@ fun ItemThumbnail(
     val density = LocalDensity.current
 
     val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
-    val hideCover = mediaId != null && isSongInSet(hiddenCoverIds, mediaId)
+    val hideCover = mediaId != null && (isSongInSet(hiddenCoverIds, mediaId) || BlockedArtwork.isBlocked(mediaId))
     val effectivePlaceholder = if (hideCover) R.drawable.music_note else placeholderIconRes
 
     BoxWithConstraints(

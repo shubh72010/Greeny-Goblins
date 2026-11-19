@@ -46,6 +46,7 @@ import androidx.glance.material3.ColorProviders
 import androidx.glance.unit.ColorProvider
 import moe.rukamori.archivetune.MainActivity
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import java.io.File
 
 @Immutable
@@ -77,6 +78,8 @@ internal fun Preferences.toWidgetPlaybackState(context: Context): WidgetPlayback
     val isAvailable = this[MusicWidgetKeys.IS_AVAILABLE] ?: false
     val rawTitle = this[MusicWidgetKeys.TRACK_TITLE].orEmpty()
     val rawArtist = this[MusicWidgetKeys.TRACK_ARTIST].orEmpty()
+    val songId = this[MusicWidgetKeys.SONG_ID].orEmpty()
+    val isArtworkBlocked = songId.isNotBlank() && BlockedArtwork.isBlocked(songId)
 
     return WidgetPlaybackState(
         title =
@@ -89,9 +92,9 @@ internal fun Preferences.toWidgetPlaybackState(context: Context): WidgetPlayback
                 else -> context.getString(R.string.unknown_artist)
             },
         isPlaying = this[MusicWidgetKeys.IS_PLAYING] ?: false,
-        artPath = this[MusicWidgetKeys.ART_PATH],
+        artPath = if (isArtworkBlocked) null else this[MusicWidgetKeys.ART_PATH],
         isAvailable = isAvailable,
-        dominantColor = this[MusicWidgetKeys.DOMINANT_COLOR],
+        dominantColor = if (isArtworkBlocked) null else this[MusicWidgetKeys.DOMINANT_COLOR],
         playbackPosition = (this[MusicWidgetKeys.PLAYBACK_POSITION] ?: 0f).coerceIn(0f, 1f),
     )
 }

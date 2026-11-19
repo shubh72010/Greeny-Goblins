@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.canvas.ArchiveTuneCanvas
 import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import timber.log.Timber
 
 internal suspend fun resolveCanvasArtworkForPlayback(
@@ -26,6 +27,10 @@ internal suspend fun resolveCanvasArtworkForPlayback(
     canvasSource: CanvasSource = CanvasSource.AUTO,
     videoKind: CanvasVideoKind = CanvasVideoKind.MUSIC,
 ): CanvasArtwork? {
+    if (BlockedArtwork.isBlocked(mediaId)) {
+        Timber.tag(CanvasArtworkLogTag).d("Artwork blocked for %s; skipping canvas lookup", mediaId)
+        return null
+    }
     val preferLyric = videoKind == CanvasVideoKind.LYRIC
     if (canvasSource == CanvasSource.AUTO) {
         withContext(Dispatchers.IO) {

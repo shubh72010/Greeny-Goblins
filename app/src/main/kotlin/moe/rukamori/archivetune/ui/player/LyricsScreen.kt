@@ -101,6 +101,7 @@ import moe.rukamori.archivetune.LocalPlayerConnection
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.DisableBlurKey
 import moe.rukamori.archivetune.constants.EnableHapticFeedbackKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.LyricsMode
 import moe.rukamori.archivetune.constants.LyricsModeKey
 import moe.rukamori.archivetune.constants.ShowLyricsPlayerControlsKey
@@ -118,6 +119,8 @@ import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.ui.utils.resize
 import moe.rukamori.archivetune.utils.isLowRamDevice
 import moe.rukamori.archivetune.utils.makeTimeString
+import moe.rukamori.archivetune.utils.BlockedArtwork
+import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.coroutines.cancellation.CancellationException
@@ -236,8 +239,12 @@ fun LyricsScreen(
 
     val positionState = remember(mediaMetadata.id) { mutableLongStateOf(0L) }
     val durationState = remember(mediaMetadata.id) { mutableLongStateOf(C.TIME_UNSET) }
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked = isSongInSet(hiddenCoverIds, mediaMetadata.id) || BlockedArtwork.isBlocked(mediaMetadata.id)
     var sliderPosition by remember(mediaMetadata.id) { mutableStateOf<Long?>(null) }
-    var gradientColors by remember(mediaMetadata.thumbnailUrl) { mutableStateOf(AppleMusicFallbackGradient) }
+    var gradientColors by remember(mediaMetadata.thumbnailUrl, isArtworkBlocked) {
+        mutableStateOf(AppleMusicFallbackGradient)
+    }
 
     val gradientColorsCache =
         remember {
@@ -247,8 +254,8 @@ fun LyricsScreen(
         }
     val fallbackColor = remember { Color.Black.toArgb() }
 
-    LaunchedEffect(mediaMetadata.id, mediaMetadata.thumbnailUrl) {
-        val thumbnailUrl = mediaMetadata.thumbnailUrl
+    LaunchedEffect(mediaMetadata.id, mediaMetadata.thumbnailUrl, isArtworkBlocked) {
+        val thumbnailUrl = if (isArtworkBlocked) null else mediaMetadata.thumbnailUrl
         if (thumbnailUrl == null) {
             gradientColors = AppleMusicFallbackGradient
             return@LaunchedEffect
@@ -516,6 +523,8 @@ private fun AppleMusicBackground(
 ) {
     val context = LocalContext.current
     val (disableBlur) = rememberPreference(DisableBlurKey, true)
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked = isSongInSet(hiddenCoverIds, mediaMetadata.id) || BlockedArtwork.isBlocked(mediaMetadata.id)
     val isLowRam = remember(context) { context.isLowRamDevice() }
     // ponytail: 46dp fullscreen blur was the largest radius in the repo — 20dp ceiling + gate.
     val backdropBlurEnabled = !disableBlur && !isLowRam
@@ -540,6 +549,8 @@ private fun AppleMusicBackground(
             )
         }
 
+    val displayThumbnailUrl = if (isArtworkBlocked) null else mediaMetadata.thumbnailUrl
+
     Box(
         modifier =
             modifier
@@ -547,7 +558,7 @@ private fun AppleMusicBackground(
                 .background(AppleMusicFallbackGradient.last()),
     ) {
         AnimatedContent(
-            targetState = mediaMetadata.thumbnailUrl,
+            targetState = displayThumbnailUrl,
             transitionSpec = { fadeIn(tween(700)) togetherWith fadeOut(tween(700)) },
             label = "lyrics-apple-background",
         ) { thumbnailUrl ->
@@ -625,6 +636,10 @@ private fun AppleMusicTrackHeader(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked = isSongInSet(hiddenCoverIds, mediaMetadata.id) || BlockedArtwork.isBlocked(mediaMetadata.id)
+    val displayThumbnail = if (isArtworkBlocked) null else mediaMetadata.thumbnailUrl
+
     val artistText =
         remember(mediaMetadata.id, mediaMetadata.artists) {
             mediaMetadata.artists.joinToString { it.name }
@@ -642,13 +657,14 @@ private fun AppleMusicTrackHeader(
                     .background(AppleMusicForeground.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
-            AsyncImage(
-                model = mediaMetadata.thumbnailUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            if (mediaMetadata.thumbnailUrl == null) {
+            if (displayThumbnail != null) {
+                AsyncImage(
+                    model = displayThumbnail,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
                 Icon(
                     painter = painterResource(R.drawable.music_note),
                     contentDescription = null,

@@ -17,6 +17,7 @@ import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusi
 import moe.rukamori.archivetune.innertube.models.WatchEndpoint.WatchEndpointMusicSupportedConfigs.WatchEndpointMusicConfig.Companion.MUSIC_VIDEO_TYPE_UGC
 import moe.rukamori.archivetune.innertube.models.YouTubeClient
 import moe.rukamori.archivetune.innertube.models.response.PlayerResponse
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import timber.log.Timber
 import java.util.Locale
 
@@ -51,6 +52,10 @@ object YouTubeCanvasProvider {
     ): CanvasArtwork? {
         if (requireVertical) return null
         if (mediaId.isBlank() && songTitleRaw.isBlank() && artistNameRaw.isBlank()) return null
+        if (BlockedArtwork.isBlocked(mediaId)) {
+            Timber.tag(LogTag).d("Artwork blocked for %s; aborting canvas resolution", mediaId)
+            return null
+        }
 
         Timber.tag(LogTag).d(
             "resolveForPlayback mediaId=%s song=%s artist=%s currentIsMusicVideo=%b fallbackToAnyVideo=%b",

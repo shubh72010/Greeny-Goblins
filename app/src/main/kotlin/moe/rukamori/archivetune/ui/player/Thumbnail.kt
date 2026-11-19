@@ -119,6 +119,7 @@ import moe.rukamori.archivetune.utils.ImageBlurUtils
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.rememberPreference
 import java.util.Locale
 import kotlin.math.abs
@@ -435,9 +436,10 @@ fun Thumbnail(
                                     val country = Locale.getDefault().country
                                     if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
                                 }
+                            val isItemArtworkBlocked = isSongInSet(hiddenCoverIds, item.mediaId) || BlockedArtwork.isBlocked(item.mediaId)
                             val shouldUseCanvas =
                                 archiveTuneCanvasEnabled &&
-                                    !isSongInSet(hiddenCoverIds, item.mediaId) &&
+                                    !isItemArtworkBlocked &&
                                     playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                                     !performanceMode &&
                                     playerDesignStyle != PlayerDesignStyle.V7 &&
@@ -448,15 +450,15 @@ fun Thumbnail(
                             var canvasArtwork by remember(item.mediaId) { mutableStateOf<CanvasArtwork?>(null) }
                             var canvasFetchInFlight by remember(item.mediaId) { mutableStateOf(false) }
 
-                            LaunchedEffect(shouldUseCanvas) {
-                                if (!shouldUseCanvas) {
+                            LaunchedEffect(shouldUseCanvas, isItemArtworkBlocked) {
+                                if (!shouldUseCanvas || isItemArtworkBlocked) {
                                     canvasArtwork = null
                                     canvasFetchInFlight = false
                                 }
                             }
 
-                            LaunchedEffect(shouldUseCanvas, shouldFetchCanvas, item.mediaId) {
-                                if (!shouldUseCanvas) return@LaunchedEffect
+                            LaunchedEffect(shouldUseCanvas, shouldFetchCanvas, item.mediaId, isItemArtworkBlocked) {
+                                if (!shouldUseCanvas || isItemArtworkBlocked) return@LaunchedEffect
 
                                 val songTitleRaw =
                                     itemMetadata
@@ -556,14 +558,8 @@ fun Thumbnail(
                                         Modifier
                                             .size(containerMaxWidth - (PlayerHorizontalPadding * 2)),
                                 ) {
-                                    if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
-                                            Box(
-                                                modifier =
-                                                    Modifier
-                                                        .fillMaxSize()
-                                                        .clip(thumbnailShape),
-                                            )
-                                        } else if (hidePlayerThumbnail || isSongInSet(hiddenCoverIds, item.mediaId)) {
+                                    val isCoverHidden = hidePlayerThumbnail || isItemArtworkBlocked
+                                    if (isCoverHidden) {
                                         // Show app logo when thumbnail is hidden
                                         Box(
                                             modifier =
@@ -580,6 +576,13 @@ fun Thumbnail(
                                                 modifier = Modifier.size(120.dp),
                                             )
                                         }
+                                    } else if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .clip(thumbnailShape),
+                                        )
                                     } else {
                                         val primaryCanvasUrl = canvasArtwork?.animated
                                         val fallbackCanvasUrl = canvasArtwork?.videoUrl
@@ -668,6 +671,7 @@ fun Thumbnail(
                                                 clipStartMs = canvasArtwork?.loopStartMs,
                                                 clipEndMs = canvasArtwork?.loopEndMs,
                                                 modifier = Modifier.fillMaxSize().clip(thumbnailShape),
+                                                songId = item.mediaId,
                                             )
                                         }
                                     }

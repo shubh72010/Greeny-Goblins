@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,11 +35,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
 import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.HidePlayerThumbnailKey
@@ -66,11 +70,11 @@ fun registerCoverArtComponent() {
         val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, defaultValue = "")
         val (cropToSquare) = rememberPreference(CropThumbnailToSquareKey, defaultValue = true)
         val (playerBackground) = rememberEnumPreference(PlayerBackgroundStyleKey, defaultValue = PlayerBackgroundStyle.JUSPLAYER_CANVAS)
-        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS) {
+        val isCoverHidden = hideThumbnail ||
+            isSongInSet(hiddenCoverIds, metadata?.id.orEmpty()) ||
+            BlockedArtwork.isBlocked(metadata?.id.orEmpty())
+        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS || isCoverHidden) {
             val cornerRadius = LocalThumbnailCornerRadius.current
-            val isCoverHidden = hideThumbnail ||
-                isSongInSet(hiddenCoverIds, metadata?.id.orEmpty()) ||
-                BlockedArtwork.isBlocked(metadata?.id.orEmpty())
             CoverArtComponent(
                 metadata = metadata,
                 playerConnection = playerConnection,
@@ -146,6 +150,18 @@ private fun DefaultCoverArtVariant(
                 contentScale = ContentScale.Fit,
                 modifier = imageModifier,
             )
+        } else if (hideThumbnail) {
+            Box(
+                modifier = imageModifier.background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.about_splash),
+                    contentDescription = stringResource(R.string.hide_player_thumbnail),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.size(120.dp),
+                )
+            }
         }
     }
 }
@@ -161,6 +177,7 @@ private fun StyleCardVariant(
         modifier = modifier
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center,
     ) {
         if (!hideThumbnail && metadata?.thumbnailUrl != null) {
             AsyncImage(
@@ -169,6 +186,20 @@ private fun StyleCardVariant(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
+        } else if (hideThumbnail) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.about_splash),
+                    contentDescription = stringResource(R.string.hide_player_thumbnail),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.size(120.dp),
+                )
+            }
         }
 
         Box(

@@ -187,6 +187,7 @@ import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleRep
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleShuffle
 import moe.rukamori.archivetune.constants.MediaSessionConstants.CommandToggleStartRadio
 import moe.rukamori.archivetune.constants.PauseListenHistoryKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.PauseOnDeviceMuteKey
 import moe.rukamori.archivetune.constants.PermanentShuffleKey
 import moe.rukamori.archivetune.constants.PersistentQueueKey
@@ -296,6 +297,7 @@ import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.getAsync
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.isLocalMediaId
 import moe.rukamori.archivetune.utils.isLowDataModeActive
 import moe.rukamori.archivetune.utils.reportException
@@ -1292,6 +1294,26 @@ class MusicService :
                 player.repeatMode = repeatMode
                 playerVolume.value = volume
                 updateAudioOffload(offload && !crossfadePrefEnabled)
+            }
+        }
+
+        scope.launch(Dispatchers.IO) {
+            dataStore.data
+                .map { it[HiddenCoverArtSongIdsKey].orEmpty() }
+                .distinctUntilChanged()
+                .collect { raw ->
+                    BlockedArtwork.update(raw)
+                    withContext(Dispatchers.Main) {
+                        syncBlockedArtworkForCurrentAndQueuedItems()
+                    }
+                }
+        }
+
+        scope.launch {
+            BlockedArtwork.ids.collect {
+                withContext(Dispatchers.Main) {
+                    syncBlockedArtworkForCurrentAndQueuedItems()
+                }
             }
         }
 
@@ -4216,6 +4238,38 @@ class MusicService :
     fun refreshPlaybackNotification() {
         updateNotification()
         onUpdateNotification(mediaSession, hasResumablePlaybackNotification())
+    }
+
+    private fun syncBlockedArtworkForCurrentAndQueuedItems() {
+        if (!::player.isInitialized || player.mediaItemCount == 0) return
+        var currentItemUpdated = false
+        for (i in 0 until player.mediaItemCount) {
+            val item = player.getMediaItemAt(i)
+            val songId = item.mediaId
+            if (songId.isBlank()) continue
+            val isBlocked = BlockedArtwork.isBlocked(songId)
+            val currentArtworkUri = item.mediaMetadata.artworkUri
+            if (isBlocked && currentArtworkUri != null) {
+                val updatedMetadata =
+                    item.mediaMetadata
+                        .buildUpon()
+                        .setArtworkUri(null)
+                        .build()
+                val updatedItem =
+                    item
+                        .buildUpon()
+                        .setMediaMetadata(updatedMetadata)
+                        .build()
+                player.replaceMediaItem(i, updatedItem)
+                if (i == player.currentMediaItemIndex) {
+                    currentItemUpdated = true
+                }
+            }
+        }
+        if (currentItemUpdated) {
+            refreshPlaybackNotification()
+            updateWidget()
+        }
     }
 
     private suspend fun recoverSong(
@@ -7170,6 +7224,22 @@ class MusicService :
             currentMediaMetadata.value = if (timelineEmpty) null else (mediaItem?.metadata ?: player.currentMetadata)
         }
 
+        val currentTransitionItem = player.currentMediaItem
+        val currentTransitionSongId = currentTransitionItem?.mediaId.orEmpty()
+        if (currentTransitionSongId.isNotBlank() && BlockedArtwork.isBlocked(currentTransitionSongId) && currentTransitionItem?.mediaMetadata?.artworkUri != null) {
+            val updatedMetadata =
+                currentTransitionItem.mediaMetadata
+                    .buildUpon()
+                    .setArtworkUri(null)
+                    .build()
+            val updatedItem =
+                currentTransitionItem
+                    .buildUpon()
+                    .setMediaMetadata(updatedMetadata)
+                    .build()
+            player.replaceMediaItem(player.currentMediaItemIndex, updatedItem)
+        }
+
         widgetUpdater.update()
 
         scrobbleManager?.onSongStop()
@@ -9668,6 +9738,21 @@ class MusicService :
         session: MediaSession,
         startInForegroundRequired: Boolean,
     ) {
+        val currentItem = session.player.currentMediaItem
+        val currentSongId = currentItem?.mediaId.orEmpty()
+        if (currentSongId.isNotBlank() && BlockedArtwork.isBlocked(currentSongId) && currentItem?.mediaMetadata?.artworkUri != null) {
+            val updatedMetadata =
+                currentItem.mediaMetadata
+                    .buildUpon()
+                    .setArtworkUri(null)
+                    .build()
+            val updatedItem =
+                currentItem
+                    .buildUpon()
+                    .setMediaMetadata(updatedMetadata)
+                    .build()
+            session.player.replaceMediaItem(session.player.currentMediaItemIndex, updatedItem)
+        }
         val keepInForeground = startInForegroundRequired || hasResumablePlaybackNotification()
         if (keepInForeground) ensureStartedAsForeground()
         runCatching { super.onUpdateNotification(session, keepInForeground) }

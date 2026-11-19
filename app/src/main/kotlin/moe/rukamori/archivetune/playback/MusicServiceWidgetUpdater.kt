@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.extensions.SilentHandler
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.reportException
 import moe.rukamori.archivetune.widget.AlbumArtWidget
 import moe.rukamori.archivetune.widget.ListeningInsightsWidget
@@ -56,6 +57,14 @@ internal class MusicServiceWidgetUpdater(
 ) {
     private var progressJob: Job? = null
 
+    init {
+        scope.launch(SilentHandler) {
+            BlockedArtwork.ids.collect {
+                pushState()
+            }
+        }
+    }
+
     fun update() {
         scope.launch(SilentHandler) {
             pushState()
@@ -78,10 +87,13 @@ internal class MusicServiceWidgetUpdater(
     private suspend fun pushState() {
         val mediaItem = player.currentMediaItem
         val meta = mediaItem?.mediaMetadata
-        val artFile = meta?.artworkUri?.let { cacheAlbumArt(it) }
-        val dominantColor = artFile?.let { extractDominantColor(it) }
+        val songId = mediaItem?.mediaId.orEmpty()
+        val isArtworkBlocked = songId.isNotBlank() && BlockedArtwork.isBlocked(songId)
+        val artFile = if (isArtworkBlocked) null else meta?.artworkUri?.let { cacheAlbumArt(it) }
+        val dominantColor = if (isArtworkBlocked) null else artFile?.let { extractDominantColor(it) }
         val snapshot =
             WidgetSnapshot(
+                songId = songId,
                 title = meta?.title?.toString() ?: service.getString(R.string.no_track_playing),
                 artist = meta?.artist?.toString().orEmpty(),
                 isPlaying = player.isPlaying,
@@ -137,6 +149,7 @@ internal class MusicServiceWidgetUpdater(
 
     private fun Preferences.toMutableWidgetPreferences(): MutablePreferences =
         mutablePreferencesOf().also { mutable ->
+            this[MusicWidgetKeys.SONG_ID]?.let { mutable[MusicWidgetKeys.SONG_ID] = it }
             this[MusicWidgetKeys.TRACK_TITLE]?.let { mutable[MusicWidgetKeys.TRACK_TITLE] = it }
             this[MusicWidgetKeys.TRACK_ARTIST]?.let { mutable[MusicWidgetKeys.TRACK_ARTIST] = it }
             this[MusicWidgetKeys.ART_PATH]?.let { mutable[MusicWidgetKeys.ART_PATH] = it }
@@ -153,6 +166,11 @@ internal class MusicServiceWidgetUpdater(
         }
 
     private fun MutablePreferences.writeSnapshot(snapshot: WidgetSnapshot) {
+        if (snapshot.songId.isNotBlank()) {
+            this[MusicWidgetKeys.SONG_ID] = snapshot.songId
+        } else {
+            remove(MusicWidgetKeys.SONG_ID)
+        }
         this[MusicWidgetKeys.TRACK_TITLE] = snapshot.title
         this[MusicWidgetKeys.TRACK_ARTIST] = snapshot.artist
         this[MusicWidgetKeys.IS_PLAYING] = snapshot.isPlaying
@@ -280,6 +298,7 @@ internal class MusicServiceWidgetUpdater(
         if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
 
     private data class WidgetSnapshot(
+        val songId: String = "",
         val title: String,
         val artist: String,
         val isPlaying: Boolean,

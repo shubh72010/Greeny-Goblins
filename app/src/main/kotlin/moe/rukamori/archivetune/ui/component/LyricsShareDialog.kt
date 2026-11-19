@@ -102,6 +102,7 @@ import kotlinx.coroutines.withContext
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.AudioQuality
 import moe.rukamori.archivetune.constants.AudioQualityKey
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.constants.PlayerStreamClient
 import moe.rukamori.archivetune.constants.PlayerStreamClientKey
 import moe.rukamori.archivetune.models.MediaMetadata
@@ -111,8 +112,11 @@ import moe.rukamori.archivetune.utils.ComposeToImage
 import moe.rukamori.archivetune.utils.LyricsKaraokeRenderer
 import moe.rukamori.archivetune.utils.LyricsVideoExporter
 import moe.rukamori.archivetune.utils.YTPlayerUtils
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.enumPreference
 import moe.rukamori.archivetune.utils.isLowDataModeActive
+import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.retryWithoutPlaybackLoginContext
 import java.util.Locale
 
@@ -173,6 +177,13 @@ fun LyricsShareImageDialog(
     var isSharing by remember { mutableStateOf(false) }
     var sharingProgress by remember { mutableStateOf<Float?>(null) }
     var shareMode by remember { mutableStateOf(LyricsShareMode.Image) }
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked =
+        mediaMetadata?.id?.let {
+            isSongInSet(hiddenCoverIds, it) || BlockedArtwork.isBlocked(it)
+        } ?: false
+    val effectiveCoverUrl = if (isArtworkBlocked) null else mediaMetadata?.thumbnailUrl
+
     var selectedGlassStyle by remember { mutableStateOf(LyricsGlassStyle.FrostedDark) }
     var paletteGlassStyle by remember { mutableStateOf<LyricsGlassStyle?>(null) }
     var options by remember { mutableStateOf(LyricsShareImageOptions()) }
@@ -185,8 +196,12 @@ fun LyricsShareImageDialog(
     var videoScale by remember { mutableStateOf(1f) }
 
     // Fetch canvas url for preview when media or aspect changes
-    androidx.compose.runtime.LaunchedEffect(mediaMetadata?.id, options.aspectRatio) {
-        val id = mediaMetadata?.id ?: return@LaunchedEffect
+    androidx.compose.runtime.LaunchedEffect(mediaMetadata?.id, options.aspectRatio, isArtworkBlocked) {
+        val id = mediaMetadata?.id
+        if (id == null || isArtworkBlocked) {
+            canvasPreviewUrl = null
+            return@LaunchedEffect
+        }
         Timber.tag("LyricsShare").d("preview fetch canvas id=$id aspect=${options.aspectRatio}")
         GlobalLog.append(Log.DEBUG, "LyricsShare", "preview fetch canvas id=$id")
         canvasPreviewUrl = runCatching {
@@ -221,8 +236,8 @@ fun LyricsShareImageDialog(
         }
     }
 
-    LaunchedEffect(mediaMetadata?.thumbnailUrl) {
-        val coverUrl = mediaMetadata?.thumbnailUrl
+    LaunchedEffect(effectiveCoverUrl) {
+        val coverUrl = effectiveCoverUrl
         if (coverUrl == null) {
             paletteGlassStyle = null
             return@LaunchedEffect
@@ -275,7 +290,7 @@ fun LyricsShareImageDialog(
                             val image =
                                 ComposeToImage.createLyricsImage(
                                     context = context,
-                                    coverArtUrl = mediaMetadata?.thumbnailUrl,
+                                    coverArtUrl = effectiveCoverUrl,
                                     songTitle = payload.songTitle,
                                     artistName = payload.artists,
                                     lyrics = payload.lyricsText,
@@ -436,11 +451,13 @@ private suspend fun shareLyricsAsVideo(
     }
     Timber.tag("LyricsShare").d("renderer create canvas=$canvasVideoUrl isCanvas=${!canvasVideoUrl.isNullOrBlank()}")
     GlobalLog.append(Log.DEBUG, "LyricsShare", "renderer create canvas=$canvasVideoUrl")
+    val isArtworkBlocked = BlockedArtwork.isBlocked(mediaId)
+    val effectiveCoverUrl = if (isArtworkBlocked) null else mediaMetadata?.thumbnailUrl
     val renderer =
         withContext(Dispatchers.Default) {
             LyricsKaraokeRenderer(
                 context = context,
-                coverArtUrl = mediaMetadata?.thumbnailUrl,
+                coverArtUrl = effectiveCoverUrl,
                 songTitle = payload.songTitle,
                 artistName = payload.artists,
                 timedLyrics = payload.timedLyrics.orEmpty(),
@@ -883,6 +900,13 @@ private fun PreviewContainer(
     isCompactLayout: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked =
+        mediaMetadata?.id?.let {
+            isSongInSet(hiddenCoverIds, it) || BlockedArtwork.isBlocked(it)
+        } ?: false
+    val effectiveCoverUrl = if (isArtworkBlocked) null else mediaMetadata?.thumbnailUrl
+
     val previewWidthFraction =
         when (options.aspectRatio) {
             LyricsShareAspectRatio.Square -> if (isCompactLayout) 0.84f else 0.82f
@@ -921,7 +945,7 @@ private fun PreviewContainer(
                     if (useCanvasPreview) {
                         MovableCanvasPreview(
                             canvasUrl = canvasPreviewUrl!!,
-                            coverArtUrl = mediaMetadata?.thumbnailUrl,
+                            coverArtUrl = effectiveCoverUrl,
                             payload = payload,
                             songTitle = payload.songTitle,
                             artistName = payload.artists,
@@ -937,7 +961,7 @@ private fun PreviewContainer(
                             lyricText = payload.lyricsText,
                             songTitle = payload.songTitle,
                             artistName = payload.artists,
-                            coverArtUrl = mediaMetadata?.thumbnailUrl,
+                            coverArtUrl = effectiveCoverUrl,
                             glassStyle = selectedGlassStyle,
                             shareOptions = options,
                         )

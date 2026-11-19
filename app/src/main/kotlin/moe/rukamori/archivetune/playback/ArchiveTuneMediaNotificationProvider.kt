@@ -19,6 +19,7 @@ import androidx.media3.session.MediaNotification
 import androidx.media3.session.MediaSession
 import com.google.common.collect.ImmutableList
 import moe.rukamori.archivetune.R
+import moe.rukamori.archivetune.utils.BlockedArtwork
 
 @UnstableApi
 class ArchiveTuneMediaNotificationProvider(
@@ -48,6 +49,17 @@ class ArchiveTuneMediaNotificationProvider(
                 actionFactory,
                 onNotificationChangedCallback,
             )
+
+        val currentSongId = mediaSession.player.currentMediaItem?.mediaId.orEmpty()
+        if (currentSongId.isNotBlank() && BlockedArtwork.isBlocked(currentSongId)) {
+            mediaNotification.notification.extras?.apply {
+                remove(android.app.Notification.EXTRA_LARGE_ICON)
+                remove(android.app.Notification.EXTRA_LARGE_ICON_BIG)
+                remove(android.app.Notification.EXTRA_PICTURE)
+                remove(android.app.Notification.EXTRA_PICTURE_ICON)
+            }
+            mediaNotification.notification.largeIcon = null
+        }
 
         val originalDeleteIntent = mediaNotification.notification.deleteIntent ?: return mediaNotification
         mediaNotification.notification.deleteIntent =

@@ -40,7 +40,12 @@ import androidx.media3.ui.compose.ContentFrame
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import moe.rukamori.archivetune.canvas.models.CanvasArtwork
+import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
 import moe.rukamori.archivetune.innertube.YouTube
+import moe.rukamori.archivetune.utils.BlockedArtwork
+import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.StreamClientUtils
 import okhttp3.OkHttpClient
 import timber.log.Timber
@@ -57,7 +62,14 @@ internal fun CanvasArtworkPlayer(
     resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
     clipStartMs: Long? = null,
     clipEndMs: Long? = null,
+    songId: String? = null,
 ) {
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isBlocked = songId?.let { id ->
+        id.isNotBlank() && (isSongInSet(hiddenCoverIds, id) || BlockedArtwork.isBlocked(id))
+    } ?: false
+    if (isBlocked) return
+
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val primary = primaryUrl?.takeIf { it.isNotBlank() }
@@ -287,6 +299,45 @@ internal fun CanvasArtworkPlayer(
         keepContentOnReset = false,
         shutter = {},
         modifier = modifier.alpha(alpha),
+    )
+}
+
+@Composable
+internal fun CanvasArtworkPlayer(
+    canvas: CanvasArtwork,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier,
+    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+    songId: String? = null,
+) {
+    CanvasArtworkPlayer(
+        primaryUrl = canvas.preferredAnimationUrl,
+        fallbackUrl = canvas.preferredVerticalAnimationUrl.takeIf { !it.isNullOrBlank() }
+            ?: canvas.preferredAnimationUrl,
+        isPlaying = isPlaying,
+        modifier = modifier,
+        resizeMode = resizeMode,
+        clipStartMs = canvas.loopStartMs,
+        clipEndMs = canvas.loopEndMs,
+        songId = songId,
+    )
+}
+
+@Composable
+internal fun CanvasArtworkPlayer(
+    canvas: moe.rukamori.archivetune.data.canvas.CanvasArtwork,
+    isPlaying: Boolean,
+    modifier: Modifier = Modifier,
+    resizeMode: Int = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+    songId: String? = null,
+) {
+    CanvasArtworkPlayer(
+        primaryUrl = canvas.url,
+        fallbackUrl = null,
+        isPlaying = isPlaying,
+        modifier = modifier,
+        resizeMode = resizeMode,
+        songId = songId,
     )
 }
 

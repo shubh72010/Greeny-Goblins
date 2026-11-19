@@ -53,6 +53,7 @@ import moe.rukamori.archivetune.ui.component.liquidGlass
 import moe.rukamori.archivetune.ui.theme.PlayerColorExtractor
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.constants.HiddenCoverArtSongIdsKey
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.isSongInSet
 import moe.rukamori.archivetune.utils.rememberPreference
 import kotlin.math.roundToInt
@@ -120,7 +121,7 @@ private fun NewMiniPlayer(
 
         val currentMetadata = mediaMetadata
         val thumbnailUrl = currentMetadata?.thumbnailUrl
-        if (currentMetadata == null || thumbnailUrl.isNullOrBlank() || isSongInSet(hiddenCoverIds, currentMetadata.id)) {
+        if (currentMetadata == null || thumbnailUrl.isNullOrBlank() || isSongInSet(hiddenCoverIds, currentMetadata.id) || BlockedArtwork.isBlocked(currentMetadata.id)) {
             gradientColors = emptyList()
             return@LaunchedEffect
         }

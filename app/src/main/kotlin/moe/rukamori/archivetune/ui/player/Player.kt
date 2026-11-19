@@ -204,6 +204,7 @@ import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.rememberPreference
 import java.util.Locale
 import kotlin.math.abs
@@ -540,8 +541,13 @@ fun BottomSheetPlayer(
         }
     }
 
-    LaunchedEffect(mediaMetadata?.id, playerBackground) {
+    LaunchedEffect(mediaMetadata?.id, playerBackground, hiddenCoverIds) {
         if (aodModeEnabled) return@LaunchedEffect
+        val currentMetadata = mediaMetadata
+        if (currentMetadata != null && (isSongInSet(hiddenCoverIds, currentMetadata.id) || BlockedArtwork.isBlocked(currentMetadata.id))) {
+            gradientColors = defaultGradientColors
+            return@LaunchedEffect
+        }
         if (playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.COLORING ||
             playerBackground == PlayerBackgroundStyle.BLUR_GRADIENT ||
             playerBackground == PlayerBackgroundStyle.GLOW ||
@@ -1092,15 +1098,18 @@ fun BottomSheetPlayer(
                 val country = Locale.getDefault().country
                 if (country.length == 2) country.lowercase(Locale.ROOT) else "us"
             }
+        val isMetadataArtworkBlocked = mediaMetadata?.id?.let {
+            it.isNotBlank() && (isSongInSet(hiddenCoverIds, it) || BlockedArtwork.isBlocked(it))
+        } ?: false
         val shouldUseV7Canvas =
             archiveTuneCanvasEnabled &&
-                !isSongInSet(hiddenCoverIds, mediaMetadata?.id.orEmpty()) &&
+                !isMetadataArtworkBlocked &&
                 playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                 playerDesignStyle == PlayerDesignStyle.V7 &&
                 !aodModeEnabled
         val shouldUseArtworkCanvas =
             archiveTuneCanvasEnabled &&
-                !isSongInSet(hiddenCoverIds, mediaMetadata?.id.orEmpty()) &&
+                !isMetadataArtworkBlocked &&
                 playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS &&
                 (playerDesignStyle == PlayerDesignStyle.V8 || playerDesignStyle == PlayerDesignStyle.V9) &&
                 !aodModeEnabled
@@ -1119,9 +1128,9 @@ fun BottomSheetPlayer(
             mutableStateOf(false)
         }
 
-        LaunchedEffect(shouldUseV7Canvas, shouldFetchV7Canvas, mediaMetadata?.id) {
+        LaunchedEffect(shouldUseV7Canvas, shouldFetchV7Canvas, mediaMetadata?.id, isMetadataArtworkBlocked) {
             val metadata = mediaMetadata
-            if (!shouldUseV7Canvas || metadata == null) {
+            if (!shouldUseV7Canvas || metadata == null || isMetadataArtworkBlocked) {
                 v7CanvasArtwork = null
                 v7CanvasFetchInFlight = false
                 return@LaunchedEffect
@@ -1157,9 +1166,9 @@ fun BottomSheetPlayer(
             }
         }
 
-        LaunchedEffect(shouldUseArtworkCanvas, shouldFetchArtworkCanvas, mediaMetadata?.id) {
+        LaunchedEffect(shouldUseArtworkCanvas, shouldFetchArtworkCanvas, mediaMetadata?.id, isMetadataArtworkBlocked) {
             val metadata = mediaMetadata
-            if (!shouldUseArtworkCanvas || metadata == null) {
+            if (!shouldUseArtworkCanvas || metadata == null || isMetadataArtworkBlocked) {
                 artworkCanvas = null
                 artworkCanvasFetchInFlight = false
                 return@LaunchedEffect
@@ -1346,7 +1355,7 @@ fun BottomSheetPlayer(
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V7PlayerBackdrop(
-                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) null else v7SwapState.displayUrl,
+                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || isMetadataArtworkBlocked) null else v7SwapState.displayUrl,
                             canvasStaticUrl = v7CanvasArtwork?.static,
                             canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
                             canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
@@ -1354,6 +1363,7 @@ fun BottomSheetPlayer(
                             disableBlur = disableBlur,
                             backdropBlurAmount = backdropBlurAmount,
                             label = "v7BackdropLandscape",
+                            songId = mediaMetadata?.id,
                         )
 
                         Column(
@@ -1411,9 +1421,10 @@ fun BottomSheetPlayer(
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V8PlayerBackdrop(
-                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) null else v8SwapState.displayUrl,
+                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || isMetadataArtworkBlocked) null else v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
                             modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
+                            songId = mediaMetadata?.id,
                         )
 
                         enrichedMetadata?.let { metadata ->
@@ -1438,8 +1449,8 @@ fun BottomSheetPlayer(
                                 menuState = menuState,
                                 bottomSheetPageState = bottomSheetPageState,
                                 currentFormat = currentFormat,
-                                canvasPrimaryUrl = artworkCanvas?.animated,
-                                canvasFallbackUrl = artworkCanvas?.videoUrl,
+                                canvasPrimaryUrl = if (isMetadataArtworkBlocked) null else artworkCanvas?.animated,
+                                canvasFallbackUrl = if (isMetadataArtworkBlocked) null else artworkCanvas?.videoUrl,
                                 onSliderValueChange = onSliderValueChange,
                                 onSliderValueChangeFinished = onSliderValueChangeFinished,
                                 onVolumeChange = onPlayerVolumeChange,
@@ -1509,7 +1520,7 @@ fun BottomSheetPlayer(
                     )
                 } else if (playerDesignStyle == PlayerDesignStyle.V10) {
                     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)).padding(bottom = queueSheetState.collapsedBound + 16.dp).nestedScroll(state.preUpPostDownNestedScrollConnection)) {
-                        enrichedMetadata?.thumbnailUrl?.takeIf { playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS }?.let { thumb ->
+                        enrichedMetadata?.thumbnailUrl?.takeIf { playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS && !isMetadataArtworkBlocked }?.let { thumb ->
                             // ponytail: 20dp ceiling + disableBlur/low-RAM gate, pre-sized like V8
                             val v10BackdropModel = remember(thumb) { thumb.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx) }
                             val v10BackdropRequest = rememberOfflineArtworkImageRequest(v10BackdropModel)
@@ -1684,7 +1695,7 @@ fun BottomSheetPlayer(
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V7PlayerBackdrop(
-                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) null else v7SwapState.displayUrl,
+                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || isMetadataArtworkBlocked) null else v7SwapState.displayUrl,
                             canvasStaticUrl = v7CanvasArtwork?.static,
                             canvasPrimaryUrl = v7CanvasArtwork?.animatedVertical,
                             canvasFallbackUrl = v7CanvasArtwork?.videoUrlVertical,
@@ -1692,6 +1703,7 @@ fun BottomSheetPlayer(
                             disableBlur = disableBlur,
                             backdropBlurAmount = backdropBlurAmount,
                             label = "v7BackdropPortrait",
+                            songId = mediaMetadata?.id,
                         )
 
                         Column(
@@ -1747,9 +1759,10 @@ fun BottomSheetPlayer(
                                 isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
                             )
                         V8PlayerBackdrop(
-                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS) null else v8SwapState.displayUrl,
+                            thumbnailUrl = if (playerBackground == PlayerBackgroundStyle.JUSPLAYER_CANVAS || isMetadataArtworkBlocked) null else v8SwapState.displayUrl,
                             backdropBlurAmount = backdropBlurAmount,
                             modifier = if (usePlayerGlass) Modifier.layerBackdrop(playerBackdrop) else Modifier,
+                            songId = mediaMetadata?.id,
                         )
 
                         enrichedMetadata?.let { metadata ->
@@ -1774,8 +1787,8 @@ fun BottomSheetPlayer(
                                 menuState = menuState,
                                 bottomSheetPageState = bottomSheetPageState,
                                 currentFormat = currentFormat,
-                                canvasPrimaryUrl = artworkCanvas?.animated,
-                                canvasFallbackUrl = artworkCanvas?.videoUrl,
+                                canvasPrimaryUrl = if (isMetadataArtworkBlocked) null else artworkCanvas?.animated,
+                                canvasFallbackUrl = if (isMetadataArtworkBlocked) null else artworkCanvas?.videoUrl,
                                 onSliderValueChange = onSliderValueChange,
                                 onSliderValueChangeFinished = onSliderValueChangeFinished,
                                 onVolumeChange = onPlayerVolumeChange,
@@ -1850,7 +1863,7 @@ fun BottomSheetPlayer(
                             .nestedScroll(state.preUpPostDownNestedScrollConnection),
                     ) {
                         // ambient blurred cover = fills "empty" feeling, cheap (no Palette)
-                        enrichedMetadata?.thumbnailUrl?.takeIf { playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS }?.let { thumb ->
+                        enrichedMetadata?.thumbnailUrl?.takeIf { playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS && !isMetadataArtworkBlocked }?.let { thumb ->
                             // ponytail: 20dp ceiling + disableBlur/low-RAM gate, pre-sized like V8
                             val ambientBackdropModel = remember(thumb) { thumb.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx) }
                             val ambientBackdropRequest = rememberOfflineArtworkImageRequest(ambientBackdropModel)
@@ -2112,10 +2125,16 @@ private fun V8PlayerBackdrop(
     thumbnailUrl: String?,
     backdropBlurAmount: Int,
     modifier: Modifier = Modifier,
+    songId: String? = null,
 ) {
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isBlocked = songId?.let { id ->
+        id.isNotBlank() && (isSongInSet(hiddenCoverIds, id) || BlockedArtwork.isBlocked(id))
+    } ?: false
+    val effectiveThumbnailUrl = if (isBlocked) null else thumbnailUrl
     val backdropModel =
-        remember(thumbnailUrl) {
-            thumbnailUrl?.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx)
+        remember(effectiveThumbnailUrl) {
+            effectiveThumbnailUrl?.resize(V8BackdropArtworkSizePx, V8BackdropArtworkSizePx)
         }
     val backdropRequest = rememberOfflineArtworkImageRequest(backdropModel)
     val blurRadiusDp = (44.dp * (backdropBlurAmount.toFloat() / 100f)).coerceAtMost(20.dp)
@@ -2254,7 +2273,12 @@ private fun V7PlayerBackdrop(
     backdropBlurAmount: Int,
     label: String,
     modifier: Modifier = Modifier,
+    songId: String? = null,
 ) {
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked = songId?.let { id ->
+        id.isNotBlank() && (isSongInSet(hiddenCoverIds, id) || BlockedArtwork.isBlocked(id))
+    } ?: false
     val configuration = LocalConfiguration.current
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -2274,11 +2298,11 @@ private fun V7PlayerBackdrop(
             }
         }
 
-    val canvasPrimary = canvasPrimaryUrl?.takeIf { it.isNotBlank() }
-    val canvasFallback = canvasFallbackUrl?.takeIf { it.isNotBlank() }
-    val canvasStatic = canvasStaticUrl?.takeIf { it.isNotBlank() }
-    val coverArtworkUrl = thumbnailUrl?.takeIf { it.isNotBlank() }
-    val hasCanvas = !canvasPrimary.isNullOrBlank() || !canvasFallback.isNullOrBlank()
+    val canvasPrimary = if (isArtworkBlocked) null else canvasPrimaryUrl?.takeIf { it.isNotBlank() }
+    val canvasFallback = if (isArtworkBlocked) null else canvasFallbackUrl?.takeIf { it.isNotBlank() }
+    val canvasStatic = if (isArtworkBlocked) null else canvasStaticUrl?.takeIf { it.isNotBlank() }
+    val coverArtworkUrl = if (isArtworkBlocked) null else thumbnailUrl?.takeIf { it.isNotBlank() }
+    val hasCanvas = !isArtworkBlocked && (!canvasPrimary.isNullOrBlank() || !canvasFallback.isNullOrBlank())
     // When canvas is available, prefer its static image as the sharp-stage placeholder.
     // This prevents the jarring YTM thumbnail → canvas video flash on expand.
     val sharpArtworkUrl = if (hasCanvas) (canvasStatic ?: coverArtworkUrl) else (coverArtworkUrl ?: canvasStatic)
@@ -2514,6 +2538,7 @@ private fun V7PlayerBackdrop(
                         isPlaying = isPlaying,
                         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                         modifier = canvasStageModifier,
+                        songId = songId,
                     )
                 }
             }

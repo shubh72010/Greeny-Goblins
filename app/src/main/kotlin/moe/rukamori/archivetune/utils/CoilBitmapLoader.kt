@@ -53,6 +53,14 @@ class CoilBitmapLoader(
 
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
+            val uriStr = uri.toString()
+            val currentSongId = (context as? moe.rukamori.archivetune.playback.MusicService)?.player?.currentMediaItem?.mediaId.orEmpty()
+            if ((currentSongId.isNotBlank() && BlockedArtwork.isBlocked(currentSongId)) ||
+                BlockedArtwork.ids.value.any { it.isNotBlank() && uriStr.contains(it) }
+            ) {
+                throw IllegalStateException("Artwork blocked for song")
+            }
+
             val density = context.resources.displayMetrics.density
             val maxIconSizePx = (density * 128f).roundToInt().coerceIn(128, 512)
             val attempts = 3

@@ -62,6 +62,7 @@ import moe.rukamori.archivetune.innertube.models.filterExplicit
 import moe.rukamori.archivetune.innertube.models.filterVideo
 import moe.rukamori.archivetune.models.PersistQueue
 import moe.rukamori.archivetune.playback.MusicService.Companion.PERSISTENT_QUEUE_FILE
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.dataStore
 import moe.rukamori.archivetune.utils.get
 import moe.rukamori.archivetune.utils.isLocalMediaId
@@ -1880,7 +1881,7 @@ class MediaLibrarySessionCallback
                         .setTitle(song.title)
                         .setSubtitle(artists.joinToString { it.name })
                         .setArtist(artists.joinToString { it.name })
-                        .setArtworkUri(song.thumbnailUrl?.toUri())
+                        .setArtworkUri(if (BlockedArtwork.isBlocked(id)) null else song.thumbnailUrl?.toUri())
                         .setIsPlayable(true)
                         .setIsBrowsable(false)
                         .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)

@@ -132,6 +132,7 @@ import moe.rukamori.archivetune.ui.utils.highRes
 import moe.rukamori.archivetune.utils.makeTimeString
 import moe.rukamori.archivetune.utils.rememberLowDataModeActive
 import moe.rukamori.archivetune.utils.isSongInSet
+import moe.rukamori.archivetune.utils.BlockedArtwork
 import moe.rukamori.archivetune.utils.rememberPreference
 import moe.rukamori.archivetune.utils.rememberEnumPreference
 import moe.rukamori.archivetune.constants.CanvasSourceKey
@@ -2197,7 +2198,9 @@ fun V8PlayerContent(
 ) {
     val foreground = Color.White
     val secondaryForeground = foreground.copy(alpha = 0.72f)
-    val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked = isSongInSet(hiddenCoverIds, mediaMetadata.id) || BlockedArtwork.isBlocked(mediaMetadata.id)
+    val baseArtworkUrl = if (isArtworkBlocked) null else mediaMetadata.thumbnailUrl?.highRes()
     val thumbnailSwapState =
         rememberThumbnailSwapState(
             videoId = mediaMetadata.id,
@@ -2205,7 +2208,9 @@ fun V8PlayerContent(
             lowDataMode = rememberLowDataModeActive(),
             isMusicVideo = mediaMetadata.isMusicVideo,
         )
-    val artworkUrl = thumbnailSwapState.displayUrl
+    val artworkUrl = if (isArtworkBlocked) null else thumbnailSwapState.displayUrl
+    val effectiveCanvasPrimary = if (isArtworkBlocked) null else canvasPrimaryUrl
+    val effectiveCanvasFallback = if (isArtworkBlocked) null else canvasFallbackUrl
     val subtitle = queueTitle ?: mediaMetadata.album?.title.orEmpty()
     val onMenuClick = {
         menuState.show {
@@ -2233,8 +2238,8 @@ fun V8PlayerContent(
             subtitle = subtitle,
             artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
-            canvasPrimaryUrl = canvasPrimaryUrl,
-            canvasFallbackUrl = canvasFallbackUrl,
+            canvasPrimaryUrl = effectiveCanvasPrimary,
+            canvasFallbackUrl = effectiveCanvasFallback,
             playbackState = playbackState,
             isPlaying = isPlaying,
             isLoading = isLoading,
@@ -2274,8 +2279,8 @@ fun V8PlayerContent(
             subtitle = subtitle,
             artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
-            canvasPrimaryUrl = canvasPrimaryUrl,
-            canvasFallbackUrl = canvasFallbackUrl,
+            canvasPrimaryUrl = effectiveCanvasPrimary,
+            canvasFallbackUrl = effectiveCanvasFallback,
             playbackState = playbackState,
             isPlaying = isPlaying,
             isLoading = isLoading,
@@ -2418,6 +2423,7 @@ private fun V8PortraitContent(
                 canvasFallbackUrl = canvasFallbackUrl,
                 isPlaying = isPlaying,
                 size = artworkSize,
+                songId = mediaMetadata.id,
             )
 
             Spacer(Modifier.height(artworkToMetadata))
@@ -2532,6 +2538,7 @@ private fun V8LandscapeContent(
                 canvasFallbackUrl = canvasFallbackUrl,
                 isPlaying = isPlaying,
                 size = artworkSize,
+                songId = mediaMetadata.id,
             )
 
             Column(
@@ -2647,29 +2654,49 @@ private fun V8Artwork(
     canvasFallbackUrl: String?,
     isPlaying: Boolean,
     size: androidx.compose.ui.unit.Dp,
+    songId: String? = null,
 ) {
-    val artworkRequest = rememberOfflineArtworkImageRequest(artworkUrl)
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isBlocked = songId?.let { id ->
+        id.isNotBlank() && (isSongInSet(hiddenCoverIds, id) || BlockedArtwork.isBlocked(id))
+    } ?: false
+    val effectiveArtworkUrl = if (isBlocked) null else artworkUrl
+    val effectiveCanvasPrimary = if (isBlocked) null else canvasPrimaryUrl
+    val effectiveCanvasFallback = if (isBlocked) null else canvasFallbackUrl
+
+    val artworkRequest = rememberOfflineArtworkImageRequest(effectiveArtworkUrl)
     Box(
         modifier =
             Modifier
                 .size(size)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color.White.copy(alpha = 0.08f)),
+        contentAlignment = Alignment.Center,
     ) {
-        AsyncImage(
-            model = artworkRequest,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (effectiveArtworkUrl != null) {
+            AsyncImage(
+                model = artworkRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else if (isBlocked) {
+            Icon(
+                painter = painterResource(R.drawable.about_splash),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size((size * 0.4f).coerceAtLeast(24.dp)),
+            )
+        }
 
-        if (!canvasPrimaryUrl.isNullOrBlank() || !canvasFallbackUrl.isNullOrBlank()) {
+        if (!isBlocked && (!effectiveCanvasPrimary.isNullOrBlank() || !effectiveCanvasFallback.isNullOrBlank())) {
             CanvasArtworkPlayer(
-                primaryUrl = canvasPrimaryUrl,
-                fallbackUrl = canvasFallbackUrl,
+                primaryUrl = effectiveCanvasPrimary,
+                fallbackUrl = effectiveCanvasFallback,
                 isPlaying = isPlaying,
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                 modifier = Modifier.fillMaxSize(),
+                songId = songId,
             )
         }
     }
@@ -3114,7 +3141,9 @@ fun V9PlayerContent(
     modifier: Modifier = Modifier,
     landscape: Boolean = false,
 ) {
-    val baseArtworkUrl = mediaMetadata.thumbnailUrl?.highRes()
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isArtworkBlocked = isSongInSet(hiddenCoverIds, mediaMetadata.id) || BlockedArtwork.isBlocked(mediaMetadata.id)
+    val baseArtworkUrl = if (isArtworkBlocked) null else mediaMetadata.thumbnailUrl?.highRes()
     val thumbnailSwapState =
         rememberThumbnailSwapState(
             videoId = mediaMetadata.id,
@@ -3122,7 +3151,9 @@ fun V9PlayerContent(
             lowDataMode = rememberLowDataModeActive(),
             isMusicVideo = mediaMetadata.isMusicVideo,
         )
-    val artworkUrl = thumbnailSwapState.displayUrl
+    val artworkUrl = if (isArtworkBlocked) null else thumbnailSwapState.displayUrl
+    val effectiveCanvasPrimary = if (isArtworkBlocked) null else canvasPrimaryUrl
+    val effectiveCanvasFallback = if (isArtworkBlocked) null else canvasFallbackUrl
     val titleActions = rememberPlayerTitleActions(mediaMetadata, navController, state)
     val onTitleClick = titleActions.onTitleClick
     val onArtistClick = titleActions.onArtistClick
@@ -3141,8 +3172,9 @@ fun V9PlayerContent(
             explicit = mediaMetadata.explicit,
             artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
-            canvasPrimaryUrl = canvasPrimaryUrl,
-            canvasFallbackUrl = canvasFallbackUrl,
+            canvasPrimaryUrl = effectiveCanvasPrimary,
+            canvasFallbackUrl = effectiveCanvasFallback,
+            songId = mediaMetadata.id,
             playbackState = playbackState,
             isPlaying = isPlaying,
             isLoading = isLoading,
@@ -3172,8 +3204,9 @@ fun V9PlayerContent(
             explicit = mediaMetadata.explicit,
             artists = mediaMetadata.artists,
             artworkUrl = artworkUrl,
-            canvasPrimaryUrl = canvasPrimaryUrl,
-            canvasFallbackUrl = canvasFallbackUrl,
+            canvasPrimaryUrl = effectiveCanvasPrimary,
+            canvasFallbackUrl = effectiveCanvasFallback,
+            songId = mediaMetadata.id,
             playbackState = playbackState,
             isPlaying = isPlaying,
             isLoading = isLoading,
@@ -3208,6 +3241,7 @@ private fun V9PortraitContent(
     artworkUrl: String?,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
+    songId: String? = null,
     playbackState: Int,
     isPlaying: Boolean,
     isLoading: Boolean,
@@ -3300,6 +3334,7 @@ private fun V9PortraitContent(
                 isPlaying = isPlaying,
                 size = artworkSize,
                 placeholderColor = textButtonColor.copy(alpha = 0.12f),
+                songId = songId,
             )
 
             Spacer(Modifier.height(metadataGap))
@@ -3357,6 +3392,7 @@ private fun V9LandscapeContent(
     artworkUrl: String?,
     canvasPrimaryUrl: String?,
     canvasFallbackUrl: String?,
+    songId: String? = null,
     playbackState: Int,
     isPlaying: Boolean,
     isLoading: Boolean,
@@ -3401,6 +3437,7 @@ private fun V9LandscapeContent(
                 isPlaying = isPlaying,
                 size = artworkSize,
                 placeholderColor = textButtonColor.copy(alpha = 0.12f),
+                songId = songId,
             )
 
             Column(
@@ -3562,29 +3599,49 @@ private fun V9Artwork(
     isPlaying: Boolean,
     size: Dp,
     placeholderColor: Color,
+    songId: String? = null,
 ) {
-    val artworkRequest = rememberOfflineArtworkImageRequest(artworkUrl)
+    val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
+    val isBlocked = songId?.let { id ->
+        id.isNotBlank() && (isSongInSet(hiddenCoverIds, id) || BlockedArtwork.isBlocked(id))
+    } ?: false
+    val effectiveArtworkUrl = if (isBlocked) null else artworkUrl
+    val effectiveCanvasPrimary = if (isBlocked) null else canvasPrimaryUrl
+    val effectiveCanvasFallback = if (isBlocked) null else canvasFallbackUrl
+
+    val artworkRequest = rememberOfflineArtworkImageRequest(effectiveArtworkUrl)
     Box(
         modifier =
             Modifier
                 .size(size)
                 .clip(RoundedCornerShape(30.dp))
                 .background(placeholderColor),
+        contentAlignment = Alignment.Center,
     ) {
-        AsyncImage(
-            model = artworkRequest,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (effectiveArtworkUrl != null) {
+            AsyncImage(
+                model = artworkRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else if (isBlocked) {
+            Icon(
+                painter = painterResource(R.drawable.about_splash),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.7f),
+                modifier = Modifier.size((size * 0.4f).coerceAtLeast(24.dp)),
+            )
+        }
 
-        if (!canvasPrimaryUrl.isNullOrBlank() || !canvasFallbackUrl.isNullOrBlank()) {
+        if (!isBlocked && (!effectiveCanvasPrimary.isNullOrBlank() || !effectiveCanvasFallback.isNullOrBlank())) {
             CanvasArtworkPlayer(
-                primaryUrl = canvasPrimaryUrl,
-                fallbackUrl = canvasFallbackUrl,
+                primaryUrl = effectiveCanvasPrimary,
+                fallbackUrl = effectiveCanvasFallback,
                 isPlaying = isPlaying,
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
                 modifier = Modifier.fillMaxSize(),
+                songId = songId,
             )
         }
     }
@@ -4040,11 +4097,14 @@ fun PlayerBackground(
         val country = java.util.Locale.getDefault().country
         if (country.length == 2) country.lowercase(java.util.Locale.ROOT) else "us"
     }
+    val isArtworkBlocked = mediaMetadata?.id?.let { id ->
+        id.isNotBlank() && (isSongInSet(hiddenCoverIds, id) || BlockedArtwork.isBlocked(id))
+    } ?: false
     var canvasArtwork by remember(mediaMetadata?.id) { mutableStateOf<CanvasArtwork?>(null) }
     var canvasFetchInFlight by remember(mediaMetadata?.id) { mutableStateOf(false) }
-    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled, playerBackground, hiddenCoverIds) {
+    LaunchedEffect(mediaMetadata?.id, archiveTuneCanvasEnabled, playerBackground, hiddenCoverIds, isArtworkBlocked) {
         val meta = mediaMetadata
-        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS || !archiveTuneCanvasEnabled || meta == null || isSongInSet(hiddenCoverIds, meta.id)) {
+        if (playerBackground != PlayerBackgroundStyle.JUSPLAYER_CANVAS || !archiveTuneCanvasEnabled || meta == null || isArtworkBlocked) {
             canvasArtwork = null
             canvasFetchInFlight = false
             return@LaunchedEffect
@@ -4082,7 +4142,7 @@ fun PlayerBackground(
             lowDataMode = rememberLowDataModeActive(),
             isMusicVideo = mediaMetadata?.isMusicVideo ?: false,
         )
-    val backgroundThumbnailUrl = backgroundSwapState.displayUrl
+    val backgroundThumbnailUrl = if (isArtworkBlocked) null else backgroundSwapState.displayUrl
     val styleAppliesBlur =
         effectiveBlurRadius > 0f && effectiveBlurRadius >= 0.5f
     Box(modifier = modifier.fillMaxSize()) {
@@ -4556,10 +4616,10 @@ fun PlayerBackground(
             }
 
 PlayerBackgroundStyle.JUSPLAYER_CANVAS -> {
-                val artwork = canvasArtwork
+                val artwork = if (isArtworkBlocked) null else canvasArtwork
                 val primaryUrl = artwork?.animated
                 val fallbackUrl = artwork?.videoUrl
-                if (artwork != null && (!primaryUrl.isNullOrBlank() || !fallbackUrl.isNullOrBlank())) {
+                if (!isArtworkBlocked && artwork != null && (!primaryUrl.isNullOrBlank() || !fallbackUrl.isNullOrBlank())) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         CanvasArtworkPlayer(
                             primaryUrl = primaryUrl,
@@ -4568,6 +4628,7 @@ PlayerBackgroundStyle.JUSPLAYER_CANVAS -> {
                             clipStartMs = artwork.loopStartMs,
                             clipEndMs = artwork.loopEndMs,
                             modifier = Modifier.fillMaxSize(),
+                            songId = mediaMetadata?.id,
                         )
                         Box(
                             modifier = Modifier
@@ -4575,18 +4636,16 @@ PlayerBackgroundStyle.JUSPLAYER_CANVAS -> {
                                 .background(Color.Black.copy(alpha = 0.15f)),
                         )
                     }
-                } else {
-                    // Fallback to blurred thumbnail when no canvas available
-                    if (backgroundThumbnailUrl != null) {
-                        AsyncImage(
-                            model = backgroundThumbnailUrl.highRes(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize().let {
-                                if (styleAppliesBlur) it.blur(radius = effectiveBlurRadius.dp) else it
-                            },
-                        )
-                    }
+                } else if (!isArtworkBlocked && backgroundThumbnailUrl != null) {
+                    // Fallback to blurred thumbnail when no canvas available and artwork is not blocked
+                    AsyncImage(
+                        model = backgroundThumbnailUrl.highRes(),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize().let {
+                            if (styleAppliesBlur) it.blur(radius = effectiveBlurRadius.dp) else it
+                        },
+                    )
                 }
             }
 

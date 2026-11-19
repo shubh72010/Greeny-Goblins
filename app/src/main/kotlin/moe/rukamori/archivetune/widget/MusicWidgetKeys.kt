@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 
 object MusicWidgetKeys {
+    val SONG_ID = stringPreferencesKey("widget_song_id")
     val TRACK_TITLE = stringPreferencesKey("widget_track_title")
     val TRACK_ARTIST = stringPreferencesKey("widget_track_artist")
     val ART_PATH = stringPreferencesKey("widget_art_path")
