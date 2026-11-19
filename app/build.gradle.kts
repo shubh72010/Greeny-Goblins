@@ -176,6 +176,17 @@ android {
     }
 
     signingConfigs {
+        // CI passes a stable debug key via DEBUG_KEYSTORE_PATH so every debug APK keeps one
+        // signature (AGP otherwise generates a throwaway key per runner). Unset locally →
+        // AGP's default ~/.android/debug.keystore.
+        System.getenv("DEBUG_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }?.let { debugKeystorePath ->
+            create("stableDebug") {
+                storeFile = file(debugKeystorePath)
+                storePassword = System.getenv("DEBUG_KEYSTORE_STORE_PASSWORD") ?: "android"
+                keyAlias = System.getenv("DEBUG_KEYSTORE_KEY_ALIAS") ?: "androiddebugkey"
+                keyPassword = System.getenv("DEBUG_KEYSTORE_KEY_PASSWORD") ?: "android"
+            }
+        }
         create("release") {
             // P0 hardening: release MUST use real keystore, never silently fall back to debug.
             // Lazy: allow `./gradlew help` / debug builds to configure without keystore.
@@ -255,6 +266,9 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isDebuggable = true
+            if (signingConfigs.findByName("stableDebug") != null) {
+                signingConfig = signingConfigs.getByName("stableDebug")
+            }
         }
     }
 
