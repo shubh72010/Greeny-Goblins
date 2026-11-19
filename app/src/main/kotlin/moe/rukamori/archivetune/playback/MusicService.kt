@@ -3234,7 +3234,7 @@ class MusicService :
         return C.INDEX_UNSET
     }
 
-    private fun cancelCrossfade(
+    internal fun cancelCrossfade(
         resetVolume: Boolean,
         resetPauseAtEnd: Boolean,
         clearPreview: Boolean = true,
@@ -3450,8 +3450,16 @@ class MusicService :
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Timber.tag(TAG).w(e, "Global crossfade failed")
-                    cancelCrossfade(resetVolume = true, resetPauseAtEnd = true)
+                    Timber.tag(TAG).w(e, "Global crossfade failed; falling back to direct seek")
+                    cancelCrossfade(resetVolume = false, resetPauseAtEnd = true, clearPreview = false)
+                    withContext(Dispatchers.Main) {
+                        if (target.index in 0 until player.mediaItemCount) {
+                            player.seekTo(target.index, startPositionMs)
+                            player.playWhenReady = true
+                            player.prepare()
+                        }
+                    }
+                    applyEffectiveVolumeImmediately()
                 }
             }
     }
@@ -7219,7 +7227,12 @@ class MusicService :
         }
 
         val timelineEmpty = player.currentTimeline.isEmpty || player.mediaItemCount == 0 || player.currentMediaItem == null
-        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) optimisticPlayMediaId = null
+        if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) {
+            optimisticPlayMediaId = null
+            if (isCrossfading && !crossfadeHandoffInProgress) {
+                cancelCrossfade(resetVolume = true, resetPauseAtEnd = true, clearPreview = true)
+            }
+        }
         if ((!isGlobalCrossfadePreviewActive() && !isOptimisticPlayPending()) || crossfadeHandoffInProgress || timelineEmpty) {
             currentMediaMetadata.value = if (timelineEmpty) null else (mediaItem?.metadata ?: player.currentMetadata)
         }

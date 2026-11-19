@@ -31,7 +31,7 @@ class CoilBitmapLoader(
     private val context: Context,
     private val scope: CoroutineScope,
 ) : BitmapLoader {
-    override fun supportsMimeType(mimeType: String): Boolean = mimeType.startsWith("image/")
+    override fun supportsMimeType(mimeType: String): Boolean = true
 
     override fun decodeBitmap(data: ByteArray): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
@@ -51,25 +51,35 @@ class CoilBitmapLoader(
             }
         }
 
+    override fun loadBitmapFromMetadata(metadata: androidx.media3.common.MediaMetadata): ListenableFuture<Bitmap>? {
+        val currentSongId = (context as? moe.rukamori.archivetune.playback.MusicService)?.player?.currentMediaItem?.mediaId.orEmpty()
+        if (currentSongId.isNotBlank() && BlockedArtwork.isBlocked(currentSongId)) {
+            return null
+        }
+        if (metadata.artworkData != null) {
+            return decodeBitmap(metadata.artworkData!!)
+        }
+        val uri = metadata.artworkUri ?: return null
+        return loadBitmap(uri)
+    }
+
     override fun loadBitmap(uri: Uri): ListenableFuture<Bitmap> =
         scope.future(Dispatchers.IO) {
             val uriStr = uri.toString()
             val currentSongId = (context as? moe.rukamori.archivetune.playback.MusicService)?.player?.currentMediaItem?.mediaId.orEmpty()
-            if ((currentSongId.isNotBlank() && BlockedArtwork.isBlocked(currentSongId)) ||
-                BlockedArtwork.ids.value.any { it.isNotBlank() && uriStr.contains(it) }
-            ) {
+            if (currentSongId.isNotBlank() && BlockedArtwork.isBlocked(currentSongId)) {
                 throw IllegalStateException("Artwork blocked for song")
             }
 
             val density = context.resources.displayMetrics.density
-            val maxIconSizePx = (density * 128f).roundToInt().coerceIn(128, 512)
+            val maxIconSizePx = (density * 256f).roundToInt().coerceIn(256, 1024)
             val attempts = 3
             for (attempt in 1..attempts) {
                 try {
                     val request =
                         ImageRequest
                             .Builder(context)
-                            .data(uri)
+                            .data(uriStr)
                             .allowHardware(false)
                             .size(maxIconSizePx, maxIconSizePx)
                             .build()

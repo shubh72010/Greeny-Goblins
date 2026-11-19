@@ -95,7 +95,7 @@ object YouTubeCanvasProvider {
                 artistName = artistNameRaw,
                 preferLyric = preferLyric,
                 excludeVideoId = currentVideoId,
-                requireMusicVideo = true,
+                requireMusicVideo = false,
             )
         if (videoSearchHit != null) {
             Timber.tag(LogTag).d("Found candidate video %s; using it", videoSearchHit.videoId)
@@ -161,11 +161,30 @@ object YouTubeCanvasProvider {
             }
             val isMv = resolved.isMusicVideo ||
                 hasMusicVideoIndicator(resolved.title) ||
-                hasMusicVideoIndicator(candidate.title)
+                hasMusicVideoIndicator(candidate.title) ||
+                isArtistMatchedCandidate(candidate, resolved, songTitle, artistName)
             if (isMv) return resolved
-            if (!requireMusicVideo && fallback == null) fallback = resolved
+            if (fallback == null) fallback = resolved
         }
-        return if (requireMusicVideo) null else fallback
+        return fallback
+    }
+
+    private fun isArtistMatchedCandidate(
+        candidate: SongItem,
+        resolved: ResolvedVideo,
+        songTitle: String,
+        artistName: String,
+    ): Boolean {
+        if (artistName.isBlank() || songTitle.isBlank()) return false
+        val cleanCandidateTitle = cleanCanvasTitle(candidate.title)
+        val cleanTargetTitle = cleanCanvasTitle(songTitle)
+        val titleMatch = cleanCandidateTitle == cleanTargetTitle ||
+            cleanCandidateTitle.contains(cleanTargetTitle) ||
+            cleanTargetTitle.contains(cleanCandidateTitle)
+        if (!titleMatch) return false
+
+        return candidate.artists.any { artistMatches(it.name, artistName) } ||
+            (resolved.artist?.let { artistMatches(it, artistName) } == true)
     }
 
     private fun ResolvedVideo.toCanvasArtwork(): CanvasArtwork? {
@@ -332,7 +351,7 @@ object YouTubeCanvasProvider {
             preferLyric = preferLyric,
             limit = 3,
             excludeVideoId = excludeVideoId,
-            requireMusicVideo = true,
+            requireMusicVideo = false,
         )
     }
 
@@ -521,7 +540,7 @@ object YouTubeCanvasProvider {
         val cleanSong = normalizeCanvasSongTitle(song)
         val cleanArtist = normalizeCanvasArtistName(artist)
 
-        // Specifically search for the music video with "music video" in the query
+        // Search for the music video with tiered queries: official MV keywords followed by clean artist/title
         val queries = buildList {
             val mainSong = cleanSong.ifBlank { song }
             val mainArtist = cleanArtist.ifBlank { artist }
@@ -531,8 +550,14 @@ object YouTubeCanvasProvider {
             if (cleanSong.isNotBlank() && cleanArtist.isNotBlank()) {
                 add("$cleanSong $cleanArtist official video")
             }
+            if (mainSong.isNotBlank() && mainArtist.isNotBlank()) {
+                add("$mainSong $mainArtist")
+            }
             if (song != mainSong) {
                 add(listOfNotNull(song, artist.takeIf { it.isNotBlank() }, "music video").joinToString(" "))
+                if (artist.isNotBlank()) {
+                    add("$song $artist")
+                }
             }
         }.distinct()
 

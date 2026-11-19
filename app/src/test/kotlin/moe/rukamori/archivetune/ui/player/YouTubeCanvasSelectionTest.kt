@@ -143,6 +143,20 @@ class YouTubeCanvasSelectionTest {
     }
 
     @Test
+    fun matchesVideoWithoutMusicVideoInTitleWhenArtistAndTitleMatch() {
+        val plainVideo = song("sub11111111", "Like Love", "Sub Urban", isOmv = false)
+        val result = selectYouTubeMusicVideoCandidate(listOf(plainVideo), "Like Love", "Sub Urban")
+        assertEquals("sub11111111", result?.id)
+    }
+
+    @Test
+    fun matchesArtistPrefixVideoWithoutMusicVideoInTitle() {
+        val artistTitledVideo = song("sub22222222", "Sub Urban - Like Love", "Sub Urban", isOmv = false)
+        val result = selectYouTubeMusicVideoCandidate(listOf(artistTitledVideo), "Like Love", "Sub Urban")
+        assertEquals("sub22222222", result?.id)
+    }
+
+    @Test
     fun rejectsTopicChannelAudioUpload() {
         val topicSong = song("t1111111111", "Hello", "Adele - Topic")
         val result = selectYouTubeMusicVideoCandidate(listOf(topicSong), "Hello", "Adele")

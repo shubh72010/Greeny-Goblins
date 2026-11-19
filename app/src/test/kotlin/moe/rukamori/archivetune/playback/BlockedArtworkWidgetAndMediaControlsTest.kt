@@ -97,6 +97,16 @@ class BlockedArtworkWidgetAndMediaControlsTest {
     }
 
     @Test
+    fun unblockedSong_retainsArtworkUriForMediaWidget() {
+        BlockedArtwork.update(null)
+
+        val unblockedSong = testSong(id = "out-of-order", thumbUrl = "https://lh3.googleusercontent.com/test=w1080-h1080")
+        val item = unblockedSong.toMediaItem()
+        assertNotNull(item.mediaMetadata.artworkUri)
+        assertEquals("https://lh3.googleusercontent.com/test=w1080-h1080", item.mediaMetadata.artworkUri.toString())
+    }
+
+    @Test
     fun uriMatching_detectsBlockedSongUri() {
         BlockedArtwork.update("xyz123")
 

@@ -164,7 +164,7 @@ class PlayerConnection(
             service.requestTogetherControl(moe.rukamori.archivetune.together.ControlAction.SkipNext)
             return
         }
-        if (service.tryGlobalCrossfadeToNext()) return
+        service.cancelCrossfade(resetVolume = true, resetPauseAtEnd = true, clearPreview = true)
         player.seekToNext()
         player.prepare()
         player.playWhenReady = true
@@ -176,7 +176,7 @@ class PlayerConnection(
             service.requestTogetherControl(moe.rukamori.archivetune.together.ControlAction.SkipPrevious)
             return
         }
-        if (service.tryGlobalCrossfadeToPrevious()) return
+        service.cancelCrossfade(resetVolume = true, resetPauseAtEnd = true, clearPreview = true)
         player.seekToPrevious()
         player.prepare()
         player.playWhenReady = true

@@ -157,7 +157,8 @@ internal fun rankYouTubeMusicVideoCandidates(
     fun isMusicVideo(item: SongItem): Boolean =
         item.endpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType in
             setOf(MUSIC_VIDEO_TYPE_OMV, MUSIC_VIDEO_TYPE_UGC) ||
-            hasMusicVideoIndicator(item.title)
+            hasMusicVideoIndicator(item.title) ||
+            (!antiPattern(item) && itemArtistMatches(item) && titleMatches(item))
 
     fun hasOfficialIndicator(title: String): Boolean {
         val t = title.lowercase(Locale.ROOT)
