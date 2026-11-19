@@ -21,7 +21,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.constants.CropThumbnailToSquareKey
@@ -247,7 +247,7 @@ private fun LyricVariant(
     shape: Shape = RoundedCornerShape(16.dp),
     modifier: Modifier = Modifier,
 ) {
-    val lyricsEntity by playerConnection.currentLyrics.collectAsState(initial = null)
+    val lyricsEntity by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
     val lyricsState = remember(lyricsEntity) {
         lyricsEntity?.let { parseLyricsWithTimings(it.lyrics) }
     }

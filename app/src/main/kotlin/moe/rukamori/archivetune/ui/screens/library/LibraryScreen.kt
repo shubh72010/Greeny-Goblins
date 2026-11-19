@@ -42,7 +42,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +68,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 import moe.rukamori.archivetune.LocalDatabase
@@ -90,7 +90,7 @@ fun LibraryScreen(navController: NavController) {
     val defaultFilter by rememberEnumPreference(ChipSortTypeKey, LibraryFilter.LIBRARY)
     val database = LocalDatabase.current
     val (selectedTagIds, onSelectedTagIdsChange) = rememberPlaylistTagFilterState(database)
-    val allTags by database.allTags().collectAsState(initial = emptyList())
+    val allTags by database.allTags().collectAsStateWithLifecycle(initialValue = emptyList())
     val (showTagsInLibrary) = rememberPreference(ShowTagsInLibraryKey, defaultValue = true)
     val (showSpotifyPlaylists) = rememberPreference(ShowSpotifyPlaylistsKey, defaultValue = false)
     val (showSubsonic) = rememberPreference(SubsonicEnabledKey, defaultValue = false)

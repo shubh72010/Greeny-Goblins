@@ -28,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -38,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import moe.rukamori.archivetune.R
 import moe.rukamori.archivetune.db.MusicDatabase
 import moe.rukamori.archivetune.db.entities.TagEntity
@@ -51,7 +51,7 @@ fun PlaylistTagChips(
     onTagClick: ((TagEntity) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val tags by database.playlistTags(playlistId).collectAsState(initial = emptyList())
+    val tags by database.playlistTags(playlistId).collectAsStateWithLifecycle(initialValue = emptyList())
 
     if (tags.isNotEmpty()) {
         FlowRow(
@@ -190,7 +190,7 @@ fun TagsFilterChips(
     onTagToggle: (TagEntity) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val allTags by database.allTags().collectAsState(initial = emptyList())
+    val allTags by database.allTags().collectAsStateWithLifecycle(initialValue = emptyList())
 
     if (allTags.isNotEmpty()) {
         FlowRow(

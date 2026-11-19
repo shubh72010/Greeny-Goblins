@@ -106,7 +106,9 @@ class App :
         }
         BotGuardTokenGenerator.initialize(this)
         PreferenceStore.start(this)
-        Timber.plant(Timber.DebugTree())
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
         try {
             Timber.plant(
                 moe.rukamori.archivetune.utils
@@ -337,13 +339,14 @@ class App :
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {
-        val smartTrimmer = dataStore[SmartTrimmerKey] ?: false
-        // ponytail: RAM-based tier (3GB Oppo/Redmi land in CONSTRAINED/REDUCED even
-        // when isLowRamDevice is false). User-set disk size still wins.
+        // Coil asks for this on whichever thread loads the first image, usually main. Read the
+        // already-published preference snapshot (never block) and resolve the trimmer off-thread.
+        // ponytail: a cold first load can still miss the user's disk-size pref and use the tier
+        // default; reads settle a few ms after onCreate, so this only affects the very first image.
         val budgets = deviceTier().budgets()
         val imageCacheConfig =
             resolveImageDiskCacheConfig(
-                dataStore[MaxImageCacheSizeKey] ?: budgets.imageDiskMb,
+                PreferenceStore.get(MaxImageCacheSizeKey) ?: budgets.imageDiskMb,
             )
 
         val diskCache =
@@ -353,8 +356,10 @@ class App :
                 .maxSizeBytes(imageCacheConfig.maxSizeBytes)
                 .build()
 
-        if (smartTrimmer && imageCacheConfig.policy == CachePolicy.ENABLED && didRunImageCacheTrim.compareAndSet(false, true)) {
-            applicationScope.launch(Dispatchers.IO) { trimImageDiskCache(diskCache) }
+        if (imageCacheConfig.policy == CachePolicy.ENABLED && didRunImageCacheTrim.compareAndSet(false, true)) {
+            applicationScope.launch(Dispatchers.IO) {
+                if (dataStore.data.first()[SmartTrimmerKey] == true) trimImageDiskCache(diskCache)
+            }
         }
 
         return ImageLoader

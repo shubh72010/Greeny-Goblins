@@ -36,7 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.LocalDatabase
@@ -67,7 +67,7 @@ private val KEY_NAMES = arrayOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#",
 @Composable
 fun MusicIntelligenceScreen(navController: NavController) {
     val database = LocalDatabase.current
-    val analyses by database.allMusicAnalyses().collectAsState(initial = emptyList())
+    val analyses by database.allMusicAnalyses().collectAsStateWithLifecycle(initialValue = emptyList())
 
     Scaffold { innerPadding ->
         Column(modifier = Modifier.fillMaxSize()) {

@@ -43,7 +43,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
 import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
@@ -118,7 +118,7 @@ fun AlbumMenu(
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val scope = rememberCoroutineScope()
-    val libraryAlbum by database.album(originalAlbum.id).collectAsState(initial = originalAlbum)
+    val libraryAlbum by database.album(originalAlbum.id).collectAsStateWithLifecycle(initialValue = originalAlbum)
     val album = libraryAlbum ?: originalAlbum
     var songs by remember {
         mutableStateOf(emptyList<Song>())

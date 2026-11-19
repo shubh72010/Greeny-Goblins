@@ -100,7 +100,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -911,8 +910,8 @@ class MainActivity : ComponentActivity() {
                     val coroutineScope = rememberCoroutineScope()
                     val homeViewModel: HomeViewModel = hiltViewModel()
                     val networkBannerViewModel: NetworkBannerViewModel = hiltViewModel()
-                    val allLocalItems by homeViewModel.allLocalItems.collectAsState()
-                    val allYtItems by homeViewModel.allYtItems.collectAsState()
+                    val allLocalItems by homeViewModel.allLocalItems.collectAsStateWithLifecycle()
+                    val allYtItems by homeViewModel.allYtItems.collectAsStateWithLifecycle()
                     val networkBannerState by networkBannerViewModel.bannerState.collectAsStateWithLifecycle()
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val (previousTab) = rememberSaveable { mutableStateOf("home") }

@@ -60,7 +60,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -91,6 +90,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mocharealm.accompanist.lyrics.core.model.ISyncedLine
 import com.mocharealm.accompanist.lyrics.core.model.SyncedLyrics
 import com.mocharealm.accompanist.lyrics.core.model.karaoke.KaraokeAlignment
@@ -175,8 +175,8 @@ fun LyricsEnhanced(
     val context = LocalContext.current
     val animationsDisabled = LocalAnimationsDisabled.current
 
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
-    val playbackParameters by playerConnection.playbackParameters.collectAsState()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
+    val playbackParameters by playerConnection.playbackParameters.collectAsStateWithLifecycle()
 
     val (lyricsClick) = rememberPreference(LyricsClickKey, defaultValue = true)
     val (lyricsTextSize) = rememberPreference(LyricsTextSizeKey, defaultValue = 26f)
@@ -224,7 +224,7 @@ fun LyricsEnhanced(
     var shareDialogPositionMs by remember { mutableStateOf(0L) }
     var showShareImageDialog by remember { mutableStateOf(false) }
 
-    val currentLyrics by playerConnection.currentLyrics.collectAsState(initial = null)
+    val currentLyrics by playerConnection.currentLyrics.collectAsStateWithLifecycle(initialValue = null)
     val lyrics =
         remember(currentLyrics, mediaMetadata?.id) {
             currentLyrics

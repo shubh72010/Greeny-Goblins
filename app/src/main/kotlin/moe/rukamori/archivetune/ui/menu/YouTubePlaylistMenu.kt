@@ -47,7 +47,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,6 +62,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
 import coil3.compose.AsyncImage
@@ -124,7 +124,7 @@ fun YouTubePlaylistMenu(
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val syncUtils = LocalSyncUtils.current
-    val dbPlaylist by database.playlistByBrowseId(playlist.id).collectAsState(initial = null)
+    val dbPlaylist by database.playlistByBrowseId(playlist.id).collectAsStateWithLifecycle(initialValue = null)
     val (speedDialSongIds, onSpeedDialSongIdsChange) = rememberPreference(SpeedDialSongIdsKey, "")
     val speedDialPins = remember(speedDialSongIds) { parseSpeedDialPins(speedDialSongIds) }
     val playlistPin =

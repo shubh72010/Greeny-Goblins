@@ -61,7 +61,6 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -98,6 +97,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_ENDED
@@ -277,7 +277,7 @@ fun PlayerTopActions(
     currentSongLiked: Boolean,
 ) {
     val haptic = LocalHapticFeedback.current
-    val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsState()
+    val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
     val usePlayerGlass = isPlayerGlassEnabled()
 
     when (playerDesignStyle) {
@@ -924,7 +924,7 @@ fun PlayerPlaybackControls(
     currentSongLiked: Boolean,
 ) {
     val haptic = LocalHapticFeedback.current
-    val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsState()
+    val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
     val view = LocalView.current
     val usePlayerGlass = isPlayerGlassEnabled()
     val (enableHapticFeedback) = rememberPreference(EnableHapticFeedbackKey, true)
@@ -1877,7 +1877,7 @@ fun PlayerControlsContent(
     onSliderValueChangeFinished: () -> Unit,
     currentFormat: FormatEntity? = null,
 ) {
-    val currentSong by playerConnection.currentSong.collectAsState(initial = null)
+    val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val currentSongLiked = currentSong?.song?.liked == true
 
     val playPauseRoundness by animateDpAsState(

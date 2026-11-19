@@ -27,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +37,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -72,8 +72,8 @@ fun ArtistSongsScreen(
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
 
     val (sortType, onSortTypeChange) =
         rememberEnumPreference(
@@ -86,8 +86,8 @@ fun ArtistSongsScreen(
             true,
         )
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
-    val artist by viewModel.artist.collectAsState()
-    val songs by viewModel.songs.collectAsState()
+    val artist by viewModel.artist.collectAsStateWithLifecycle()
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
     val lazyListState = rememberLazyListState()
 
     Box(

@@ -44,7 +44,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -103,8 +103,8 @@ fun LibrarySongsScreen(
     val menuState = LocalMenuState.current
     val haptic = LocalHapticFeedback.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
     val isDarkTheme = isSystemInDarkTheme()
     val pureBlack by rememberPreference(PureBlackKey, defaultValue = true)
@@ -118,8 +118,8 @@ fun LibrarySongsScreen(
     val hideExplicit by rememberPreference(key = HideExplicitKey, defaultValue = false)
     val hideBlockedTitles by rememberPreference(key = HideBlockedTitlesKey, defaultValue = false)
 
-    val songs by viewModel.allSongs.collectAsState()
-    val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val songs by viewModel.allSongs.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
     var filter by rememberEnumPreference(SongFilterKey, SongFilter.LIKED)
     val lazyListState = rememberLazyListState()

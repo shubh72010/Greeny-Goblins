@@ -51,7 +51,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -117,8 +116,8 @@ fun LibraryMixScreen(
     val coroutineScope = rememberCoroutineScope()
     val database = LocalDatabase.current
 
-    val likedSongsCount by database.likedSongsCount().collectAsState(initial = 0)
-    val recentSongs by database.recentSongs(15).collectAsState(initial = emptyList())
+    val likedSongsCount by database.likedSongsCount().collectAsStateWithLifecycle(initialValue = 0)
+    val recentSongs by database.recentSongs(15).collectAsStateWithLifecycle(initialValue = emptyList())
 
     val albums by viewModel.albums.collectAsStateWithLifecycle()
     val artists by viewModel.artists.collectAsStateWithLifecycle()
@@ -132,7 +131,7 @@ fun LibraryMixScreen(
     val filteredPlaylistIds by database
         .playlistIdsByTags(
             if (selectedTagIds.isEmpty()) emptyList() else selectedTagIds.toList(),
-        ).collectAsState(initial = emptyList())
+        ).collectAsStateWithLifecycle(initialValue = emptyList())
 
     val visiblePlaylists =
         remember(playlists, selectedTagIds, filteredPlaylistIds) {

@@ -77,7 +77,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -672,7 +671,7 @@ fun BottomSheetPlayer(
 
     val download by LocalDownloadUtil.current
         .getDownload(mediaMetadata?.id ?: "")
-        .collectAsState(initial = null)
+        .collectAsStateWithLifecycle(initialValue = null)
 
     val sleepTimerEnabled =
         remember(

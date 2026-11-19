@@ -15,7 +15,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import moe.rukamori.archivetune.extensions.toggleRepeatMode
 import androidx.compose.ui.Alignment
@@ -77,7 +77,7 @@ fun ShuffleButton(
     modifier: Modifier = Modifier,
     playButtonScale: Float = 1f,
 ) {
-    val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsState()
+    val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
     val haptic = LocalHapticFeedback.current
     val buttonShape = LocalModularButtonShape.current
     val buttonStyle = LocalPlayerButtonStyle.current
@@ -124,7 +124,7 @@ fun RepeatButton(
     modifier: Modifier = Modifier,
     playButtonScale: Float = 1f,
 ) {
-    val repeatMode by playerConnection.repeatMode.collectAsState()
+    val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
     val isActive = repeatMode != Player.REPEAT_MODE_OFF
     val haptic = LocalHapticFeedback.current
     val buttonShape = LocalModularButtonShape.current
@@ -176,7 +176,7 @@ fun LikeButton(
     modifier: Modifier = Modifier,
     playButtonScale: Float = 1f,
 ) {
-    val currentSong by playerConnection.currentSong.collectAsState(initial = null)
+    val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val isLiked = currentSong?.song?.liked == true
     val haptic = LocalHapticFeedback.current
     val buttonShape = LocalModularButtonShape.current

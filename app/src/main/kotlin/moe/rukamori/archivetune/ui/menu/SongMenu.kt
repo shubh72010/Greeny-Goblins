@@ -46,7 +46,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +71,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadRequest
 import androidx.media3.exoplayer.offline.DownloadService
@@ -139,11 +139,11 @@ fun SongMenu(
     val context = LocalContext.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val songState = database.song(originalSong.id).collectAsState(initial = originalSong)
+    val songState = database.song(originalSong.id).collectAsStateWithLifecycle(initialValue = originalSong)
     val song = songState.value ?: originalSong
     val download by LocalDownloadUtil.current
         .getDownload(originalSong.id)
-        .collectAsState(initial = null)
+        .collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current
     var refetchIconDegree by remember { mutableFloatStateOf(0f) }

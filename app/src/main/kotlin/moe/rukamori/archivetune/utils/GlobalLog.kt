@@ -7,8 +7,9 @@
 
 package moe.rukamori.archivetune.utils
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.*
@@ -23,9 +24,23 @@ data class LogEntry(
 object GlobalLog {
     private const val MAX_ENTRIES = 500
     private val _logs = MutableStateFlow<List<LogEntry>>(emptyList())
-    val logs = _logs.asStateFlow()
 
-    private val timeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+    // append() runs on every Timber call site, so it must not build a fresh 500-element
+    // list per line, and must not publish unless something is actually collecting. A late
+    // reader gets a fresh snapshot on subscribe instead of the last published value.
+    val logs: Flow<List<LogEntry>> =
+        flow {
+            emit(snapshot())
+            _logs.collect { emit(it) }
+        }
+
+    private val ring = ArrayDeque<LogEntry>(MAX_ENTRIES)
+
+    private fun snapshot(): List<LogEntry> = synchronized(ring) { ring.toList() }
+
+    private fun publish() {
+        _logs.value = snapshot()
+    }
 
     fun append(
         level: Int,
@@ -33,16 +48,22 @@ object GlobalLog {
         message: String,
     ) {
         val entry = LogEntry(System.currentTimeMillis(), level, tag, message)
-        val new = (_logs.value + entry).takeLast(MAX_ENTRIES)
-        _logs.value = new
+        val subscribed =
+            synchronized(ring) {
+                if (ring.size == MAX_ENTRIES) ring.removeFirst()
+                ring.addLast(entry)
+                _logs.subscriptionCount.value > 0
+            }
+        if (subscribed) publish()
     }
 
     fun clear() {
+        synchronized(ring) { ring.clear() }
         _logs.value = emptyList()
     }
 
     fun format(entry: LogEntry): String {
-        val ts = timeFormat.format(Date(entry.time))
+        val ts = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date(entry.time))
         val lvl =
             when (entry.level) {
                 android.util.Log.VERBOSE -> "V"

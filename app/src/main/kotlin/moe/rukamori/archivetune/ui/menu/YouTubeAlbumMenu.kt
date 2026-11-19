@@ -41,7 +41,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
 import androidx.navigation.NavController
@@ -109,7 +109,7 @@ fun YouTubeAlbumMenu(
     val database = LocalDatabase.current
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val album by database.albumWithSongs(albumItem.id).collectAsState(initial = null)
+    val album by database.albumWithSongs(albumItem.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {

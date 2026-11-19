@@ -40,7 +40,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +57,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import moe.rukamori.archivetune.LocalPlayerAwareWindowInsets
@@ -92,9 +92,9 @@ fun ModularExpandedPlayer(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val layoutPreset by PlayerLayoutRepository.observeLayoutPreset(context)
-        .collectAsState(initial = PlayerLayoutPreset.CLASSIC)
+        .collectAsStateWithLifecycle(initialValue = PlayerLayoutPreset.CLASSIC)
     var layout by remember(layoutPreset) {
         mutableStateOf(PlayerLayoutRepository.getLayout(layoutPreset))
     }

@@ -62,7 +62,6 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -183,8 +182,8 @@ fun Queue(
 
     var locked by rememberPreference(QueueEditLockKey, defaultValue = true)
     var infiniteQueueEnabled by rememberPreference(AutoLoadMoreKey, defaultValue = true)
-    val infiniteQueueLoading by playerConnection.service.infiniteQueueLoading.collectAsState()
-    val togetherSessionState by playerConnection.service.togetherSessionState.collectAsState()
+    val infiniteQueueLoading by playerConnection.service.infiniteQueueLoading.collectAsStateWithLifecycle()
+    val togetherSessionState by playerConnection.service.togetherSessionState.collectAsStateWithLifecycle()
     val togetherForcesLock =
         togetherSessionState is moe.rukamori.archivetune.together.TogetherSessionState.Joined &&
             (togetherSessionState as moe.rukamori.archivetune.together.TogetherSessionState.Joined).role is moe.rukamori.archivetune.together.TogetherRole.Guest

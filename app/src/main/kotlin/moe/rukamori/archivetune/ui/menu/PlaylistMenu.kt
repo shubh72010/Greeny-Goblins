@@ -41,7 +41,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadService
 import kotlinx.coroutines.CoroutineScope
@@ -125,7 +125,7 @@ fun PlaylistMenu(
     val downloadUtil = LocalDownloadUtil.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val syncUtils = LocalSyncUtils.current
-    val dbPlaylist by database.playlist(playlist.id).collectAsState(initial = playlist)
+    val dbPlaylist by database.playlist(playlist.id).collectAsStateWithLifecycle(initialValue = playlist)
     val (speedDialSongIds, onSpeedDialSongIdsChange) = rememberPreference(SpeedDialSongIdsKey, "")
     val speedDialPins = remember(speedDialSongIds) { parseSpeedDialPins(speedDialSongIds) }
     val playlistPin = remember(playlist.id) { SpeedDialPin(type = SpeedDialPinType.PLAYLIST, id = playlist.id) }

@@ -51,7 +51,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -86,6 +85,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastSumBy
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.exoplayer.offline.Download
 import androidx.navigation.NavController
 import androidx.palette.graphics.Palette
@@ -142,11 +142,11 @@ fun TopPlaylistScreen(
     val haptic = LocalHapticFeedback.current
     val focusManager = LocalFocusManager.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val isPlaying by playerConnection.isPlaying.collectAsState()
-    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val isPlaying by playerConnection.isPlaying.collectAsStateWithLifecycle()
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsStateWithLifecycle()
     val maxSize = viewModel.top
 
-    val songs by viewModel.topSongs.collectAsState(null)
+    val songs by viewModel.topSongs.collectAsStateWithLifecycle(initialValue = null)
     val mutableSongs = remember { mutableStateListOf<Song>() }
 
     val likeLength =
@@ -183,7 +183,7 @@ fun TopPlaylistScreen(
         }
     }
 
-    val sortType by viewModel.topPeriod.collectAsState()
+    val sortType by viewModel.topPeriod.collectAsStateWithLifecycle()
     val name = stringResource(R.string.my_top) + " $maxSize"
 
     val downloadUtil = LocalDownloadUtil.current

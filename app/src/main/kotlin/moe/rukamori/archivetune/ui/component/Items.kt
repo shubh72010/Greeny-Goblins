@@ -9,6 +9,7 @@
 
 package moe.rukamori.archivetune.ui.component
 
+import android.content.Context
 import android.widget.Toast
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
@@ -64,7 +65,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,6 +94,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.Download.STATE_COMPLETED
@@ -106,6 +107,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -429,7 +431,7 @@ fun SongListItem(
         if (showDownloadIcon) {
             val download by LocalDownloadUtil.current
                 .getDownload(song.id)
-                .collectAsState(initial = null)
+                .collectAsStateWithLifecycle(initialValue = null)
             Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
@@ -500,7 +502,7 @@ fun SongGridItem(
             Icon.Library()
         }
         if (showDownloadIcon) {
-            val download by LocalDownloadUtil.current.getDownload(song.id).collectAsState(initial = null)
+            val download by LocalDownloadUtil.current.getDownload(song.id).collectAsStateWithLifecycle(initialValue = null)
             Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
     },
@@ -651,8 +653,8 @@ fun AlbumListItem(
         // ponytail: single songs collect keyed on album.id + single downloads snapshot;
         // was LaunchedEffect(Unit)+nested downloads collect restarting per songs change.
         val songs by remember(album.id) { database.albumSongs(album.id) }
-            .collectAsState(initial = emptyList())
-        val downloads by downloadUtil.downloads.collectAsState()
+            .collectAsStateWithLifecycle(initialValue = emptyList())
+        val downloads by downloadUtil.downloads.collectAsStateWithLifecycle()
         val downloadState =
             remember(songs, downloads) {
                 if (songs.isEmpty()) {
@@ -716,8 +718,8 @@ fun AlbumGridItem(
         val downloadUtil = LocalDownloadUtil.current
         // ponytail: same single-collect pattern as AlbumListItem (see above).
         val songs by remember(album.id) { database.albumSongs(album.id) }
-            .collectAsState(initial = emptyList())
-        val downloads by downloadUtil.downloads.collectAsState()
+            .collectAsStateWithLifecycle(initialValue = emptyList())
+        val downloads by downloadUtil.downloads.collectAsStateWithLifecycle()
         val downloadState =
             remember(songs, downloads) {
                 if (songs.isEmpty()) {
@@ -1035,6 +1037,50 @@ private val LibraryCardGlowElevation = 34.dp
 private const val LibraryCardGlowAmbientAlpha = 0.82f
 private const val LibraryCardGlowSpotAlpha = 0.96f
 
+// A row re-decodes its own artwork and runs Palette every time it re-enters composition,
+// and a fast fling creates and disposes rows faster than that work completes. Memoise per
+// URL and let a row settle before paying for it.
+private const val RowGlowSettleDelayMs = 200L
+
+private object RowGlowColorCache {
+    private const val MAX_ENTRIES = 256
+    private val colors =
+        object : LinkedHashMap<String, Color>(MAX_ENTRIES, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Color>) = size > MAX_ENTRIES
+        }
+
+    fun get(url: String): Color? = synchronized(colors) { colors[url] }
+
+    fun put(
+        url: String,
+        color: Color,
+    ) = synchronized(colors) { colors[url] = color }
+}
+
+private suspend fun rowGlowColor(
+    context: Context,
+    url: String,
+): Color? {
+    RowGlowColorCache.get(url)?.let { return it }
+    delay(RowGlowSettleDelayMs)
+    val bitmap =
+        runCatching {
+            context.imageLoader
+                .execute(
+                    ImageRequest
+                        .Builder(context)
+                        .data(url)
+                        .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
+                        .allowHardware(false)
+                        .build(),
+                ).image
+                ?.toBitmap()
+        }.getOrNull() ?: return null
+    val color = withContext(Dispatchers.Default) { bitmap.extractThemeColor() }
+    RowGlowColorCache.put(url, color)
+    return color
+}
+
 @Composable
 fun LibraryPlaylistFeatureCard(
     playlist: Playlist,
@@ -1055,21 +1101,8 @@ fun LibraryPlaylistFeatureCard(
         label = "playlistItemGlow",
     )
     LaunchedEffect(primaryThumbnailUrl) {
-        if (primaryThumbnailUrl == null) return@LaunchedEffect
-        val bitmap =
-            runCatching {
-                context.imageLoader
-                    .execute(
-                        ImageRequest
-                            .Builder(context)
-                            .data(primaryThumbnailUrl)
-                            .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
-                            .allowHardware(false)
-                            .build(),
-                    ).image
-                    ?.toBitmap()
-            }.getOrNull() ?: return@LaunchedEffect
-        extractedGlowColor = withContext(Dispatchers.Default) { bitmap.extractThemeColor() }
+        val url = primaryThumbnailUrl ?: return@LaunchedEffect
+        extractedGlowColor = rowGlowColor(context, url) ?: return@LaunchedEffect
     }
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -1164,20 +1197,7 @@ fun LibraryAlbumSpotlightCard(
     )
     LaunchedEffect(album.album.thumbnailUrl) {
         val url = album.album.thumbnailUrl ?: return@LaunchedEffect
-        val bitmap =
-            runCatching {
-                context.imageLoader
-                    .execute(
-                        ImageRequest
-                            .Builder(context)
-                            .data(url)
-                            .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
-                            .allowHardware(false)
-                            .build(),
-                    ).image
-                    ?.toBitmap()
-            }.getOrNull() ?: return@LaunchedEffect
-        extractedGlowColor = withContext(Dispatchers.Default) { bitmap.extractThemeColor() }
+        extractedGlowColor = rowGlowColor(context, url) ?: return@LaunchedEffect
     }
 
     Card(
@@ -1278,20 +1298,7 @@ fun LibraryArtistSpotlightCard(
     )
     LaunchedEffect(artist.artist.thumbnailUrl) {
         val url = artist.artist.thumbnailUrl ?: return@LaunchedEffect
-        val bitmap =
-            runCatching {
-                context.imageLoader
-                    .execute(
-                        ImageRequest
-                            .Builder(context)
-                            .data(url)
-                            .size(PlayerColorExtractor.Config.IMAGE_SIZE, PlayerColorExtractor.Config.IMAGE_SIZE)
-                            .allowHardware(false)
-                            .build(),
-                    ).image
-                    ?.toBitmap()
-            }.getOrNull() ?: return@LaunchedEffect
-        extractedGlowColor = withContext(Dispatchers.Default) { bitmap.extractThemeColor() }
+        extractedGlowColor = rowGlowColor(context, url) ?: return@LaunchedEffect
     }
     Card(
         shape = shape,
@@ -1406,8 +1413,8 @@ fun YouTubeListItem(
     trailingContent: @Composable RowScope.() -> Unit = {},
     badges: @Composable RowScope.() -> Unit = {
         val database = LocalDatabase.current
-        val song by database.song(item.id).collectAsState(initial = null)
-        val album by database.album(item.id).collectAsState(initial = null)
+        val song by database.song(item.id).collectAsStateWithLifecycle(initialValue = null)
+        val album by database.album(item.id).collectAsStateWithLifecycle(initialValue = null)
 
         if ((item is SongItem && song?.song?.liked == true) ||
             (item is AlbumItem && album?.album?.bookmarkedAt != null)
@@ -1419,7 +1426,7 @@ fun YouTubeListItem(
             Icon.Library()
         }
         if (item is SongItem) {
-            val downloads by LocalDownloadUtil.current.downloads.collectAsState()
+            val downloads by LocalDownloadUtil.current.downloads.collectAsStateWithLifecycle()
             val download = downloads[item.id]
             Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }
@@ -1495,8 +1502,8 @@ fun YouTubeGridItem(
     coroutineScope: CoroutineScope? = null,
     badges: @Composable RowScope.() -> Unit = {
         val database = LocalDatabase.current
-        val song by database.song(item.id).collectAsState(initial = null)
-        val album by database.album(item.id).collectAsState(initial = null)
+        val song by database.song(item.id).collectAsStateWithLifecycle(initialValue = null)
+        val album by database.album(item.id).collectAsStateWithLifecycle(initialValue = null)
 
         if (item is SongItem && song?.song?.liked == true ||
             item is AlbumItem && album?.album?.bookmarkedAt != null
@@ -1506,7 +1513,7 @@ fun YouTubeGridItem(
         if (item.explicit) Icon.Explicit()
         if (item is SongItem && song?.song?.inLibrary != null) Icon.Library()
         if (item is SongItem) {
-            val downloads by LocalDownloadUtil.current.downloads.collectAsState()
+            val downloads by LocalDownloadUtil.current.downloads.collectAsStateWithLifecycle()
             val download = downloads[item.id]
             Icon.Download(download?.state, percent = download?.percentDownloaded ?: -1f)
         }

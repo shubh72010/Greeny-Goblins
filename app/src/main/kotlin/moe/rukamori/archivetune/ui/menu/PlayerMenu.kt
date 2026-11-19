@@ -19,6 +19,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import moe.rukamori.archivetune.ui.utils.resize
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -73,7 +74,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableFloatStateOf
@@ -231,12 +231,12 @@ fun PlayerMenu(
     }
     val activityResultLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { }
-    val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
+    val librarySong by database.song(mediaMetadata.id).collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
 
     val download by LocalDownloadUtil.current
         .getDownload(mediaMetadata.id)
-        .collectAsState(initial = null)
+        .collectAsStateWithLifecycle(initialValue = null)
 
     val artists =
         remember(mediaMetadata.artists) {
@@ -602,7 +602,7 @@ fun PlayerMenu(
         )
     }
 
-    val playbackParameters by playerConnection.playbackParameters.collectAsState()
+    val playbackParameters by playerConnection.playbackParameters.collectAsStateWithLifecycle()
 
     val playerMenuEntries =
         buildList {
@@ -1714,7 +1714,7 @@ fun EqualizerDialog(
 ) {
     val context = LocalContext.current
     val playerConnection = LocalPlayerConnection.current ?: return
-    val eqCapabilities by playerConnection.service.eqCapabilities.collectAsState()
+    val eqCapabilities by playerConnection.service.eqCapabilities.collectAsStateWithLifecycle()
 
     val (eqEnabled, setEqEnabled) = rememberPreference(EqualizerEnabledKey, defaultValue = false)
     val (selectedProfileId, setSelectedProfileId) = rememberPreference(EqualizerSelectedProfileIdKey, defaultValue = "flat")

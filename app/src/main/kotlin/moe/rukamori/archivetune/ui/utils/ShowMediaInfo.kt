@@ -62,7 +62,6 @@ import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,6 +78,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import moe.rukamori.archivetune.LocalDatabase
 import moe.rukamori.archivetune.LocalPlayerConnection
@@ -119,8 +119,8 @@ fun ShowMediaInfo(videoId: String) {
     val database = LocalDatabase.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current
-    val song by database.song(videoId).collectAsState(initial = null)
-    val currentFormat by database.format(videoId).collectAsState(initial = null)
+    val song by database.song(videoId).collectAsStateWithLifecycle(initialValue = null)
+    val currentFormat by database.format(videoId).collectAsStateWithLifecycle(initialValue = null)
     var info by remember(videoId) { mutableStateOf<MediaInfo?>(null) }
     var selectedTab by rememberSaveable(videoId) { mutableStateOf(MediaInfoTab.Information) }
 
