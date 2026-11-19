@@ -292,6 +292,8 @@ import moe.rukamori.archivetune.ui.theme.extractThemeColor
 import moe.rukamori.archivetune.ui.utils.appBarScrollBehavior
 import moe.rukamori.archivetune.ui.utils.backToMain
 import moe.rukamori.archivetune.ui.utils.resetHeightOffset
+import moe.rukamori.archivetune.ui.utils.Motion
+import moe.rukamori.archivetune.ui.utils.rememberScreenDip
 import moe.rukamori.archivetune.utils.PreferenceStore
 import moe.rukamori.archivetune.utils.SyncUtils
 import moe.rukamori.archivetune.utils.Updater
@@ -2253,6 +2255,11 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
+                                val screenDip =
+                                    rememberScreenDip(
+                                        navBackStackEntry?.id,
+                                        enabled = !disableAnimations,
+                                    )
                                 AdaptiveContentPane(enabled = useRail && !isTvDevice && currentRoute != Screens.Home.route) {
                                 NavHost(
                                     navController = navController,
@@ -2272,9 +2279,9 @@ class MainActivity : ComponentActivity() {
                                         } else if (initialState.destination.route in topLevelScreens &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeIn(tween(250))
+                                            fadeIn(Motion.push())
                                         } else {
-                                            fadeIn(tween(250)) + slideInHorizontally { it / 2 }
+                                            fadeIn(Motion.push()) + slideInHorizontally(Motion.push()) { it / 2 }
                                         }
                                     },
                                     exitTransition = {
@@ -2283,9 +2290,9 @@ class MainActivity : ComponentActivity() {
                                         } else if (initialState.destination.route in topLevelScreens &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeOut(tween(200))
+                                            fadeOut(Motion.push())
                                         } else {
-                                            fadeOut(tween(200)) + slideOutHorizontally { -it / 2 }
+                                            fadeOut(Motion.push()) + slideOutHorizontally(Motion.push()) { -it / 2 }
                                         }
                                     },
                                     popEnterTransition = {
@@ -2297,9 +2304,9 @@ class MainActivity : ComponentActivity() {
                                             ) &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeIn(tween(250))
+                                            fadeIn(Motion.push())
                                         } else {
-                                            fadeIn(tween(250)) + slideInHorizontally { -it / 2 }
+                                            fadeIn(Motion.push()) + slideInHorizontally(Motion.push()) { -it / 2 }
                                         }
                                     },
                                     popExitTransition = {
@@ -2311,13 +2318,13 @@ class MainActivity : ComponentActivity() {
                                             ) &&
                                             targetState.destination.route in topLevelScreens
                                         ) {
-                                            fadeOut(tween(200))
+                                            fadeOut(Motion.push())
                                         } else {
-                                            fadeOut(tween(200)) + slideOutHorizontally { it / 2 }
+                                            fadeOut(Motion.push()) + slideOutHorizontally(Motion.push()) { it / 2 }
                                         }
                                     },
                                     modifier =
-                                        Modifier
+                                        screenDip
                                             .then(if (glassConfig.anyComponentEnabled) Modifier.layerBackdrop(appBackdrop) else Modifier)
                                             .then(
                                                 if (isTvDevice) {

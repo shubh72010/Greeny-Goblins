@@ -80,6 +80,7 @@ import moe.rukamori.archivetune.ui.screens.settings.SubsonicSettings
 import moe.rukamori.archivetune.ui.screens.settings.ThemeCreatorScreen
 import moe.rukamori.archivetune.ui.screens.settings.UpdateScreen
 import moe.rukamori.archivetune.ui.screens.smartskip.HyprMixScreen
+import moe.rukamori.archivetune.ui.utils.Motion
 
 @OptIn(ExperimentalMaterial3Api::class)
 fun NavGraphBuilder.navigationBuilder(
@@ -192,32 +193,32 @@ fun NavGraphBuilder.navigationBuilder(
             if (disableAnimations) {
                 fadeIn(tween(0))
             } else {
-                fadeIn(tween(250))
+                fadeIn(Motion.push())
             }
         },
         exitTransition = {
             if (disableAnimations) {
                 fadeOut(tween(0))
             } else if (targetState.destination.route?.startsWith(OnlineSearchResultRoutePrefix) == true) {
-                fadeOut(tween(200))
+                fadeOut(Motion.push())
             } else {
-                fadeOut(tween(200)) + slideOutHorizontally { -it / 2 }
+                fadeOut(Motion.push()) + slideOutHorizontally(Motion.push()) { -it / 2 }
             }
         },
         popEnterTransition = {
             if (disableAnimations) {
                 fadeIn(tween(0))
             } else if (initialState.destination.route?.startsWith(OnlineSearchResultRoutePrefix) == true) {
-                fadeIn(tween(250))
+                fadeIn(Motion.push())
             } else {
-                fadeIn(tween(250)) + slideInHorizontally { -it / 2 }
+                fadeIn(Motion.push()) + slideInHorizontally(Motion.push()) { -it / 2 }
             }
         },
         popExitTransition = {
             if (disableAnimations) {
                 fadeOut(tween(0))
             } else {
-                fadeOut(tween(200))
+                fadeOut(Motion.push())
             }
         },
     ) {
