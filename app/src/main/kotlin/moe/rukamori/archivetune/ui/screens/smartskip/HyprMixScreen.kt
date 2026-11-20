@@ -114,22 +114,24 @@ fun HyprMixScreen(
             }
 
             item(key = "play") {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.hyprmix_summary, state.entries.size, state.playCount),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
                     )
                     Button(
                         onClick = { playerConnection?.playQueue(hyprMixQueue(songs, 0)) },
                         enabled = songs.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
+                        Icon(painterResource(R.drawable.play), contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
                         Text(stringResource(R.string.hyprmix_play))
                     }
                 }

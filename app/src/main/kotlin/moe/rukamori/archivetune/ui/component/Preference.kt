@@ -475,9 +475,8 @@ inline fun <reified T : Enum<T>> EnumListPreference(
     noinline onValueSelected: (T) -> Unit,
     isEnabled: Boolean = true,
     highlightKey: String? = null,
+    values: List<T> = remember { enumValues<T>().toList() },
 ) {
-    val values = remember { enumValues<T>().toList() }
-
     ListPreference(
         modifier = modifier,
         title = title,

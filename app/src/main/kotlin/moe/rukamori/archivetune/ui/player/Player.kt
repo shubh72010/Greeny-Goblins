@@ -369,7 +369,7 @@ fun BottomSheetPlayer(
     val (enableDeckMix) = rememberPreference(moe.rukamori.archivetune.constants.EnableDeckMixKey, false)
     var showDeckMixer by remember { androidx.compose.runtime.mutableStateOf(false) }
     val (backdropEnabled) = rememberPreference(BackdropEnabledKey, defaultValue = true)
-    val (backdropBlurAmount) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
+    val (backdropBlurAmount) = rememberPreference(BackdropBlurAmountKey, defaultValue = 15)
     val (showCodecOnPlayer) = rememberPreference(booleanPreferencesKey("show_codec_on_player"), false)
     val (incrementalSeekSkipEnabled) = rememberPreference(moe.rukamori.archivetune.constants.SeekExtraSeconds, defaultValue = false)
     var keyboardSkipMultiplier by remember { mutableStateOf(1) }

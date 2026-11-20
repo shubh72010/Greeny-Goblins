@@ -4099,7 +4099,7 @@ fun PlayerBackground(
     val (hiddenCoverIds, _) = rememberPreference(HiddenCoverArtSongIdsKey, "")
     val canvasSource by rememberEnumPreference(CanvasSourceKey, CanvasSource.AUTO)
     val (backdropEnabledPref) = rememberPreference(BackdropEnabledKey, defaultValue = true)
-    val (backdropBlurAmountPref) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
+    val (backdropBlurAmountPref) = rememberPreference(BackdropBlurAmountKey, defaultValue = 15)
     val effectiveBackdropEnabled = backdropEnabled ?: backdropEnabledPref
     val effectiveBackdropBlurAmount = backdropBlurAmount ?: backdropBlurAmountPref
     val lowDataModeActive = rememberLowDataModeActive()

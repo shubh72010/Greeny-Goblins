@@ -220,7 +220,7 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
         )
     val (blurRadius, onBlurRadiusChange) = rememberPreference(BlurRadiusKey, defaultValue = 48f)
     val (backdropEnabled, onBackdropEnabledChange) = rememberPreference(BackdropEnabledKey, defaultValue = true)
-    val (backdropBlurAmount, onBackdropBlurAmountChange) = rememberPreference(BackdropBlurAmountKey, defaultValue = 60)
+    val (backdropBlurAmount, onBackdropBlurAmountChange) = rememberPreference(BackdropBlurAmountKey, defaultValue = 15)
     val (fontPreference, onFontPreferenceChange) =
         rememberEnumPreference(
             FontPreferenceKey,
@@ -731,6 +731,7 @@ fun AppearanceSettings(navController: NavController, highlight: String? = null) 
                         icon = { Icon(painterResource(R.drawable.palette), null) },
                         selectedValue = playerDesignStyle,
                         onValueSelected = onPlayerDesignStyleChange,
+                        values = PlayerDesignStyle.entries.filter { it != PlayerDesignStyle.V9 },
                         valueText = {
                             when (it) {
                                 PlayerDesignStyle.V1 -> stringResource(R.string.player_design_v1)
